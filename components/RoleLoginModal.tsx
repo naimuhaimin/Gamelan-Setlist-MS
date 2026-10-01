@@ -151,7 +151,7 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({ isOpen, onClose 
               <span>Master Admin</span>
             </div>
             <div className="text-[11px] text-slate-400">
-              Full master rights over user roles, sessions, and database.
+              Add new songs into the system, set song template form, manage Sidangs, and database.
             </div>
           </button>
         </div>

@@ -18,6 +18,7 @@ import {
   KeyRound,
   Eye,
   Plus,
+  BookOpen,
 } from 'lucide-react';
 import { AddSidangModal } from './AddSidangModal';
 
@@ -250,6 +251,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Song Library / Template Manager Button (Admin / Maestro Repertoire) */}
+            <button
+              onClick={onOpenLibraryModal}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                activeRole === 'admin'
+                  ? 'bg-red-950/40 border-red-500/60 text-red-300 hover:bg-red-900/50 shadow-sm'
+                  : 'bg-[#151928] border-[#29324e] hover:border-amber-500/60 text-slate-200 hover:text-amber-300'
+              }`}
+              title={
+                activeRole === 'admin'
+                  ? 'Admin: Add songs and set template song form'
+                  : 'Open Repertoire Template Library'
+              }
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden md:inline">Song Library</span>
+              {activeRole === 'admin' && (
+                <span className="text-[9px] font-mono uppercase font-black px-1.5 py-0.5 rounded bg-red-600 text-white shadow-sm">
+                  Admin
+                </span>
+              )}
+            </button>
 
             {/* Instrument Filter Selector (Player Cue Highlighting) */}
             <div className="relative">

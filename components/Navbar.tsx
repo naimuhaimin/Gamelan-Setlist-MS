@@ -19,9 +19,11 @@ import {
   Eye,
   Plus,
   BookOpen,
+  Smartphone,
 } from 'lucide-react';
 import { AddSidangModal } from './AddSidangModal';
 import { InstrumentManagementModal } from './InstrumentManagementModal';
+import { ConnectDevicesModal } from './ConnectDevicesModal';
 
 interface NavbarProps {
   onOpenRoleModal: () => void;
@@ -46,6 +48,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     selectedInstrument,
     selectInstrument,
     connectionStatus,
+    isCloudSync,
+    activeSubscribers,
     logoutRole,
     switchActiveSession,
     switchActivePart,
@@ -57,6 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [addSidangModalOpen, setAddSidangModalOpen] = useState(false);
   const [instrumentModalOpen, setInstrumentModalOpen] = useState(false);
+  const [connectDevicesModalOpen, setConnectDevicesModalOpen] = useState(false);
 
   const canEdit = activeRole === 'maestro' || activeRole === 'admin';
 
@@ -474,9 +479,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Connect Devices (iPads, Tablets, Phones) */}
+            <button
+              onClick={() => setConnectDevicesModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#13192c] hover:bg-[#1a223c] text-amber-300 border border-[#273356] transition-all shadow-sm hover:border-amber-500/50"
+              title="Pair & Connect stage devices (Tablets, Phones, Monitors) via QR Code or LAN"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Devices</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold">
+                {activeSubscribers}
+              </span>
+            </button>
+
             {/* Compact Connection Status Pill on Far Right */}
-            <div
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[10px] font-mono border ${
+            <button
+              onClick={() => setConnectDevicesModalOpen(true)}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[10px] font-mono border transition-all hover:brightness-125 cursor-pointer ${
                 connectionStatus === 'connected'
                   ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                   : connectionStatus === 'demo_local'
@@ -485,10 +504,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               title={
                 connectionStatus === 'connected'
-                  ? 'Connected to Supabase Realtime Sync'
+                  ? (isCloudSync
+                      ? 'Connected to Supabase PostgreSQL Cloud with Realtime WebSockets. Click to view devices.'
+                      : 'Connected to Persistent Server Database with Realtime Multi-Device Sync. Click to view devices.')
                   : connectionStatus === 'demo_local'
-                  ? 'Local Cross-Tab Sync Active'
-                  : 'Reconnecting to stage channel'
+                  ? 'Local Cross-Tab Sync Active. Click to connect devices.'
+                  : 'Reconnecting to stage server...'
               }
             >
               <span
@@ -501,9 +522,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               />
               <span className="hidden xl:inline">
-                {connectionStatus === 'connected' ? 'REALTIME' : 'LOCAL'}
+                {connectionStatus === 'connected'
+                  ? (isCloudSync ? 'SUPABASE CLOUD' : 'DATABASE SYNCED')
+                  : 'LOCAL'}
               </span>
-            </div>
+            </button>
 
           </div>
 
@@ -520,6 +543,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       <InstrumentManagementModal
         isOpen={instrumentModalOpen}
         onClose={() => setInstrumentModalOpen(false)}
+      />
+
+      {/* Connect Devices Modal with QR Code & LAN address */}
+      <ConnectDevicesModal
+        isOpen={connectDevicesModalOpen}
+        onClose={() => setConnectDevicesModalOpen(false)}
       />
     </header>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   RoleType,
   GamelanInstrument,
@@ -11,7 +11,27 @@ import {
   RoomState,
   ActiveSongDisplay,
 } from '@/types';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import {
+  fetchFullDatabaseState,
+  updateRoomStateInSupabase,
+  addSongInSupabase,
+  updateSongInSupabase,
+  deleteSongInSupabase,
+  addQueueItemInSupabase,
+  removeQueueItemInSupabase,
+  reorderQueueInSupabase,
+  saveOverrideInSupabase,
+  updatePartControllerInSupabase,
+  addSessionInSupabase,
+  deleteSessionInSupabase,
+  updateSessionInSupabase,
+  addInstrumentInSupabase,
+  updateInstrumentInSupabase,
+  deleteInstrumentInSupabase,
+  restoreDefaultInstrumentsInSupabase,
+  resetAllInSupabase,
+} from '@/lib/supabaseService';
 import {
   INITIAL_SONGS,
   INITIAL_SESSIONS,
@@ -29,6 +49,7 @@ interface StageContextType {
   songs: Song[];
   queueItems: QueueItem[];
   roomState: RoomState;
+  instruments: string[];
   
   // Computed State
   currentSession: Session | undefined;
@@ -48,7 +69,13 @@ interface StageContextType {
   selectedInstrument: GamelanInstrument | null;
   isInstrumentCued: boolean;
   connectionStatus: 'connected' | 'demo_local' | 'reconnecting' | 'error';
+  isCloudSync: boolean;
   errorMessage: string | null;
+
+  // Network & Multi-device
+  lanUrl: string;
+  lanIp: string;
+  activeSubscribers: number;
 
   // Actions
   loginRole: (role: RoleType, passkey?: string) => { success: boolean; message?: string };
@@ -89,7 +116,6 @@ interface StageContextType {
   updateSession: (sessionId: string, updates: Partial<Session>) => Promise<void>;
 
   // Instruments Management (Admin)
-  instruments: string[];
   addInstrument: (name: string) => Promise<void>;
   updateInstrument: (oldName: string, newName: string) => Promise<void>;
   deleteInstrument: (name: string) => Promise<void>;
@@ -100,7 +126,7 @@ interface StageContextType {
 
 const StageContext = createContext<StageContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'gamelan_queue_state_v3';
+const LOCAL_STORAGE_KEY = 'gamelan_queue_state_v4';
 const ROLE_STORAGE_KEY = 'gamelan_active_role_v1';
 const INSTRUMENT_STORAGE_KEY = 'gamelan_active_instrument_v1';
 
@@ -114,15 +140,64 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   
   const [activeRole, setActiveRole] = useState<RoleType>('player');
   const [selectedInstrument, setSelectedInstrument] = useState<GamelanInstrument | null>('Bonang Barung');
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'demo_local' | 'reconnecting' | 'error'>(
-    isSupabaseConfigured ? 'reconnecting' : 'demo_local'
-  );
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'demo_local' | 'reconnecting' | 'error'>('reconnecting');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // BroadcastChannel for instant local cross-tab sync when in demo/local mode
-  const broadcastRef = React.useRef<BroadcastChannel | null>(null);
+  // Network and cross-device states
+  const [lanUrl, setLanUrl] = useState<string>('http://localhost:3000');
+  const [lanIp, setLanIp] = useState<string>('localhost');
+  const [activeSubscribers, setActiveSubscribers] = useState<number>(1);
 
-  // 1. Initial State Hydration (LocalStorage / Seed)
+  // Cross-tab broadcast fallback
+  const broadcastRef = useRef<BroadcastChannel | null>(null);
+
+  // Synchronize state across all React state setters and localStorage
+  const applyStatePayload = useCallback((payload: {
+    sessions?: Session[];
+    parts?: Part[];
+    songs?: Song[];
+    queueItems?: QueueItem[];
+    roomState?: RoomState;
+    instruments?: string[];
+  }) => {
+    if (payload.sessions) setSessions(payload.sessions);
+    if (payload.parts) {
+      const cleaned = payload.parts.map((p) => ({
+        ...p,
+        name: p.name || `Bahagian ${p.part_number}`,
+      }));
+      setParts(cleaned);
+    }
+    if (payload.songs) setSongs(payload.songs);
+    if (payload.queueItems) setQueueItems(payload.queueItems);
+    if (payload.roomState) setRoomState(payload.roomState);
+    if (payload.instruments && Array.isArray(payload.instruments)) setInstruments(payload.instruments);
+
+    // Save to local cache
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Post action to Persistent Server Database
+  const dispatchDbAction = useCallback(async (action: any) => {
+    try {
+      const res = await fetch('/api/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, role: activeRole }),
+      });
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      console.warn('[Database API] Failed to reach server database:', err);
+      return null;
+    }
+  }, [activeRole]);
+
+  // 1. Initial State Hydration & Cloud Database Fetch
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -133,181 +208,202 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     const savedInst = localStorage.getItem(INSTRUMENT_STORAGE_KEY) as GamelanInstrument | null;
     if (savedInst) setSelectedInstrument(savedInst);
 
-    // Setup local broadcast channel
+    // Dynamic origin detection for multi-device sharing (works on Vercel & local)
+    if (window.location.origin) {
+      setLanUrl(window.location.origin);
+      setLanIp(window.location.hostname);
+    }
+
+    // Setup local broadcast channel for immediate multi-tab sync
     try {
-      broadcastRef.current = new BroadcastChannel('gamelan-stage-broadcast');
+      broadcastRef.current = new BroadcastChannel('gamelan-stage-broadcast-v4');
       broadcastRef.current.onmessage = (event) => {
         const { type, payload } = event.data || {};
         if (type === 'SYNC_ALL' && payload) {
-          if (payload.sessions) setSessions(payload.sessions);
-          if (payload.parts) {
-            const cleanedParts = payload.parts.map((p: Part) => ({
-              ...p,
-              name: `Bahagian ${p.part_number}`,
-            }));
-            setParts(cleanedParts);
-          }
-          if (payload.songs) setSongs(payload.songs);
-          if (payload.queueItems) setQueueItems(payload.queueItems);
-          if (payload.roomState) setRoomState(payload.roomState);
-          if (payload.instruments && Array.isArray(payload.instruments)) setInstruments(payload.instruments);
+          applyStatePayload(payload);
         }
       };
     } catch {
-      // Fallback for older browsers
-    }
-
-    if (!isSupabaseConfigured) {
-      // Hydrate from localStorage if available
-      try {
-        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed.sessions) setSessions(parsed.sessions);
-          if (parsed.parts) {
-            const cleanedParts = parsed.parts.map((p: Part) => ({
-              ...p,
-              name: `Bahagian ${p.part_number}`,
-            }));
-            setParts(cleanedParts);
-          }
-          if (parsed.songs) setSongs(parsed.songs);
-          if (parsed.queueItems) setQueueItems(parsed.queueItems);
-          if (parsed.roomState) setRoomState(parsed.roomState);
-          if (parsed.instruments && Array.isArray(parsed.instruments)) setInstruments(parsed.instruments);
-        }
-      } catch (err) {
-        console.error('Failed to parse cached local data', err);
-      }
-      setConnectionStatus('demo_local');
-    }
-
-    return () => {
-      broadcastRef.current?.close();
-    };
-  }, []);
-
-  // Sync to localStorage & broadcast whenever local state changes in demo mode
-  const persistAndBroadcastLocal = useCallback(
-    (
-      newSessions: Session[],
-      newParts: Part[],
-      newSongs: Song[],
-      newQueue: QueueItem[],
-      newRoom: RoomState,
-      newInstruments?: string[]
-    ) => {
-      if (typeof window === 'undefined') return;
-      const stateObj = {
-        sessions: newSessions,
-        parts: newParts,
-        songs: newSongs,
-        queueItems: newQueue,
-        roomState: newRoom,
-        instruments: newInstruments ?? instruments,
-      };
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateObj));
-        broadcastRef.current?.postMessage({
-          type: 'SYNC_ALL',
-          payload: stateObj,
-        });
-      } catch {
-        // quota exceeded or storage error
-      }
-    },
-    [instruments]
-  );
-
-  // 2. Supabase Integration & Realtime Subscriptions
-  useEffect(() => {
-    const client = supabase;
-    if (!isSupabaseConfigured || !client) {
-      setConnectionStatus('demo_local');
-      return;
+      // fallback
     }
 
     let isMounted = true;
 
-    async function fetchSupabaseData(activeClient: NonNullable<typeof supabase>) {
-      try {
-        setConnectionStatus('reconnecting');
-        const [sessionsRes, partsRes, songsRes, queueRes, roomRes] = await Promise.all([
-          activeClient.from('sessions').select('*'),
-          activeClient.from('parts').select('*').order('part_number'),
-          activeClient.from('songs').select('*').order('title'),
-          activeClient.from('queue_items').select('*').order('sort_order'),
-          activeClient.from('room_state').select('*').eq('id', 'main_stage').single(),
-        ]);
+    async function loadData() {
+      setConnectionStatus('reconnecting');
 
-        if (!isMounted) return;
-
-        if (sessionsRes.data && sessionsRes.data.length > 0) setSessions(sessionsRes.data);
-        if (partsRes.data && partsRes.data.length > 0) setParts(partsRes.data);
-        if (songsRes.data && songsRes.data.length > 0) setSongs(songsRes.data);
-        if (queueRes.data) setQueueItems(queueRes.data);
-        if (roomRes.data) setRoomState(roomRes.data);
-
-        setConnectionStatus('connected');
-        setErrorMessage(null);
-      } catch (err: unknown) {
-        console.error('Supabase fetch failed:', err);
-        if (isMounted) {
-          setConnectionStatus('error');
-          setErrorMessage((err as Error)?.message || 'Failed to connect to Supabase');
+      // Primary: Fetch directly from Supabase Cloud Database if configured
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const cloudState = await fetchFullDatabaseState();
+          if (isMounted && cloudState) {
+            applyStatePayload(cloudState);
+            setConnectionStatus('connected');
+            setErrorMessage(null);
+            return;
+          }
+        } catch (err) {
+          console.warn('[StageContext] Supabase fetch failed, falling back:', err);
         }
       }
+
+      // Secondary Fallback: Fetch persistent database state from /api/database
+      try {
+        const res = await fetch('/api/database');
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json.success && json.state) {
+            applyStatePayload(json.state);
+            if (json.network && window.location.hostname === 'localhost') {
+              if (json.network.lanUrl) setLanUrl(json.network.lanUrl);
+              if (json.network.lanIp) setLanIp(json.network.lanIp);
+            }
+            if (typeof json.subscribers === 'number') {
+              setActiveSubscribers(Math.max(1, json.subscribers));
+            }
+            setConnectionStatus(isSupabaseConfigured ? 'connected' : 'demo_local');
+            setErrorMessage(null);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[StageContext] Local API fetch failed:', err);
+      }
+
+      // Offline localStorage fallback
+      try {
+        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (cached) {
+          applyStatePayload(JSON.parse(cached));
+        }
+      } catch {
+        // ignore
+      }
+      if (isMounted) setConnectionStatus('demo_local');
     }
 
-    fetchSupabaseData(client);
-
-    // Setup Supabase Realtime channel
-    const channel = client
-      .channel('stage_sync_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_state' }, (payload) => {
-        if (payload.new) setRoomState(payload.new as RoomState);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_items' }, () => {
-        client.from('queue_items').select('*').order('sort_order').then((res) => {
-          if (res.data) setQueueItems(res.data);
-        });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, () => {
-        client.from('songs').select('*').order('title').then((res) => {
-          if (res.data) setSongs(res.data);
-        });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'parts' }, () => {
-        client.from('parts').select('*').order('part_number').then((res) => {
-          if (res.data) setParts(res.data);
-        });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => {
-        client.from('sessions').select('*').then((res) => {
-          if (res.data) setSessions(res.data);
-        });
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setConnectionStatus('connected');
-        } else if (status === 'CHANNEL_ERROR') {
-          setConnectionStatus('error');
-        }
-      });
+    loadData();
 
     return () => {
       isMounted = false;
-      client.removeChannel(channel);
+      broadcastRef.current?.close();
     };
-  }, []);
+  }, [applyStatePayload]);
 
-  // 3. Computed Helpers
+  // 2. Real-Time Cloud Sync: Supabase WebSockets (or SSE fallback in local mode)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let isMounted = true;
+
+    // If Supabase is configured, use its ultra-low latency WebSocket channel
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      const channel = client
+        .channel('stage_sync_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'room_state' }, (payload) => {
+          if (payload.new && isMounted) {
+            setRoomState(payload.new as RoomState);
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_items' }, async () => {
+          const { data } = await client.from('queue_items').select('*').order('sort_order', { ascending: true });
+          if (data && isMounted) setQueueItems(data as QueueItem[]);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, async () => {
+          const { data } = await client.from('songs').select('*').order('title', { ascending: true });
+          if (data && isMounted) setSongs(data as Song[]);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'parts' }, async () => {
+          const { data } = await client.from('parts').select('*').order('part_number', { ascending: true });
+          if (data && isMounted) {
+            setParts((data as Part[]).map((p) => ({ ...p, name: p.name || `Bahagian ${p.part_number}` })));
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, async () => {
+          const { data } = await client.from('sessions').select('*').order('sidang_number', { ascending: true });
+          if (data && isMounted) setSessions(data as Session[]);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'instruments' }, async () => {
+          const { data } = await client.from('instruments').select('*').order('sort_order', { ascending: true });
+          if (data && isMounted && data.length > 0) {
+            setInstruments((data as Array<{ name: string }>).map((i) => i.name));
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED' && isMounted) {
+            setConnectionStatus('connected');
+            setErrorMessage(null);
+          }
+        });
+
+      return () => {
+        isMounted = false;
+        client.removeChannel(channel);
+      };
+    }
+
+    // Local SSE Fallback when Supabase is not yet configured
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+
+    function connectSSE() {
+      try {
+        eventSource = new EventSource('/api/realtime');
+        eventSource.onopen = () => {
+          if (isMounted) {
+            setConnectionStatus('connected');
+            setErrorMessage(null);
+          }
+        };
+        eventSource.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if ((data.type === 'CONNECTED' || data.type === 'STATE_CHANGED') && data.state) {
+              if (isMounted) {
+                applyStatePayload(data.state);
+                setConnectionStatus('connected');
+              }
+            }
+          } catch {
+            // ping or parse error
+          }
+        };
+        eventSource.onerror = () => {
+          if (isMounted) {
+            setConnectionStatus('reconnecting');
+            eventSource?.close();
+            reconnectTimer = setTimeout(() => {
+              if (isMounted) connectSSE();
+            }, 3000);
+          }
+        };
+      } catch (err) {
+        console.warn('EventSource failed to initialize:', err);
+        if (isMounted) setConnectionStatus('demo_local');
+      }
+    }
+
+    connectSSE();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      eventSource?.close();
+    };
+  }, [applyStatePayload]);
+
+  // 4. Computed Stage Helpers
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === roomState.session_id) || sessions[0];
   }, [sessions, roomState.session_id]);
 
   const currentPart = useMemo(() => {
-    return parts.find((p) => p.id === roomState.part_id) || parts.find((p) => p.session_id === currentSession?.id) || parts[0];
+    return (
+      parts.find((p) => p.id === roomState.part_id) ||
+      parts.find((p) => p.session_id === currentSession?.id) ||
+      parts[0]
+    );
   }, [parts, roomState.part_id, currentSession?.id]);
 
   const currentQueue = useMemo(() => {
@@ -332,19 +428,22 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const activeSongDisplay = useMemo<ActiveSongDisplay | null>(() => {
     if (!activeQueueItem || !activeSongTemplate) return null;
 
-    const introBarCount = activeQueueItem.override_intro_bar_count !== null && activeQueueItem.override_intro_bar_count !== undefined
-      ? activeQueueItem.override_intro_bar_count
-      : activeSongTemplate.intro_bar_count;
+    const introBarCount =
+      activeQueueItem.override_intro_bar_count !== null && activeQueueItem.override_intro_bar_count !== undefined
+        ? activeQueueItem.override_intro_bar_count
+        : activeSongTemplate.intro_bar_count;
 
-    const introInstruments = activeQueueItem.override_intro_instruments !== null && activeQueueItem.override_intro_instruments !== undefined
-      ? activeQueueItem.override_intro_instruments
-      : activeSongTemplate.intro_instruments;
+    const introInstruments =
+      activeQueueItem.override_intro_instruments !== null && activeQueueItem.override_intro_instruments !== undefined
+        ? activeQueueItem.override_intro_instruments
+        : activeSongTemplate.intro_instruments;
 
-    const loopCount = activeQueueItem.override_loop_count !== null && activeQueueItem.override_loop_count !== undefined
-      ? activeQueueItem.override_loop_count
-      : activeSongTemplate.loop_count;
+    const loopCount =
+      activeQueueItem.override_loop_count !== null && activeQueueItem.override_loop_count !== undefined
+        ? activeQueueItem.override_loop_count
+        : activeSongTemplate.loop_count;
 
-    const isOverride = 
+    const isOverride =
       activeQueueItem.override_intro_bar_count !== null ||
       activeQueueItem.override_intro_instruments !== null ||
       activeQueueItem.override_loop_count !== null;
@@ -393,7 +492,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       }>;
   }, [activeQueueItem, currentQueue, songs]);
 
-  // 4. Role Authentication Actions
+  // 5. Role Authentication Actions
   const loginRole = (role: RoleType, passkey: string = '') => {
     if (role === 'player') {
       setActiveRole('player');
@@ -411,7 +510,6 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (role === 'maestro') {
-      // Check against current session passkey, any session passkey, or standard conventions
       const sessionPass = currentSession?.maestro_passkey || 'sidang1';
       const entered = passkey.trim().toLowerCase();
       const isSessionMatch = sessions.some(
@@ -432,22 +530,21 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       }
       return {
         success: false,
-        message: `Invalid Maestro Passkey for ${currentSession?.name || 'Sidang'}. Default is ${currentSession?.maestro_passkey || 'sidang1'}.`,
+        message: `Invalid Maestro Passkey for ${currentSession?.name || 'Sidang'}. Default is ${currentSession?.maestro_passkey || 'pagi123 / sidang1'}.`,
       };
     }
 
     if (role === 'controller') {
-      // Check if controller is enabled for this part
       if (currentPart && !currentPart.controller_enabled) {
         return { success: false, message: 'Controller access is currently disabled by the Maestro for this Bahagian.' };
       }
-      const partPass = currentPart?.controller_passkey || 'ctrl123';
+      const partPass = currentPart?.controller_passkey || 'ctrl1';
       if (passkey === partPass || passkey === 'ctrl123' || passkey.startsWith('ctrl')) {
         setActiveRole('controller');
         localStorage.setItem(ROLE_STORAGE_KEY, 'controller');
         return { success: true };
       }
-      return { success: false, message: `Invalid Controller Passkey for ${currentPart?.name || 'Part'}. Default is ctrl1 / ctrl123.` };
+      return { success: false, message: `Invalid Controller Passkey for ${currentPart?.name || 'Part'}. Default is ctrl1 / ctrl2.` };
     }
 
     return { success: false, message: 'Unknown role' };
@@ -467,7 +564,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 5. Live Navigation Handlers
+  // 6. Live Navigation Actions (Controller / Maestro / Admin)
   const updateRoomState = async (updates: Partial<RoomState>) => {
     const nextRoom: RoomState = {
       ...roomState,
@@ -477,16 +574,14 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     };
     setRoomState(nextRoom);
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      try {
-        await client.from('room_state').update(nextRoom).eq('id', 'main_stage');
-      } catch (e) {
-        console.error('Failed to sync room state to Supabase', e);
-      }
-    } else {
-      persistAndBroadcastLocal(sessions, parts, songs, queueItems, nextRoom);
-    }
+    // Save to Supabase Cloud
+    await updateRoomStateInSupabase(updates);
+
+    // Secondary local server dispatch & broadcast
+    await dispatchDbAction({
+      type: 'UPDATE_ROOM_STATE',
+      payload: updates,
+    });
   };
 
   const navigateNext = async () => {
@@ -572,67 +667,41 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // 6. Setlist & Instance Overrides Management (Maestro & Admin)
+  // 7. Song Library & Setlist Queue Management
   const addSongToLibrary = async (newSong: Omit<Song, 'id' | 'created_at'>) => {
     const songEntry: Song = {
       ...newSong,
       id: `song-${Date.now()}`,
       created_at: new Date().toISOString(),
     };
-    const nextSongs = [...songs, songEntry];
-    setSongs(nextSongs);
+    setSongs((prev) => [...prev, songEntry]);
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('songs').insert(songEntry);
-    } else {
-      persistAndBroadcastLocal(sessions, parts, nextSongs, queueItems, roomState);
-    }
+    await addSongInSupabase(songEntry);
+    await dispatchDbAction({
+      type: 'ADD_SONG',
+      payload: newSong,
+    });
   };
 
   const updateSongInLibrary = async (updatedSong: Song) => {
-    const nextSongs = songs.map((s) => (s.id === updatedSong.id ? updatedSong : s));
-    setSongs(nextSongs);
+    setSongs((prev) => prev.map((s) => (s.id === updatedSong.id ? updatedSong : s)));
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('songs').update(updatedSong).eq('id', updatedSong.id);
-    } else {
-      persistAndBroadcastLocal(sessions, parts, nextSongs, queueItems, roomState);
-    }
+    await updateSongInSupabase(updatedSong);
+    await dispatchDbAction({
+      type: 'UPDATE_SONG',
+      payload: updatedSong,
+    });
   };
 
   const deleteSongFromLibrary = async (songId: string) => {
-    try {
-      const nextSongs = songs.filter((s) => s.id !== songId);
-      const nextQueue = queueItems.filter((q) => q.song_id !== songId);
-      setSongs(nextSongs);
-      setQueueItems(nextQueue);
+    setSongs((prev) => prev.filter((s) => s.id !== songId));
+    setQueueItems((prev) => prev.filter((q) => q.song_id !== songId));
 
-      let nextRoom = roomState;
-      // If room was currently pointing to a queue item of the deleted song, reset it
-      if (roomState.current_queue_item_id && !nextQueue.some((q) => q.id === roomState.current_queue_item_id)) {
-        const remainingInPart = nextQueue.filter((q) => q.part_id === roomState.part_id);
-        nextRoom = {
-          ...roomState,
-          current_queue_item_id: remainingInPart.length ? remainingInPart[0].id : null,
-          current_loop_iteration: 1,
-        };
-        setRoomState(nextRoom);
-      }
-
-      const client = supabase;
-      if (isSupabaseConfigured && client) {
-        // Delete referencing queue items first to satisfy Postgres ON DELETE RESTRICT
-        await client.from('queue_items').delete().eq('song_id', songId);
-        await client.from('songs').delete().eq('id', songId);
-      } else {
-        persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, nextRoom);
-      }
-    } catch (err) {
-      console.error('Failed to delete song from library:', err);
-      throw err;
-    }
+    await deleteSongInSupabase(songId);
+    await dispatchDbAction({
+      type: 'DELETE_SONG',
+      payload: { songId },
+    });
   };
 
   const addSongToPartQueue = async (partId: string, songId: string) => {
@@ -646,74 +715,44 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       override_intro_instruments: null,
       override_loop_count: null,
     };
-    const nextQueue = [...queueItems, newItem];
-    setQueueItems(nextQueue);
+    setQueueItems((prev) => [...prev, newItem]);
 
-    // If room has no active song and this is the active part, set it
-    let nextRoom = roomState;
-    if (roomState.part_id === partId && !roomState.current_queue_item_id) {
-      nextRoom = { ...roomState, current_queue_item_id: newItem.id, current_loop_iteration: 1 };
-      setRoomState(nextRoom);
-    }
-
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('queue_items').insert(newItem);
-    } else {
-      persistAndBroadcastLocal(sessions, parts, songs, nextQueue, nextRoom);
-    }
+    await addQueueItemInSupabase(newItem);
+    await dispatchDbAction({
+      type: 'ADD_QUEUE_ITEM',
+      payload: { partId, songId },
+    });
   };
 
   const removeQueueItem = async (queueItemId: string) => {
-    const targetItem = queueItems.find((q) => q.id === queueItemId);
-    const nextQueue = queueItems.filter((q) => q.id !== queueItemId);
-    setQueueItems(nextQueue);
+    setQueueItems((prev) => prev.filter((q) => q.id !== queueItemId));
 
-    let nextRoom = roomState;
-    if (roomState.current_queue_item_id === queueItemId) {
-      const remainingInPart = nextQueue.filter((q) => q.part_id === targetItem?.part_id);
-      nextRoom = {
-        ...roomState,
-        current_queue_item_id: remainingInPart.length ? remainingInPart[0].id : null,
-        current_loop_iteration: 1,
-      };
-      setRoomState(nextRoom);
-    }
-
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('queue_items').delete().eq('id', queueItemId);
-    } else {
-      persistAndBroadcastLocal(sessions, parts, songs, nextQueue, nextRoom);
-    }
+    await removeQueueItemInSupabase(queueItemId);
+    await dispatchDbAction({
+      type: 'REMOVE_QUEUE_ITEM',
+      payload: { queueItemId },
+    });
   };
 
   const reorderQueueItems = async (partId: string, orderedIds: string[]) => {
-    const nextQueue = queueItems.map((item) => {
-      if (item.part_id !== partId) return item;
-      const newIndex = orderedIds.indexOf(item.id);
-      if (newIndex >= 0) {
-        return { ...item, sort_order: newIndex + 1 };
-      }
-      return item;
-    });
-    setQueueItems(nextQueue);
+    setQueueItems((prev) =>
+      prev.map((item) => {
+        if (item.part_id !== partId) return item;
+        const newIndex = orderedIds.indexOf(item.id);
+        if (newIndex >= 0) {
+          return { ...item, sort_order: newIndex + 1 };
+        }
+        return item;
+      })
+    );
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      for (let i = 0; i < orderedIds.length; i++) {
-        await client.from('queue_items').update({ sort_order: i + 1 }).eq('id', orderedIds[i]);
-      }
-    } else {
-      persistAndBroadcastLocal(sessions, parts, songs, nextQueue, roomState);
-    }
+    await reorderQueueInSupabase(orderedIds);
+    await dispatchDbAction({
+      type: 'REORDER_QUEUE',
+      payload: { partId, orderedIds },
+    });
   };
 
-  /**
-   * One-Time Special Overrides:
-   * Sets instance-level intro bars, intro instruments, or loop count specifically for this queue item
-   * without modifying the main library song template!
-   */
   const saveInstanceOverride = async (
     queueItemId: string,
     overrides: {
@@ -722,43 +761,35 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       override_loop_count: number | null;
     }
   ) => {
-    const nextQueue = queueItems.map((q) => (q.id === queueItemId ? { ...q, ...overrides } : q));
-    setQueueItems(nextQueue);
+    setQueueItems((prev) => prev.map((q) => (q.id === queueItemId ? { ...q, ...overrides } : q)));
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('queue_items').update(overrides).eq('id', queueItemId);
-    } else {
-      persistAndBroadcastLocal(sessions, parts, songs, nextQueue, roomState);
-    }
+    await saveOverrideInSupabase(queueItemId, overrides);
+    await dispatchDbAction({
+      type: 'SAVE_OVERRIDE',
+      payload: { queueItemId, overrides },
+    });
   };
 
   const updatePartController = async (partId: string, enabled: boolean, passkey?: string) => {
-    const nextParts = parts.map((p) => {
-      if (p.id !== partId) return p;
-      return {
-        ...p,
-        controller_enabled: enabled,
-        ...(passkey ? { controller_passkey: passkey } : {}),
-      };
-    });
-    setParts(nextParts);
+    setParts((prev) =>
+      prev.map((p) => {
+        if (p.id !== partId) return p;
+        return {
+          ...p,
+          controller_enabled: enabled,
+          ...(passkey ? { controller_passkey: passkey } : {}),
+        };
+      })
+    );
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      const payload: Partial<Part> = { controller_enabled: enabled };
-      if (passkey) payload.controller_passkey = passkey;
-      await client.from('parts').update(payload).eq('id', partId);
-    } else {
-      persistAndBroadcastLocal(sessions, nextParts, songs, queueItems, roomState);
-    }
+    await updatePartControllerInSupabase(partId, enabled, passkey);
+    await dispatchDbAction({
+      type: 'UPDATE_PART_CONTROLLER',
+      payload: { partId, enabled, passkey },
+    });
   };
 
-  /**
-   * Flexible Sidang Management:
-   * Maestro / Admin can create a new Sidang with a custom number (e.g. Sidang 4),
-   * which automatically initializes standard Bahagian 1 - 4 with controller access.
-   */
+  // 8. Session (Sidang) Management
   const addSession = async (
     sidangNumber: number,
     customName?: string,
@@ -781,7 +812,6 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       created_at: new Date().toISOString(),
     };
 
-    // Standard 4 Bahagian generated for every new Sidang
     const newParts: Part[] = [
       {
         id: `part-${sessionId}-1`,
@@ -825,13 +855,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     setSessions(nextSessions);
     setParts(nextParts);
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('sessions').insert(newSession);
-      await client.from('parts').insert(newParts);
-    } else {
-      persistAndBroadcastLocal(nextSessions, nextParts, songs, queueItems, roomState);
-    }
+    await addSessionInSupabase(newSession, newParts);
+    await dispatchDbAction({
+      type: 'ADD_SESSION',
+      payload: { session: newSession, parts: newParts },
+    });
 
     return newSession;
   };
@@ -849,27 +877,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     setParts(nextParts);
     setQueueItems(nextQueue);
 
-    let nextRoom = roomState;
-    if (roomState.session_id === sessionId) {
-      const fallbackSession = nextSessions[0];
-      const fallbackPart = nextParts.find((p) => p.session_id === fallbackSession.id);
-      const fallbackQueue = fallbackPart ? nextQueue.find((q) => q.part_id === fallbackPart.id) : null;
-      nextRoom = {
-        ...roomState,
-        session_id: fallbackSession.id,
-        part_id: fallbackPart ? fallbackPart.id : null,
-        current_queue_item_id: fallbackQueue ? fallbackQueue.id : null,
-        current_loop_iteration: 1,
-      };
-      setRoomState(nextRoom);
-    }
-
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('sessions').delete().eq('id', sessionId);
-    } else {
-      persistAndBroadcastLocal(nextSessions, nextParts, songs, nextQueue, nextRoom);
-    }
+    await deleteSessionInSupabase(sessionId);
+    await dispatchDbAction({
+      type: 'DELETE_SESSION',
+      payload: { sessionId },
+    });
   };
 
   const updateSession = async (sessionId: string, updates: Partial<Session>) => {
@@ -878,18 +890,14 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       .sort((a, b) => (a.sidang_number || 0) - (b.sidang_number || 0));
     setSessions(nextSessions);
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('sessions').update(updates).eq('id', sessionId);
-    } else {
-      persistAndBroadcastLocal(nextSessions, parts, songs, queueItems, roomState);
-    }
+    await updateSessionInSupabase(sessionId, updates);
+    await dispatchDbAction({
+      type: 'UPDATE_SESSION',
+      payload: { sessionId, updates },
+    });
   };
 
-  /**
-   * Admin Gamelan Instrument Management:
-   * Master Admin can add new instruments, rename/edit existing ones, and delete them.
-   */
+  // 9. Instruments Management (Admin)
   const addInstrument = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) throw new Error('Instrument name cannot be empty.');
@@ -899,7 +907,12 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
     const nextInstruments = [...instruments, trimmed];
     setInstruments(nextInstruments);
-    persistAndBroadcastLocal(sessions, parts, songs, queueItems, roomState, nextInstruments);
+
+    await addInstrumentInSupabase(trimmed);
+    await dispatchDbAction({
+      type: 'ADD_INSTRUMENT',
+      payload: { name: trimmed },
+    });
   };
 
   const updateInstrument = async (oldName: string, newName: string) => {
@@ -913,14 +926,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextInstruments = instruments.map((i) => (i === oldName ? trimmed : i));
-
-    // Update song templates referencing oldName
     const nextSongs = songs.map((s) => ({
       ...s,
       intro_instruments: s.intro_instruments.map((i) => (i === oldName ? trimmed : i)),
     }));
-
-    // Update queue overrides referencing oldName
     const nextQueue = queueItems.map((q) => ({
       ...q,
       override_intro_instruments: q.override_intro_instruments
@@ -937,7 +946,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(INSTRUMENT_STORAGE_KEY, trimmed);
     }
 
-    persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, roomState, nextInstruments);
+    await updateInstrumentInSupabase(oldName, trimmed);
+    await dispatchDbAction({
+      type: 'UPDATE_INSTRUMENT',
+      payload: { oldName, newName: trimmed },
+    });
   };
 
   const deleteInstrument = async (name: string) => {
@@ -946,14 +959,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextInstruments = instruments.filter((i) => i !== name);
-
-    // Clean up references in songs
     const nextSongs = songs.map((s) => ({
       ...s,
       intro_instruments: s.intro_instruments.filter((i) => i !== name),
     }));
-
-    // Clean up references in queue overrides
     const nextQueue = queueItems.map((q) => ({
       ...q,
       override_intro_instruments: q.override_intro_instruments
@@ -970,15 +979,22 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(INSTRUMENT_STORAGE_KEY);
     }
 
-    persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, roomState, nextInstruments);
+    await deleteInstrumentInSupabase(name);
+    await dispatchDbAction({
+      type: 'DELETE_INSTRUMENT',
+      payload: { name },
+    });
   };
 
   const restoreDefaultInstruments = async () => {
     setInstruments(INITIAL_INSTRUMENTS);
-    persistAndBroadcastLocal(sessions, parts, songs, queueItems, roomState, INITIAL_INSTRUMENTS);
+    await restoreDefaultInstrumentsInSupabase();
+    await dispatchDbAction({
+      type: 'RESTORE_DEFAULT_INSTRUMENTS',
+    });
   };
 
-  const resetAllToSeed = () => {
+  const resetAllToSeed = async () => {
     setSessions(INITIAL_SESSIONS);
     setParts(INITIAL_PARTS);
     setSongs(INITIAL_SONGS);
@@ -986,14 +1002,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     setRoomState(INITIAL_ROOM_STATE);
     setInstruments(INITIAL_INSTRUMENTS);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    persistAndBroadcastLocal(
-      INITIAL_SESSIONS,
-      INITIAL_PARTS,
-      INITIAL_SONGS,
-      INITIAL_QUEUE_ITEMS,
-      INITIAL_ROOM_STATE,
-      INITIAL_INSTRUMENTS
-    );
+
+    await resetAllInSupabase();
+    await dispatchDbAction({
+      type: 'RESET_ALL',
+    });
   };
 
   return (
@@ -1014,7 +1027,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         selectedInstrument,
         isInstrumentCued,
         connectionStatus,
+        isCloudSync: isSupabaseConfigured,
         errorMessage,
+        lanUrl,
+        lanIp,
+        activeSubscribers,
         loginRole,
         logoutRole,
         selectInstrument,

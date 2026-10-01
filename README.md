@@ -46,54 +46,46 @@ Each song entry in the library supports **ONLY** the following 4 metadata fields
 
 - **Framework**: Next.js 14 (App Router, React 18, TypeScript)
 - **Styling**: Tailwind CSS (Stage high-contrast dark mode with giant readable fonts)
-- **Real-Time Engine & DB**: Supabase (PostgreSQL + Supabase Realtime WebSockets)
+- **Built-in Persistent Database**: Server-side transactional JSON database (`data/gamelan_db.json`) with ACID write safety and automatic seeding.
+- **Cross-Device Real-Time Sync Engine**: Server-Sent Events (SSE `/api/realtime`) with instant multi-device state broadcast.
+- **QR Code Pairing**: Built-in camera QR pairing for phones, iPads, Android tablets, and stage monitors.
+- **Cloud DB (Optional)**: Supabase (PostgreSQL + Realtime WebSockets) for remote cloud deployment.
 - **Icons**: Lucide React
-- **Sync Fallback**: Local cross-tab `BroadcastChannel` synchronization (runs immediately out-of-the-box in demo mode even without an internet connection or Supabase credentials!)
 
 ---
 
-## 🚀 Getting Started Locally
+## 🚀 Getting Started & Multi-Device Access
 
-### 1. Prerequisites
-- Node.js (v18+ or v20+)
-- npm
-
-### 2. Install Dependencies
-```bash
-npm install
-```
-
-### 3. Run Development Server
+### 1. Run Development Server
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+The server automatically binds to `0.0.0.0:3000` (all network interfaces).
 
-> 💡 **Multi-Device / Multi-Tab Testing**:
-> Open multiple browser windows side by side (or test on your phone/tablet on your local network).
-> - Set Tab 1 as **Maestro** (`pagi123`) or **Controller** (`ctrl1`).
-> - Set Tab 2 as **Player** (select instrument *Bonang Barung*).
-> Click **NEXT SONG** or **+1 Loop** in Tab 1, and watch Tab 2 update instantly with zero delay!
+### 2. Connect Stage Devices (Laptops, Tablets, Phones, Stage Monitors)
+- **On this machine**: Open [http://localhost:3000](http://localhost:3000)
+- **On any phone, tablet, or stage display on the same Wi-Fi**:
+  1. Click the **"Devices"** button with the phone icon in the top navbar.
+  2. Scan the on-screen **QR Code** with any smartphone or iPad camera, or navigate directly to `http://<YOUR_LOCAL_IP>:3000` (e.g. `http://10.6.48.147:3000`).
+  3. Every device syncs in real-time with zero delay!
 
----
+### 3. Persistent Server Database & Cloud Sync
+All changes made on **any** device (adding songs, reordering setlists, advancing songs, loop counts, intro bar overrides) are automatically committed to the database and broadcast in real-time.
 
-## 🗄️ Supabase Database Setup
-
-To link your live Supabase cloud database:
-
-1. Create a new project at [supabase.com](https://supabase.com).
+### 4. Supabase Cloud Setup (Production)
+1. Create a project at [supabase.com](https://supabase.com).
 2. Go to the **SQL Editor** in the Supabase Dashboard.
-3. Paste and run the entire contents of [`schema.sql`](./schema.sql).
+3. Paste and run the entire contents of [`supabase-schema.sql`](./supabase-schema.sql).
 4. Go to **Project Settings -> API** and copy:
    - `Project URL`
    - `anon public key`
-5. Create a `.env.local` file in the root directory:
+5. Add to `.env.local` or Vercel Environment Variables:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
    ```
-6. Restart your dev server (`npm run dev`). The status indicator in the top navbar will display **SUPABASE REALTIME**.
+6. Run `npm run dev` or deploy to Vercel. The status badge will display **SUPABASE CLOUD**.
 
 ---
 

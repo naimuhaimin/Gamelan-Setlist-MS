@@ -578,16 +578,35 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteSongFromLibrary = async (songId: string) => {
-    const nextSongs = songs.filter((s) => s.id !== songId);
-    const nextQueue = queueItems.filter((q) => q.song_id !== songId);
-    setSongs(nextSongs);
-    setQueueItems(nextQueue);
+    try {
+      const nextSongs = songs.filter((s) => s.id !== songId);
+      const nextQueue = queueItems.filter((q) => q.song_id !== songId);
+      setSongs(nextSongs);
+      setQueueItems(nextQueue);
 
-    const client = supabase;
-    if (isSupabaseConfigured && client) {
-      await client.from('songs').delete().eq('id', songId);
-    } else {
-      persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, roomState);
+      let nextRoom = roomState;
+      // If room was currently pointing to a queue item of the deleted song, reset it
+      if (roomState.current_queue_item_id && !nextQueue.some((q) => q.id === roomState.current_queue_item_id)) {
+        const remainingInPart = nextQueue.filter((q) => q.part_id === roomState.part_id);
+        nextRoom = {
+          ...roomState,
+          current_queue_item_id: remainingInPart.length ? remainingInPart[0].id : null,
+          current_loop_iteration: 1,
+        };
+        setRoomState(nextRoom);
+      }
+
+      const client = supabase;
+      if (isSupabaseConfigured && client) {
+        // Delete referencing queue items first to satisfy Postgres ON DELETE RESTRICT
+        await client.from('queue_items').delete().eq('song_id', songId);
+        await client.from('songs').delete().eq('id', songId);
+      } else {
+        persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, nextRoom);
+      }
+    } catch (err) {
+      console.error('Failed to delete song from library:', err);
+      throw err;
     }
   };
 

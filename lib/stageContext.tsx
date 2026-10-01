@@ -19,6 +19,7 @@ import {
   INITIAL_QUEUE_ITEMS,
   INITIAL_ROOM_STATE,
   MASTER_ADMIN_PIN,
+  INITIAL_INSTRUMENTS,
 } from '@/lib/seedData';
 
 interface StageContextType {
@@ -87,12 +88,19 @@ interface StageContextType {
   deleteSession: (sessionId: string) => Promise<void>;
   updateSession: (sessionId: string, updates: Partial<Session>) => Promise<void>;
 
+  // Instruments Management (Admin)
+  instruments: string[];
+  addInstrument: (name: string) => Promise<void>;
+  updateInstrument: (oldName: string, newName: string) => Promise<void>;
+  deleteInstrument: (name: string) => Promise<void>;
+  restoreDefaultInstruments: () => Promise<void>;
+
   resetAllToSeed: () => void;
 }
 
 const StageContext = createContext<StageContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'gamelan_queue_state_v2';
+const LOCAL_STORAGE_KEY = 'gamelan_queue_state_v3';
 const ROLE_STORAGE_KEY = 'gamelan_active_role_v1';
 const INSTRUMENT_STORAGE_KEY = 'gamelan_active_instrument_v1';
 
@@ -102,6 +110,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const [songs, setSongs] = useState<Song[]>(INITIAL_SONGS);
   const [queueItems, setQueueItems] = useState<QueueItem[]>(INITIAL_QUEUE_ITEMS);
   const [roomState, setRoomState] = useState<RoomState>(INITIAL_ROOM_STATE);
+  const [instruments, setInstruments] = useState<string[]>(INITIAL_INSTRUMENTS);
   
   const [activeRole, setActiveRole] = useState<RoleType>('player');
   const [selectedInstrument, setSelectedInstrument] = useState<GamelanInstrument | null>('Bonang Barung');
@@ -135,6 +144,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
           if (payload.songs) setSongs(payload.songs);
           if (payload.queueItems) setQueueItems(payload.queueItems);
           if (payload.roomState) setRoomState(payload.roomState);
+          if (payload.instruments && Array.isArray(payload.instruments)) setInstruments(payload.instruments);
         }
       };
     } catch {
@@ -152,6 +162,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
           if (parsed.songs) setSongs(parsed.songs);
           if (parsed.queueItems) setQueueItems(parsed.queueItems);
           if (parsed.roomState) setRoomState(parsed.roomState);
+          if (parsed.instruments && Array.isArray(parsed.instruments)) setInstruments(parsed.instruments);
         }
       } catch (err) {
         console.error('Failed to parse cached local data', err);
@@ -171,7 +182,8 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       newParts: Part[],
       newSongs: Song[],
       newQueue: QueueItem[],
-      newRoom: RoomState
+      newRoom: RoomState,
+      newInstruments?: string[]
     ) => {
       if (typeof window === 'undefined') return;
       const stateObj = {
@@ -180,6 +192,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         songs: newSongs,
         queueItems: newQueue,
         roomState: newRoom,
+        instruments: newInstruments ?? instruments,
       };
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateObj));
@@ -191,7 +204,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         // quota exceeded or storage error
       }
     },
-    []
+    [instruments]
   );
 
   // 2. Supabase Integration & Realtime Subscriptions
@@ -861,14 +874,114 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Admin Gamelan Instrument Management:
+   * Master Admin can add new instruments, rename/edit existing ones, and delete them.
+   */
+  const addInstrument = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('Instrument name cannot be empty.');
+    if (instruments.some((i) => i.toLowerCase() === trimmed.toLowerCase())) {
+      throw new Error(`Instrument "${trimmed}" already exists in the system.`);
+    }
+
+    const nextInstruments = [...instruments, trimmed];
+    setInstruments(nextInstruments);
+    persistAndBroadcastLocal(sessions, parts, songs, queueItems, roomState, nextInstruments);
+  };
+
+  const updateInstrument = async (oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) throw new Error('Instrument name cannot be empty.');
+    if (
+      oldName.toLowerCase() !== trimmed.toLowerCase() &&
+      instruments.some((i) => i.toLowerCase() === trimmed.toLowerCase())
+    ) {
+      throw new Error(`Instrument "${trimmed}" already exists in the system.`);
+    }
+
+    const nextInstruments = instruments.map((i) => (i === oldName ? trimmed : i));
+
+    // Update song templates referencing oldName
+    const nextSongs = songs.map((s) => ({
+      ...s,
+      intro_instruments: s.intro_instruments.map((i) => (i === oldName ? trimmed : i)),
+    }));
+
+    // Update queue overrides referencing oldName
+    const nextQueue = queueItems.map((q) => ({
+      ...q,
+      override_intro_instruments: q.override_intro_instruments
+        ? q.override_intro_instruments.map((i) => (i === oldName ? trimmed : i))
+        : null,
+    }));
+
+    setInstruments(nextInstruments);
+    setSongs(nextSongs);
+    setQueueItems(nextQueue);
+
+    if (selectedInstrument === oldName) {
+      setSelectedInstrument(trimmed);
+      localStorage.setItem(INSTRUMENT_STORAGE_KEY, trimmed);
+    }
+
+    persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, roomState, nextInstruments);
+  };
+
+  const deleteInstrument = async (name: string) => {
+    if (instruments.length <= 1) {
+      throw new Error('At least one instrument must remain in the ensemble.');
+    }
+
+    const nextInstruments = instruments.filter((i) => i !== name);
+
+    // Clean up references in songs
+    const nextSongs = songs.map((s) => ({
+      ...s,
+      intro_instruments: s.intro_instruments.filter((i) => i !== name),
+    }));
+
+    // Clean up references in queue overrides
+    const nextQueue = queueItems.map((q) => ({
+      ...q,
+      override_intro_instruments: q.override_intro_instruments
+        ? q.override_intro_instruments.filter((i) => i !== name)
+        : null,
+    }));
+
+    setInstruments(nextInstruments);
+    setSongs(nextSongs);
+    setQueueItems(nextQueue);
+
+    if (selectedInstrument === name) {
+      setSelectedInstrument(null);
+      localStorage.removeItem(INSTRUMENT_STORAGE_KEY);
+    }
+
+    persistAndBroadcastLocal(sessions, parts, nextSongs, nextQueue, roomState, nextInstruments);
+  };
+
+  const restoreDefaultInstruments = async () => {
+    setInstruments(INITIAL_INSTRUMENTS);
+    persistAndBroadcastLocal(sessions, parts, songs, queueItems, roomState, INITIAL_INSTRUMENTS);
+  };
+
   const resetAllToSeed = () => {
     setSessions(INITIAL_SESSIONS);
     setParts(INITIAL_PARTS);
     setSongs(INITIAL_SONGS);
     setQueueItems(INITIAL_QUEUE_ITEMS);
     setRoomState(INITIAL_ROOM_STATE);
+    setInstruments(INITIAL_INSTRUMENTS);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    persistAndBroadcastLocal(INITIAL_SESSIONS, INITIAL_PARTS, INITIAL_SONGS, INITIAL_QUEUE_ITEMS, INITIAL_ROOM_STATE);
+    persistAndBroadcastLocal(
+      INITIAL_SESSIONS,
+      INITIAL_PARTS,
+      INITIAL_SONGS,
+      INITIAL_QUEUE_ITEMS,
+      INITIAL_ROOM_STATE,
+      INITIAL_INSTRUMENTS
+    );
   };
 
   return (
@@ -879,6 +992,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         songs,
         queueItems,
         roomState,
+        instruments,
         currentSession,
         currentPart,
         currentQueue,
@@ -892,6 +1006,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         loginRole,
         logoutRole,
         selectInstrument,
+        addInstrument,
+        updateInstrument,
+        deleteInstrument,
+        restoreDefaultInstruments,
         navigateNext,
         navigatePrev,
         jumpToQueueItem,

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useStage } from '@/lib/stageContext';
-import { Song, GAMELAN_INSTRUMENTS, GamelanInstrument } from '@/types';
+import { Song, GamelanInstrument } from '@/types';
 import {
   Music,
   Plus,
@@ -22,6 +22,7 @@ import {
   Sparkles,
   Flame,
 } from 'lucide-react';
+import { InstrumentManagementModal } from './InstrumentManagementModal';
 
 interface LibraryModalProps {
   isOpen: boolean;
@@ -69,6 +70,7 @@ const TEMPLATE_PRESETS: Array<{
 export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose }) => {
   const {
     songs,
+    instruments,
     addSongToLibrary,
     updateSongInLibrary,
     deleteSongFromLibrary,
@@ -92,6 +94,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose }) =
   // In-app Delete Confirmation State (Rock-solid, no browser window.confirm issues)
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [instrumentModalOpen, setInstrumentModalOpen] = useState(false);
 
   // Feedback states
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -139,7 +142,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleSelectAllInstruments = () => {
-    setIntroInstruments([...GAMELAN_INSTRUMENTS]);
+    setIntroInstruments([...instruments]);
   };
 
   const handleClearInstruments = () => {
@@ -528,6 +531,19 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose }) =
                         3. Intro Cue Instruments
                       </label>
                       <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                        {isAdmin && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setInstrumentModalOpen(true)}
+                              className="text-amber-400 hover:text-amber-300 font-bold underline"
+                              title="Admin: Add, edit, or delete instruments in ensemble"
+                            >
+                              ⚙️ Manage
+                            </button>
+                            <span>•</span>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={handleSelectAllInstruments}
@@ -548,7 +564,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose }) =
                     </div>
 
                     <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-2 bg-[#0c0f1b] rounded-xl border border-[#262f4e]">
-                      {GAMELAN_INSTRUMENTS.map((inst) => {
+                      {instruments.map((inst) => {
                         const isSelected = introInstruments.includes(inst);
                         return (
                           <button
@@ -815,6 +831,12 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose }) =
           </div>
         </div>
       )}
+
+      {/* Instrument Management Modal for Admin */}
+      <InstrumentManagementModal
+        isOpen={instrumentModalOpen}
+        onClose={() => setInstrumentModalOpen(false)}
+      />
 
     </div>
   );

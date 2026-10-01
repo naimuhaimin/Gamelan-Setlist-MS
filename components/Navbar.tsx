@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useStage } from '@/lib/stageContext';
-import { GAMELAN_INSTRUMENTS, GamelanInstrument, RoleType } from '@/types';
+import { GamelanInstrument, RoleType } from '@/types';
 import {
   Radio,
   Sliders,
@@ -21,6 +21,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { AddSidangModal } from './AddSidangModal';
+import { InstrumentManagementModal } from './InstrumentManagementModal';
 
 interface NavbarProps {
   onOpenRoleModal: () => void;
@@ -41,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     currentSession,
     currentPart,
     activeRole,
+    instruments,
     selectedInstrument,
     selectInstrument,
     connectionStatus,
@@ -53,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [partDropdownOpen, setPartDropdownOpen] = useState(false);
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [addSidangModalOpen, setAddSidangModalOpen] = useState(false);
+  const [instrumentModalOpen, setInstrumentModalOpen] = useState(false);
 
   const canEdit = activeRole === 'maestro' || activeRole === 'admin';
 
@@ -275,6 +278,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
+            {/* Admin Ensemble Instruments Manager Button */}
+            {activeRole === 'admin' && (
+              <button
+                onClick={() => setInstrumentModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-red-950/40 border-red-500/60 text-red-300 hover:bg-red-900/50 shadow-sm"
+                title="Admin: Manage Ensemble Instruments (Add, Edit, Delete)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                <span className="hidden lg:inline">Instruments</span>
+                <span className="text-[9px] font-mono uppercase font-black px-1.5 py-0.5 rounded bg-red-600 text-white shadow-sm">
+                  Admin
+                </span>
+              </button>
+            )}
+
             {/* Instrument Filter Selector (Player Cue Highlighting) */}
             <div className="relative">
               <button
@@ -312,11 +330,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     View All (No Highlight)
                   </button>
-                  {GAMELAN_INSTRUMENTS.map((inst) => (
+                  {instruments.map((inst) => (
                     <button
                       key={inst}
                       onClick={() => {
-                        selectInstrument(inst as GamelanInstrument);
+                        selectInstrument(inst);
                         setInstrumentDropdownOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
@@ -325,12 +343,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                           : 'text-slate-300 hover:bg-[#1a2033]'
                       }`}
                     >
-                      <span>{inst}</span>
+                      <span className="truncate">{inst}</span>
                       {selectedInstrument === inst && (
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0 ml-1" />
                       )}
                     </button>
                   ))}
+
+                  {/* Admin Manage Instruments Shortcut */}
+                  {activeRole === 'admin' && (
+                    <div className="pt-1.5 mt-1 border-t border-[#232a42]">
+                      <button
+                        onClick={() => {
+                          setInstrumentDropdownOpen(false);
+                          setInstrumentModalOpen(true);
+                        }}
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:bg-amber-500/15 flex items-center gap-1.5 transition-colors"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                        <span>Manage Instruments (Admin)...</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -377,6 +411,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       <AddSidangModal
         isOpen={addSidangModalOpen}
         onClose={() => setAddSidangModalOpen(false)}
+      />
+
+      {/* Instrument Management Modal for Admin */}
+      <InstrumentManagementModal
+        isOpen={instrumentModalOpen}
+        onClose={() => setInstrumentModalOpen(false)}
       />
     </header>
   );

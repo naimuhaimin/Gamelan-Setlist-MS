@@ -299,3 +299,18 @@ export const INITIAL_ROOM_STATE: RoomState = {
 };
 
 export const MASTER_ADMIN_PIN = 'admin999';
+
+export const INITIAL_INSTRUMENTS: string[] = [
+  'Bonang Barung',
+  'Bonang Panerus',
+  'Saron Demung',
+  'Saron Barung',
+  'Saron Pekeking',
+  'Gambang',
+  'Kenong',
+  'Kempul',
+  'Gong Ageng',
+  'Gendang',
+  'Rebab',
+  'Celempung',
+];

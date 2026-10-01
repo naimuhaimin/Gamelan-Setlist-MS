@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { QueueItem, Song, GAMELAN_INSTRUMENTS } from '@/types';
+import { QueueItem, Song } from '@/types';
+import { useStage } from '@/lib/stageContext';
 import { Sliders, X, RotateCcw, Check, Sparkles } from 'lucide-react';
 
 interface OverrideModalProps {
@@ -26,6 +27,8 @@ export const OverrideModal: React.FC<OverrideModalProps> = ({
   song,
   onSaveOverride,
 }) => {
+  const { instruments } = useStage();
+
   const [useIntroBarsOverride, setUseIntroBarsOverride] = useState(false);
   const [introBars, setIntroBars] = useState(4);
 
@@ -199,7 +202,7 @@ export const OverrideModal: React.FC<OverrideModalProps> = ({
                   Select Gamelan instruments responsible for the cue:
                 </div>
                 <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 bg-[#0d101d] rounded-xl border border-[#20273f]">
-                  {GAMELAN_INSTRUMENTS.map((inst) => {
+                  {instruments.map((inst) => {
                     const isSelected = selectedInstruments.includes(inst);
                     return (
                       <button

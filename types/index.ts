@@ -2,7 +2,7 @@
 
 export type RoleType = 'admin' | 'maestro' | 'controller' | 'player';
 
-export const GAMELAN_INSTRUMENTS = [
+export const DEFAULT_GAMELAN_INSTRUMENTS = [
   'Bonang Barung',
   'Bonang Panerus',
   'Saron Demung',
@@ -17,7 +17,9 @@ export const GAMELAN_INSTRUMENTS = [
   'Celempung',
 ] as const;
 
-export type GamelanInstrument = typeof GAMELAN_INSTRUMENTS[number];
+export const GAMELAN_INSTRUMENTS = DEFAULT_GAMELAN_INSTRUMENTS;
+
+export type GamelanInstrument = string;
 
 /**
  * STRICT REQUIREMENT:

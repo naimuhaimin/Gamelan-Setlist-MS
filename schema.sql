@@ -139,18 +139,18 @@ ON CONFLICT (code) DO NOTHING;
 -- Parts Seed (4 Bahagian per session)
 -- Sidang 1 Parts:
 INSERT INTO public.parts (id, session_id, part_number, name, controller_passkey) VALUES
-    ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222201', 1, 'Bahagian 1: Perarakan Masuk VIP & Perarakan Canselor', 'ctrl1'),
-    ('33333333-3333-3333-3333-333333333302', '22222222-2222-2222-2222-222222222201', 2, 'Bahagian 2: Penganugerahan Ijazah & Sidang Konvokesyen', 'ctrl2'),
-    ('33333333-3333-3333-3333-333333333303', '22222222-2222-2222-2222-222222222201', 3, 'Bahagian 3: Persembahan Selingan Seni Gamelan', 'ctrl3'),
-    ('33333333-3333-3333-3333-333333333304', '22222222-2222-2222-2222-222222222201', 4, 'Bahagian 4: Perarakan Keluar Dewan & Penutup', 'ctrl4')
+    ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222201', 1, 'Bahagian 1', 'ctrl1'),
+    ('33333333-3333-3333-3333-333333333302', '22222222-2222-2222-2222-222222222201', 2, 'Bahagian 2', 'ctrl2'),
+    ('33333333-3333-3333-3333-333333333303', '22222222-2222-2222-2222-222222222201', 3, 'Bahagian 3', 'ctrl3'),
+    ('33333333-3333-3333-3333-333333333304', '22222222-2222-2222-2222-222222222201', 4, 'Bahagian 4', 'ctrl4')
 ON CONFLICT (session_id, part_number) DO NOTHING;
 
 -- Sidang 2 Parts:
 INSERT INTO public.parts (id, session_id, part_number, name, controller_passkey) VALUES
-    ('33333333-3333-3333-3333-333333333305', '22222222-2222-2222-2222-222222222202', 1, 'Bahagian 1: Perarakan Masuk Sidang 2', 'ctrl1'),
-    ('33333333-3333-3333-3333-333333333306', '22222222-2222-2222-2222-222222222202', 2, 'Bahagian 2: Pengisytiharan & Ijazah Siswazah', 'ctrl2'),
-    ('33333333-3333-3333-3333-333333333307', '22222222-2222-2222-2222-222222222202', 3, 'Bahagian 3: Selingan Muzik Tradisional Melayu', 'ctrl3'),
-    ('33333333-3333-3333-3333-333333333308', '22222222-2222-2222-2222-222222222202', 4, 'Bahagian 4: Perarakan Keluar & Sorakan Graduan', 'ctrl4')
+    ('33333333-3333-3333-3333-333333333305', '22222222-2222-2222-2222-222222222202', 1, 'Bahagian 1', 'ctrl1'),
+    ('33333333-3333-3333-3333-333333333306', '22222222-2222-2222-2222-222222222202', 2, 'Bahagian 2', 'ctrl2'),
+    ('33333333-3333-3333-3333-333333333307', '22222222-2222-2222-2222-222222222202', 3, 'Bahagian 3', 'ctrl3'),
+    ('33333333-3333-3333-3333-333333333308', '22222222-2222-2222-2222-222222222202', 4, 'Bahagian 4', 'ctrl4')
 ON CONFLICT (session_id, part_number) DO NOTHING;
 
 -- Queue Items Seed (Pre-set for Sidang Pagi Bahagian 1 & 2)

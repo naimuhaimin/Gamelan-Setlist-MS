@@ -275,16 +275,13 @@ export const MaestroSetlistEditor: React.FC<MaestroSetlistEditorProps> = ({
                   : 'bg-[#111422] border-[#21273f] text-slate-400 hover:text-white'
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-cyan-400">
-                  BAHAGIAN {p.part_number}
+                  Bahagian {p.part_number}
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-slate-400">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/40 text-slate-300">
                   {queueItems.filter((q) => q.part_id === p.id).length} songs
                 </span>
-              </div>
-              <div className="text-xs font-bold text-slate-200 truncate">
-                {p.name.replace(/^Bahagian \d+:\s*/, '')}
               </div>
             </button>
           ))}

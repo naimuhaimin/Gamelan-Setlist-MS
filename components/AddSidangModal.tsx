@@ -221,10 +221,10 @@ export const AddSidangModal: React.FC<AddSidangModalProps> = ({
               <span>Standard 4 Bahagian Generated Automatically:</span>
             </div>
             <ul className="text-[11px] font-mono text-slate-400 space-y-0.5 pl-5 list-disc">
-              <li>Bahagian 1: Perarakan Masuk VIP &amp; Canselor</li>
-              <li>Bahagian 2: Penganugerahan Ijazah Siswazah</li>
-              <li>Bahagian 3: Persembahan Selingan Seni Gamelan</li>
-              <li>Bahagian 4: Perarakan Keluar &amp; Penutup Rasmi</li>
+              <li>Bahagian 1</li>
+              <li>Bahagian 2</li>
+              <li>Bahagian 3</li>
+              <li>Bahagian 4</li>
             </ul>
           </div>
 

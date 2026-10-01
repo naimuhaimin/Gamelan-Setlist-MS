@@ -140,7 +140,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         const { type, payload } = event.data || {};
         if (type === 'SYNC_ALL' && payload) {
           if (payload.sessions) setSessions(payload.sessions);
-          if (payload.parts) setParts(payload.parts);
+          if (payload.parts) {
+            const cleanedParts = payload.parts.map((p: Part) => ({
+              ...p,
+              name: `Bahagian ${p.part_number}`,
+            }));
+            setParts(cleanedParts);
+          }
           if (payload.songs) setSongs(payload.songs);
           if (payload.queueItems) setQueueItems(payload.queueItems);
           if (payload.roomState) setRoomState(payload.roomState);
@@ -158,7 +164,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed.sessions) setSessions(parsed.sessions);
-          if (parsed.parts) setParts(parsed.parts);
+          if (parsed.parts) {
+            const cleanedParts = parsed.parts.map((p: Part) => ({
+              ...p,
+              name: `Bahagian ${p.part_number}`,
+            }));
+            setParts(cleanedParts);
+          }
           if (parsed.songs) setSongs(parsed.songs);
           if (parsed.queueItems) setQueueItems(parsed.queueItems);
           if (parsed.roomState) setRoomState(parsed.roomState);
@@ -775,7 +787,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         id: `part-${sessionId}-1`,
         session_id: sessionId,
         part_number: 1,
-        name: `Bahagian 1: Perarakan Masuk VIP & Canselor`,
+        name: `Bahagian 1`,
         controller_passkey: 'ctrl1',
         controller_enabled: true,
       },
@@ -783,7 +795,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         id: `part-${sessionId}-2`,
         session_id: sessionId,
         part_number: 2,
-        name: `Bahagian 2: Penganugerahan Ijazah Siswazah`,
+        name: `Bahagian 2`,
         controller_passkey: 'ctrl2',
         controller_enabled: true,
       },
@@ -791,7 +803,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         id: `part-${sessionId}-3`,
         session_id: sessionId,
         part_number: 3,
-        name: `Bahagian 3: Persembahan Selingan Seni Gamelan`,
+        name: `Bahagian 3`,
         controller_passkey: 'ctrl3',
         controller_enabled: true,
       },
@@ -799,7 +811,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         id: `part-${sessionId}-4`,
         session_id: sessionId,
         part_number: 4,
-        name: `Bahagian 4: Perarakan Keluar & Penutup Rasmi`,
+        name: `Bahagian 4`,
         controller_passkey: 'ctrl4',
         controller_enabled: true,
       },

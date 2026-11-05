@@ -183,6 +183,9 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   // Post action to Persistent Server Database
   const dispatchDbAction = useCallback(async (action: any) => {
+    // In cloud mode Supabase is the single source of truth; the local JSON
+    // server DB cannot persist on Vercel's read-only serverless filesystem.
+    if (isSupabaseConfigured) return null;
     try {
       const res = await fetch('/api/database', {
         method: 'POST',

@@ -12,7 +12,7 @@ import { Button, Chip, Field, Input, Modal, cx } from './ui';
 // ---------------------------------------------------------------------------
 
 const ROLES: Array<{ id: Exclude<RoleType, 'player'>; title: string; text: string; icon: React.ReactNode }> = [
-  { id: 'controller', title: 'Controller', text: 'Next / previous song and loop count', icon: <SlidersHorizontal className="w-5 h-5" /> },
+  { id: 'controller', title: 'Controller', text: 'Change Sidang & Bahagian, songs and loops', icon: <SlidersHorizontal className="w-5 h-5" /> },
   { id: 'maestro', title: 'Maestro', text: 'Setlists, adjustments, go live', icon: <KeyRound className="w-5 h-5" /> },
   { id: 'admin', title: 'Admin', text: 'Everything, plus instruments · needs passkey', icon: <ShieldCheck className="w-5 h-5" /> },
 ];

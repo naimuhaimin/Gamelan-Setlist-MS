@@ -53,6 +53,7 @@ interface StageContextType {
   role: RoleType;
   isManager: boolean; // maestro or admin
   canControl: boolean;
+  canSwitchLive: boolean; // choose which Sidang/Bahagian is live (controller, maestro, admin)
   controlBlockedReason: string | null;
   selectedInstrument: string | null;
   instrumentChosen: boolean;
@@ -325,12 +326,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const rolePasskey = useCallback((r: RoleType) => roles.find((x) => x.role_name === r)?.passkey?.trim() || '', [roles]);
 
   const isManager = role === 'maestro' || role === 'admin';
+  const canSwitchLive = isManager || role === 'controller';
 
   // Controller works only while the live Bahagian's controller access is switched on by the Maestro.
   const { canControl, controlBlockedReason } = useMemo(() => {
     if (isManager) return { canControl: true, controlBlockedReason: null };
     if (role !== 'controller') return { canControl: false, controlBlockedReason: null };
-    if (!livePart) return { canControl: false, controlBlockedReason: 'Nothing is live yet. Waiting for the Maestro.' };
+    if (!livePart) return { canControl: false, controlBlockedReason: 'Nothing is live yet. Choose a Sidang and Bahagian.' };
     if (!livePart.controller_enabled)
       return { canControl: false, controlBlockedReason: `The Maestro has locked controls for ${livePart.name}.` };
     return { canControl: true, controlBlockedReason: null };
@@ -440,7 +442,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   const goLive = async (partId: string) => {
     const part = parts.find((p) => p.id === partId);
-    if (!part || !(isManager || canControl)) return;
+    if (!part || !canSwitchLive) return;
     const first = resolveQueue(partId)[0];
     await setRoom({
       session_id: part.session_id,
@@ -626,6 +628,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     role,
     isManager,
     canControl,
+    canSwitchLive,
     controlBlockedReason,
     selectedInstrument,
     instrumentChosen,

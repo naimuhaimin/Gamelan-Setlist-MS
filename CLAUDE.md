@@ -28,7 +28,7 @@ Supabase is the only backend. There is no server code; the browser talks to Supa
 - `lib/supabaseService.ts`: every read and write. Writes **throw** on error. Instrument rename/delete also rewrites the songs and overrides that reference them.
 - `lib/stageContext.tsx` (`StageProvider` / `useStage`): loads a full snapshot, subscribes to Realtime (per-table debounced refetch; full resync on reconnect, tab visible and `online`), derives the live stage (`livePart`, `liveQueue`, `activeItem`…), handles roles and permissions, and exposes actions. Actions update local state optimistically, then call the service through `commit()`, which shows an error toast and resyncs on failure.
 - Realtime only works for tables in the `supabase_realtime` publication. `roles` is NOT in it, and subscribing to it breaks the whole channel. Don't add it to the channel.
-- Auth is client-side. Only Admin needs a passkey (`roles.admin`). Controller and Maestro are open by the user's choice; a Controller can act only while the live part has `controller_enabled`. `sessions.maestro_passkey`, `parts.controller_passkey` and the `roles` maestro/controller rows are legacy and unused. The saved Admin sign-in is re-validated after every load.
+- Auth is client-side. Only Admin needs a passkey (`roles.admin`). Controller and Maestro are open by the user's choice; a Controller can always switch the live Sidang/Bahagian (`canSwitchLive`, `components/LivePicker.tsx`) but can change songs/loops only while the live part has `controller_enabled`. `sessions.maestro_passkey`, `parts.controller_passkey` and the `roles` maestro/controller rows are legacy and unused. The saved Admin sign-in is re-validated after every load.
 - `room_state` (`id = 'main_stage'`) is the single live pointer.
 
 ## UI

@@ -22,7 +22,7 @@ Instruments and songs live only in the database. There are no built-in presets.
 | Role | Signs in with | Can |
 | :--- | :--- | :--- |
 | **Musician** | Nothing | See the live stage, pick their instrument, get a "Your cue" alert, browse the library |
-| **Controller** | No passkey (account menu → Switch role) | Next / previous / jump to a song, change the loop count, hold/resume — only while the live Bahagian's controller access is on |
+| **Controller** | No passkey (account menu → Switch role) | Change which Sidang & Bahagian is live (**Change** on the Stage screen); next / previous / jump to a song, loop count, hold/resume while the live Bahagian's controller access is on |
 | **Maestro** | No passkey | Everything a controller can do, plus build setlists, adjust songs per ceremony, create/edit Sidang, add/edit library songs, choose what goes live, lock/unlock controller access per Bahagian |
 | **Admin** | The Admin passkey | Everything, plus manage instruments and change the Admin passkey |
 

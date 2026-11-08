@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
+  Layers,
   Lock,
   Minus,
   Pause,
@@ -16,6 +17,7 @@ import { useStage } from '@/lib/stageContext';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
 import { Badge, Button, Card, EmptyState, IconButton, LiveDot, cx } from './ui';
+import { LivePicker } from './LivePicker';
 
 export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
   const {
@@ -29,6 +31,7 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
     role,
     isManager,
     canControl,
+    canSwitchLive,
     controlBlockedReason,
     selectedInstrument,
     isCued,
@@ -39,6 +42,10 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
     togglePause,
     goLive,
   } = useStage();
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const picker = <LivePicker open={pickerOpen} onClose={() => setPickerOpen(false)} />;
+  const openPicker = () => setPickerOpen(true);
 
   useWakeLock(true);
 
@@ -77,13 +84,20 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
           <EmptyState
             icon={<Radio className="w-10 h-10" />}
             title="Nothing is live yet"
-            action={isManager && <Button variant="primary" onClick={onOpenSetlist}>Choose a Bahagian to go live</Button>}
+            action={
+              canSwitchLive && (
+                <Button variant="primary" onClick={openPicker}>
+                  <Layers className="w-4 h-4" /> Choose Sidang & Bahagian
+                </Button>
+              )
+            }
           >
-            {isManager
-              ? 'Pick a Sidang and Bahagian in the Setlist tab, then press “Go live”.'
-              : 'Keep this screen open. It will update by itself when the Maestro starts.'}
+            {canSwitchLive
+              ? 'Pick which Sidang and Bahagian to put on every screen.'
+              : 'Keep this screen open. It will update by itself when the performance starts.'}
           </EmptyState>
         </Card>
+        {picker}
       </Shell>
     );
   }
@@ -116,9 +130,9 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
               {roomState.is_paused ? 'Resume' : 'Hold'}
             </Button>
           )}
-          {isManager && (
-            <Button size="sm" variant="ghost" onClick={onOpenSetlist}>
-              Change
+          {canSwitchLive && (
+            <Button size="sm" variant="secondary" onClick={openPicker}>
+              <Layers className="w-3.5 h-3.5" /> Change
             </Button>
           )}
         </div>
@@ -134,7 +148,13 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
         <Card className="mt-4">
           <EmptyState
             title={`${livePart.name} has no songs yet`}
-            action={isManager && <Button variant="primary" onClick={onOpenSetlist}>Add songs</Button>}
+            action={
+              isManager ? (
+                <Button variant="primary" onClick={onOpenSetlist}>Add songs</Button>
+              ) : canSwitchLive ? (
+                <Button variant="primary" onClick={openPicker}>Change Bahagian</Button>
+              ) : undefined
+            }
           >
             {isManager ? 'Add songs to this Bahagian in the Setlist tab.' : 'The Maestro has not added songs to this Bahagian.'}
           </EmptyState>
@@ -211,12 +231,12 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
               ) : (
                 <div className="space-y-3">
                   <p className="text-ink font-medium">This is the last song of {livePart.name}.</p>
-                  {nextPart && isManager && (
+                  {nextPart && canSwitchLive && (
                     <Button variant="primary" className="w-full" onClick={() => goLive(nextPart.id)}>
                       Go live: {nextPart.name} <ChevronRight className="w-4 h-4" />
                     </Button>
                   )}
-                  {nextPart && !isManager && <p className="text-sm text-muted">Next up: {nextPart.name}</p>}
+                  {nextPart && !canSwitchLive && <p className="text-sm text-muted">Next up: {nextPart.name}</p>}
                 </div>
               )}
             </Card>
@@ -279,10 +299,14 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur safe-bottom">
           <div className="max-w-7xl mx-auto px-4 pt-3 flex items-center gap-3 text-sm text-muted">
             <Lock className="w-4 h-4 shrink-0" />
-            {controlBlockedReason}
+            <span className="flex-1">{controlBlockedReason}</span>
+            <Button size="sm" onClick={openPicker}>
+              Change
+            </Button>
           </div>
         </div>
       )}
+      {picker}
     </Shell>
   );
 }

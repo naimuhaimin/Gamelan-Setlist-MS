@@ -65,6 +65,7 @@ export interface RoomState {
   current_queue_item_id: string | null;
   current_loop_iteration: number;
   is_paused: boolean;
+  is_finished?: boolean; // the live Bahagian has ended (column added by migration)
   updated_at: string;
   updated_by_role: string;
 }

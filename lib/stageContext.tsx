@@ -76,6 +76,8 @@ interface StageContextType {
   resetLoop: () => void;
   togglePause: () => void;
   goLive: (partId: string) => Promise<void>;
+  isFinished: boolean; // live Bahagian has ended: no song is playing
+  finishPart: () => void;
 
   // Setlists
   addToQueue: (partId: string, songId: string) => Promise<void>;
@@ -521,15 +523,35 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     return commit(() => api.updateRoomState({ ...updates, updated_by_role: by }));
   };
 
+  // `is_finished` only exists once the migration has run; never write it before that
+  const finishSupported = 'is_finished' in roomState;
+  const unfinish = finishSupported ? { is_finished: false } : {};
+  const isFinished = !!roomState.is_finished && !!livePart;
+
   const goToIndex = (i: number) => {
     if (!canControl || i < 0 || i >= liveQueue.length) return;
-    setRoom({ current_queue_item_id: liveQueue[i].queueItem.id, current_loop_iteration: 1 });
+    setRoom({ current_queue_item_id: liveQueue[i].queueItem.id, current_loop_iteration: 1, ...unfinish });
   };
-  const goNext = () => goToIndex(activeIndex + 1);
-  const goPrev = () => goToIndex(activeIndex - 1);
+  const finishPart = () => {
+    if (!canControl) return;
+    if (!finishSupported) {
+      notify('Finishing a Bahagian needs the is_finished column in the database.', 'error');
+      return;
+    }
+    setRoom({ is_finished: true, is_paused: false });
+  };
+  // Next on the last song finishes the Bahagian; Prev while finished goes back to the last song
+  const goNext = () => (activeIndex >= liveQueue.length - 1 ? finishPart() : goToIndex(activeIndex + 1));
+  const goPrev = () => {
+    if (isFinished) {
+      if (canControl) setRoom({ is_finished: false });
+      return;
+    }
+    goToIndex(activeIndex - 1);
+  };
   const jumpTo = (id: string) => goToIndex(liveQueue.findIndex((r) => r.queueItem.id === id));
   const changeLoop = (delta: number) => {
-    if (!canControl || !activeItem) return;
+    if (!canControl || !activeItem || isFinished) return;
     const next = Math.max(1, (roomRef.current.current_loop_iteration || 1) + delta);
     roomRef.current = { ...roomRef.current, current_loop_iteration: next };
     setRoom({ current_loop_iteration: next });
@@ -547,6 +569,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       current_queue_item_id: first ? first.queueItem.id : null,
       current_loop_iteration: 1,
       is_paused: false,
+      ...unfinish,
     });
   };
 
@@ -742,6 +765,8 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     resetLoop,
     togglePause,
     goLive,
+    isFinished,
+    finishPart,
     addToQueue,
     removeFromQueue,
     moveQueueItem,

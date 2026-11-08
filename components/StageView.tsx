@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   BellRing,
   BellOff,
+  CheckCircle2,
   ChevronRight,
   Layers,
   Lock,
@@ -71,6 +72,7 @@ export function StageView({
     votesEnabled,
     tally,
     vote,
+    isFinished,
   } = useStage();
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -144,13 +146,23 @@ export function StageView({
     <Shell padBottom={canControl || role === 'controller'}>
       {/* Status strip */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-4 sm:pt-6">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-red-400">
-          <LiveDot /> LIVE
-        </span>
+        {isFinished ? (
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-green-500/15 text-green-300 text-sm font-bold">
+            <CheckCircle2 className="w-4 h-4" /> FINISHED
+          </span>
+        ) : roomState.is_paused ? (
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-brass text-brass-ink text-sm font-bold animate-pulse">
+            <Pause className="w-4 h-4" /> ON HOLD
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-red-400">
+            <LiveDot /> LIVE
+          </span>
+        )}
         <span className="text-sm sm:text-base font-medium text-ink">{location}</span>
         {liveQueue.length > 0 && (
           <span className="text-sm text-muted tabular">
-            Song {activeIndex + 1} of {liveQueue.length}
+            {isFinished ? `All ${liveQueue.length} songs done` : `Song ${activeIndex + 1} of ${liveQueue.length}`}
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
@@ -187,7 +199,7 @@ export function StageView({
               Lock screen{lockScreen.active ? ' on' : ''}
             </Button>
           )}
-          {canControl && activeItem && (
+          {canControl && activeItem && !isFinished && (
             <Button size="sm" variant={roomState.is_paused ? 'primary' : 'secondary'} onClick={togglePause}>
               {roomState.is_paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
               {roomState.is_paused ? 'Resume' : 'Hold'}
@@ -201,13 +213,43 @@ export function StageView({
         </div>
       </div>
 
-      {roomState.is_paused && (
-        <div className="mt-3 rounded-xl border border-brass/40 bg-brass-soft text-brass px-4 py-3 font-semibold flex items-center gap-2">
-          <Pause className="w-4 h-4" /> On hold — wait for the signal
-        </div>
-      )}
-
-      {!activeItem ? (
+      {isFinished ? (
+        <Card className="mt-4 p-6 sm:p-10 border-green-500/30">
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="w-16 h-16 rounded-full bg-green-500/15 text-green-300 grid place-items-center">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-green-300">Finished</div>
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} is done</h1>
+            <p className="text-lg text-muted">No song is playing right now.</p>
+            {nextPart ? (
+              <p className="text-base">
+                Up next: <b className="text-ink">{nextPart.name}</b>
+                {canSwitchLive ? '' : ' — wait for the signal'}
+              </p>
+            ) : (
+              <p className="text-base text-muted">That was the last Bahagian of {liveSession.name}.</p>
+            )}
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {nextPart && canSwitchLive && (
+                <Button size="lg" variant="primary" onClick={() => goLive(nextPart.id)}>
+                  Go live: {nextPart.name} <ChevronRight className="w-5 h-5" />
+                </Button>
+              )}
+              {canSwitchLive && (
+                <Button size="lg" onClick={openPicker}>
+                  <Layers className="w-4 h-4" /> Choose another
+                </Button>
+              )}
+              {canControl && (
+                <Button size="lg" variant="ghost" onClick={goPrev}>
+                  <ChevronLeft className="w-4 h-4" /> Back to last song
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      ) : !activeItem ? (
         <Card className="mt-4">
           <EmptyState
             title={`${livePart.name} has no songs yet`}
@@ -225,7 +267,24 @@ export function StageView({
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-12">
           {/* NOW */}
-          <Card className={cx('lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6', cued && 'border-brass/60')}>
+          <Card
+            className={cx(
+              'relative overflow-hidden lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6',
+              roomState.is_paused ? 'border-brass/70 [&>*:not(.hold-overlay)]:opacity-25' : cued && 'border-brass/60'
+            )}
+          >
+            {roomState.is_paused && (
+              <div className="hold-overlay absolute inset-0 z-10 grid place-items-center bg-bg/40 backdrop-blur-[2px]">
+                <div className="flex flex-col items-center text-center gap-2 px-6">
+                  <div className="w-20 h-20 rounded-full bg-brass text-brass-ink grid place-items-center animate-cue-pulse">
+                    <Pause className="w-10 h-10" fill="currentColor" />
+                  </div>
+                  <div className="text-4xl sm:text-6xl font-black tracking-tight text-brass">ON HOLD</div>
+                  <div className="text-lg sm:text-xl font-semibold">Wait for the signal</div>
+                  <div className="text-sm text-muted">Paused at: {activeItem.song.title}</div>
+                </div>
+              </div>
+            )}
             {cued && (
               <div className="rounded-2xl bg-brass text-brass-ink px-5 py-4 animate-cue-pulse">
                 <div className="text-xs font-bold uppercase tracking-[0.18em]">Your cue</div>
@@ -237,7 +296,7 @@ export function StageView({
 
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-sm text-muted font-medium">Now playing</span>
+                <span className="text-sm text-muted font-medium">{roomState.is_paused ? 'On hold' : 'Now playing'}</span>
                 {activeItem.hasOverride && <Badge tone="override">Adjusted for this ceremony</Badge>}
               </div>
               <h1 className="text-4xl sm:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] [text-wrap:balance] break-words">
@@ -384,10 +443,10 @@ export function StageView({
       )}
 
       {/* Controls */}
-      {canControl && activeItem && (
+      {canControl && activeItem && !isFinished && (
         <ControlBar
           canPrev={activeIndex > 0}
-          canNext={!isLast}
+          isLast={isLast}
           loop={loop}
           onPrev={goPrev}
           onNext={goNext}
@@ -474,14 +533,14 @@ function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boo
 
 function ControlBar({
   canPrev,
-  canNext,
+  isLast,
   loop,
   onPrev,
   onNext,
   onLoop,
 }: {
   canPrev: boolean;
-  canNext: boolean;
+  isLast: boolean;
   loop: number;
   onPrev: () => void;
   onNext: () => void;
@@ -508,9 +567,15 @@ function ControlBar({
           </IconButton>
         </div>
 
-        <Button size="xl" variant="primary" onClick={onNext} disabled={!canNext} aria-label="Next song" className="px-3 sm:px-6">
-          <span>Next</span>
-          <SkipForward className="w-6 h-6" />
+        <Button
+          size="xl"
+          variant="primary"
+          onClick={onNext}
+          aria-label={isLast ? 'Finish this Bahagian' : 'Next song'}
+          className={cx('px-3 sm:px-6', isLast && 'bg-green-500 hover:bg-green-400 text-black')}
+        >
+          <span>{isLast ? 'Finish' : 'Next'}</span>
+          {isLast ? <CheckCircle2 className="w-6 h-6" /> : <SkipForward className="w-6 h-6" />}
         </Button>
       </div>
     </div>

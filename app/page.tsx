@@ -35,6 +35,7 @@ export default function HomePage() {
     roomState,
     isCued,
     canControl,
+    isFinished,
   } = useStage();
   const [tab, setTab] = useState<Tab>('stage');
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -50,6 +51,19 @@ export default function HomePage() {
     if (!liveSession || !livePart) return null;
     const location = `${liveSession.name} · ${livePart.name}`;
     const onHold = roomState.is_paused;
+    if (isFinished)
+      return {
+        title: `${livePart.name} finished`,
+        line1: nextPart ? `No song playing · Up next: ${nextPart.name}` : 'No song playing · last Bahagian done',
+        line2: location,
+        top: location.toUpperCase(),
+        kicker: 'FINISHED',
+        heading: nextPart ? `Up next: ${nextPart.name}` : `${liveSession.name} done`,
+        detail: 'No song is playing',
+        stats: [],
+        highlight: false,
+        onHold: false,
+      };
     if (!activeItem)
       return {
         title: `${livePart.name}: no songs yet`,
@@ -109,20 +123,20 @@ export default function HomePage() {
       highlight: cuedNext,
       onHold,
     };
-  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued]);
+  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished]);
   const lockScreen = useLockScreen(lockInfo);
 
   // Chime when the song (or live Bahagian) changes. Not on the device doing the
   // controlling: that person just pressed the button.
   const chime = useChime();
-  const songKey = `${livePart?.id ?? ''}|${activeItem?.queueItem.id ?? ''}`;
+  const songKey = `${livePart?.id ?? ''}|${activeItem?.queueItem.id ?? ''}|${isFinished ? 'end' : ''}`;
   const lastSongKey = useRef<string | null>(null);
   useEffect(() => {
     if (!loaded) return;
     const prev = lastSongKey.current;
     lastSongKey.current = songKey;
     if (prev === null || prev === songKey || !activeItem || canControl) return;
-    chime.play(isCued(activeItem.introInstruments) ? 'cue' : 'change');
+    chime.play(!isFinished && isCued(activeItem.introInstruments) ? 'cue' : 'change');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [songKey, loaded]);
 

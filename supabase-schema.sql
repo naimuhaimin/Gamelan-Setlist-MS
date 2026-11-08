@@ -49,6 +49,8 @@ ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS rhythms TEXT[] NOT NULL DEFAUL
 -- Migration for databases created before intro units existed:
 ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS intro_unit TEXT NOT NULL DEFAULT 'bars' CHECK (intro_unit IN ('bars','beats'));
 ALTER TABLE public.queue_items ADD COLUMN IF NOT EXISTS override_intro_unit TEXT CHECK (override_intro_unit IN ('bars','beats'));
+-- Migration for databases created before the finished state existed:
+ALTER TABLE public.room_state ADD COLUMN IF NOT EXISTS is_finished BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- QUEUE ITEMS TABLE (Ordered setlist per Bahagian with Instance Overrides)
 CREATE TABLE IF NOT EXISTS public.queue_items (
@@ -72,6 +74,7 @@ CREATE TABLE IF NOT EXISTS public.room_state (
     current_queue_item_id TEXT REFERENCES public.queue_items(id) ON DELETE SET NULL,
     current_loop_iteration INTEGER NOT NULL DEFAULT 1,
     is_paused BOOLEAN NOT NULL DEFAULT FALSE,
+    is_finished BOOLEAN NOT NULL DEFAULT FALSE,   -- live Bahagian has ended (no song playing)
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_by_role TEXT NOT NULL DEFAULT 'SYSTEM'
 );

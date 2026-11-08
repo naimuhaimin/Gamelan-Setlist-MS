@@ -326,39 +326,29 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   const isManager = role === 'maestro' || role === 'admin';
 
-  const controllerMatchesPart = useCallback(
-    (part: Part | undefined, key: string) => {
-      if (!part || !key) return false;
-      const globalKey = rolePasskey('controller');
-      return (!!part.controller_passkey && eq(part.controller_passkey, key)) || (!!globalKey && eq(globalKey, key));
-    },
-    [rolePasskey]
-  );
-
+  // Controller works only while the live Bahagian's controller access is switched on by the Maestro.
   const { canControl, controlBlockedReason } = useMemo(() => {
     if (isManager) return { canControl: true, controlBlockedReason: null };
     if (role !== 'controller') return { canControl: false, controlBlockedReason: null };
     if (!livePart) return { canControl: false, controlBlockedReason: 'Nothing is live yet. Waiting for the Maestro.' };
     if (!livePart.controller_enabled)
       return { canControl: false, controlBlockedReason: `The Maestro has locked controls for ${livePart.name}.` };
-    if (!controllerMatchesPart(livePart, authPasskey))
-      return { canControl: false, controlBlockedReason: `Your passkey is not for ${livePart.name}. Ask the Maestro for its passkey.` };
     return { canControl: true, controlBlockedReason: null };
-  }, [isManager, role, livePart, authPasskey, controllerMatchesPart]);
+  }, [isManager, role, livePart]);
 
   const persistAuth = (r: RoleType, key: string) =>
     safeStorage(() => localStorage.setItem(AUTH_KEY, JSON.stringify({ role: r, passkey: key })), undefined);
 
+  /** Only Admin needs a passkey; Controller and Maestro are open by design. */
+  const needsPasskey = (r: RoleType) => r === 'admin';
+
   const checkPasskey = useCallback(
     (r: RoleType, key: string): boolean => {
-      if (!key.trim()) return false;
-      if (r === 'admin') return !!rolePasskey('admin') && eq(rolePasskey('admin'), key);
-      // Maestro uses the single global passkey: a Maestro can edit every Sidang anyway.
-      if (r === 'maestro') return !!rolePasskey('maestro') && eq(rolePasskey('maestro'), key);
-      if (r === 'controller') return parts.some((p) => controllerMatchesPart(p, key));
+      if (r === 'controller' || r === 'maestro') return true;
+      if (r === 'admin') return !!key.trim() && !!rolePasskey('admin') && eq(rolePasskey('admin'), key);
       return false;
     },
-    [rolePasskey, parts, controllerMatchesPart]
+    [rolePasskey]
   );
 
   // Re-validate a remembered sign-in once data is loaded (passkeys may have changed)
@@ -375,9 +365,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     if (r === 'admin' && !rolePasskey('admin'))
       return { ok: false, message: 'No Admin passkey is set in the database yet.' };
     if (!checkPasskey(r, key)) return { ok: false, message: 'That passkey is not correct.' };
+    const stored = needsPasskey(r) ? key.trim() : '';
     setRole(r);
-    setAuthPasskey(key.trim());
-    persistAuth(r, key.trim());
+    setAuthPasskey(stored);
+    persistAuth(r, stored);
     return { ok: true };
   };
 

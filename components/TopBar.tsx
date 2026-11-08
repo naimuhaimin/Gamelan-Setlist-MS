@@ -175,14 +175,14 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
                     </div>
                   </div>
                   {role === 'player'
-                    ? menuItem(<LogIn className="w-4 h-4" />, 'Sign in with passkey', onLogin)
+                    ? menuItem(<LogIn className="w-4 h-4" />, 'Switch role', onLogin)
                     : menuItem(<KeyRound className="w-4 h-4" />, 'Switch role', onLogin)}
                   {menuItem(<QrCode className="w-4 h-4" />, 'Share with devices', onShare)}
                   {role === 'admin' && (
                     <>
                       <div className="h-px bg-line my-1" />
                       {menuItem(<Settings2 className="w-4 h-4" />, 'Instruments', onInstruments)}
-                      {menuItem(<ShieldCheck className="w-4 h-4" />, 'Access & passkeys', onAccess)}
+                      {menuItem(<ShieldCheck className="w-4 h-4" />, 'Admin passkey', onAccess)}
                     </>
                   )}
                   {role !== 'player' && (

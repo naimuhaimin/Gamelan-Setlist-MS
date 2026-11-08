@@ -128,6 +128,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
               key={p.id}
               role="tab"
               aria-selected={selected}
+              aria-label={`Bahagian ${p.part_number}, ${count} ${count === 1 ? 'song' : 'songs'}${live ? ', live' : ''}`}
               onClick={() => setPartNumber(p.part_number)}
               className={cx(
                 'rounded-xl border px-3 py-2.5 text-left transition-colors',
@@ -228,9 +229,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
               key={`ctrl-${part.id}`}
               partName={part.name}
               enabled={part.controller_enabled}
-              passkey={part.controller_passkey}
               onToggle={(v) => editPart(part.id, { controller_enabled: v })}
-              onSavePasskey={(k) => editPart(part.id, { controller_passkey: k })}
             />
           </div>
         </div>
@@ -332,51 +331,25 @@ function AddSongs({
 function ControllerCard({
   partName,
   enabled,
-  passkey,
   onToggle,
-  onSavePasskey,
 }: {
   partName: string;
   enabled: boolean;
-  passkey: string;
   onToggle: (v: boolean) => void;
-  onSavePasskey: (k: string) => void;
 }) {
-  const [value, setValue] = useState(passkey);
-  useEffect(() => setValue(passkey), [passkey]);
-  const dirty = value.trim() !== passkey;
-
   return (
-    <Card className="p-4 space-y-4">
+    <Card className="p-4">
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <h3 className="font-semibold">Controller access</h3>
           <p className="text-sm text-muted">
-            {enabled ? `A controller can change songs and loops during ${partName}.` : `Only Maestro and Admin can control ${partName}.`}
+            {enabled
+              ? `Anyone in Controller mode can change songs and loops during ${partName}.`
+              : `Locked: only Maestro and Admin can control ${partName}.`}
           </p>
         </div>
         <Toggle checked={enabled} onChange={onToggle} label="Allow controller" />
       </div>
-      <p className="text-xs text-muted -mb-2">Passkey for this Bahagian only (optional)</p>
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (dirty) onSavePasskey(value.trim());
-        }}
-      >
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          aria-label="Controller passkey"
-          placeholder="Uses the master controller passkey"
-          autoComplete="off"
-          className="font-mono"
-        />
-        <Button type="submit" variant={dirty ? 'primary' : 'secondary'} disabled={!dirty}>
-          Save
-        </Button>
-      </form>
     </Card>
   );
 }

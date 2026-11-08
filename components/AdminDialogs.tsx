@@ -154,8 +154,6 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
 
 const ACCESS: Array<{ role: RoleType; label: string; hint: string }> = [
   { role: 'admin', label: 'Admin passkey', hint: 'Full access, including this screen.' },
-  { role: 'maestro', label: 'Maestro passkey', hint: 'Edit setlists for every Sidang and choose what goes live.' },
-  { role: 'controller', label: 'Controller master passkey', hint: 'Works for any Bahagian whose controller access is on. Leave empty to use only per-Bahagian passkeys.' },
 ];
 
 export function AccessModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -191,8 +189,8 @@ export function AccessModal({ open, onClose }: { open: boolean; onClose: () => v
     <Modal
       open={open}
       onClose={onClose}
-      title="Access & passkeys"
-      description="Share these only with the people who need them."
+      title="Admin passkey"
+      description="Only Admin needs a passkey. Controller and Maestro are open to anyone using the app."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -216,9 +214,6 @@ export function AccessModal({ open, onClose }: { open: boolean; onClose: () => v
             />
           </Field>
         ))}
-        <p className="text-xs text-muted">
-          A Maestro can also set a passkey for one Bahagian only in Setlist → Controller access.
-        </p>
         {error && <p className="text-sm text-danger">{error}</p>}
       </form>
     </Modal>

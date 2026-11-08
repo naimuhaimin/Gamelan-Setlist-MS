@@ -14,7 +14,7 @@ import { Button, Chip, Field, Input, Modal, cx } from './ui';
 const ROLES: Array<{ id: Exclude<RoleType, 'player'>; title: string; text: string; icon: React.ReactNode }> = [
   { id: 'controller', title: 'Controller', text: 'Next / previous song and loop count', icon: <SlidersHorizontal className="w-5 h-5" /> },
   { id: 'maestro', title: 'Maestro', text: 'Setlists, adjustments, go live', icon: <KeyRound className="w-5 h-5" /> },
-  { id: 'admin', title: 'Admin', text: 'Everything, plus instruments & passkeys', icon: <ShieldCheck className="w-5 h-5" /> },
+  { id: 'admin', title: 'Admin', text: 'Everything, plus instruments · needs passkey', icon: <ShieldCheck className="w-5 h-5" /> },
 ];
 
 export function LoginModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -47,16 +47,16 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
     <Modal
       open={open}
       onClose={onClose}
-      title="Sign in"
-      description="Musicians don’t need to sign in. This is for the people running the stage."
+      title="Switch role"
+      description="Musicians don’t need this. Controller and Maestro need no passkey."
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="login-form" disabled={!passkey.trim()}>
-            Sign in
+          <Button variant="primary" type="submit" form="login-form" disabled={selected === 'admin' && !passkey.trim()}>
+            Continue as {ROLES.find((r) => r.id === selected)?.title}
           </Button>
         </>
       }
@@ -72,7 +72,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
               onClick={() => {
                 setSelected(r.id);
                 setError(null);
-                inputRef.current?.focus();
+                if (r.id === 'admin') setTimeout(() => inputRef.current?.focus(), 0);
               }}
               className={cx(
                 'w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors',
@@ -93,7 +93,8 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             </button>
           ))}
         </div>
-        <Field label="Passkey" htmlFor="passkey">
+        {selected === 'admin' && (
+          <Field label="Admin passkey" htmlFor="passkey">
           <Input
             ref={inputRef}
             id="passkey"
@@ -106,6 +107,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             }}
           />
         </Field>
+        )}
         {error && <p className="text-sm text-danger">{error}</p>}
       </form>
     </Modal>
@@ -197,7 +199,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
         <ul className="w-full text-sm text-muted space-y-1.5">
           <li>• Musicians just open the link and pick their instrument.</li>
-          <li>• Controllers and the Maestro sign in from the account menu.</li>
+          <li>• Controllers and the Maestro switch role from the account menu (no passkey).</li>
           <li>• Every device updates live. Keep screens open during the ceremony.</li>
         </ul>
         <div className="w-full">

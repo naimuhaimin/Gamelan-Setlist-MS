@@ -22,11 +22,11 @@ Instruments and songs live only in the database. There are no built-in presets.
 | Role | Signs in with | Can |
 | :--- | :--- | :--- |
 | **Musician** | Nothing | See the live stage, pick their instrument, get a "Your cue" alert, browse the library |
-| **Controller** | A Bahagian's passkey, or the master controller passkey | Next / previous / jump to a song, change the loop count, hold/resume — only while their Bahagian is live and controller access is on |
-| **Maestro** | The Maestro passkey | Everything a controller can do, plus build setlists, adjust songs per ceremony, create/edit Sidang, add/edit library songs, choose what goes live |
-| **Admin** | The Admin passkey | Everything, plus manage instruments and change passkeys |
+| **Controller** | No passkey (account menu → Switch role) | Next / previous / jump to a song, change the loop count, hold/resume — only while the live Bahagian's controller access is on |
+| **Maestro** | No passkey | Everything a controller can do, plus build setlists, adjust songs per ceremony, create/edit Sidang, add/edit library songs, choose what goes live, lock/unlock controller access per Bahagian |
+| **Admin** | The Admin passkey | Everything, plus manage instruments and change the Admin passkey |
 
-Passkeys are stored in the `roles` table (Admin → *Access & passkeys*). Per-Bahagian controller passkeys are set by the Maestro in *Setlist → Controller access*.
+The Admin passkey is stored in the `roles` table (Admin → *Admin passkey*).
 
 ## Stack
 
@@ -37,7 +37,7 @@ Next.js 14 (App Router, TypeScript), Tailwind CSS, Supabase (PostgreSQL + Realti
 1. Create a project at [supabase.com](https://supabase.com) and run [`supabase-schema.sql`](./supabase-schema.sql) in its SQL Editor.
 2. Copy `.env.example` to `.env.local` and fill in the project URL and anon/publishable key.
 3. `npm install` then `npm run dev` → <http://localhost:3000>.
-4. Sign in as Admin with the passkey from the schema file and **change all passkeys** under *Access & passkeys*.
+4. Sign in as Admin with the passkey from the schema file and **change it** under *Admin passkey*.
 
 ## Deploy
 
@@ -52,4 +52,4 @@ Import the repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SU
 
 ## Security note
 
-Passkeys are checked in the browser and the database accepts writes from anyone with the public key. This keeps honest people out of the wrong screens but won't stop a determined attacker. Don't publish the URL widely.
+Controller and Maestro are open to anyone who has the link, and the Admin passkey is checked in the browser. Anyone with the URL can change setlists and the live stage, so share the link only with the ensemble.

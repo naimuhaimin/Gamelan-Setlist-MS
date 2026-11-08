@@ -206,3 +206,21 @@ ON CONFLICT (role_name) DO NOTHING;
 
 -- The single live stage pointer
 INSERT INTO public.room_state (id) VALUES ('main_stage') ON CONFLICT (id) DO NOTHING;
+
+-- 6. RATINGS (thumbs up / down per setlist position, one per device)
+CREATE TABLE IF NOT EXISTS public.queue_votes (
+    queue_item_id TEXT NOT NULL REFERENCES public.queue_items(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    vote SMALLINT NOT NULL CHECK (vote IN (-1, 1)),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (queue_item_id, device_id)
+);
+ALTER TABLE public.queue_votes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Votes" ON public.queue_votes;
+CREATE POLICY "Public Read Votes" ON public.queue_votes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Votes" ON public.queue_votes;
+CREATE POLICY "Public Write Votes" ON public.queue_votes FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.queue_votes;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

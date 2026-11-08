@@ -19,7 +19,7 @@ import {
 import { useStage } from '@/lib/stageContext';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } from './ui';
+import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
 import { LivePicker } from './LivePicker';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
@@ -68,6 +68,9 @@ export function StageView({
     togglePause,
     goLive,
     notify,
+    votesEnabled,
+    tally,
+    vote,
   } = useStage();
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -291,6 +294,18 @@ export function StageView({
               </div>
             </div>
 
+            {votesEnabled && (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <span className="text-sm text-muted font-medium">Rate this song</span>
+                <VoteButtons
+                  {...tally(activeItem.queueItem.id)}
+                  onVote={(v) => vote(activeItem.queueItem.id, v)}
+                  size="md"
+                  label={activeItem.song.title}
+                />
+              </div>
+            )}
+
             {canControl && (
               <div className="hidden lg:flex items-center gap-2 text-xs text-faint">
                 Shortcuts: ← → change song · ↑ ↓ change loop · presenter clicker works too
@@ -303,7 +318,11 @@ export function StageView({
             <Card className="p-5">
               <div className="text-sm text-muted font-medium mb-3">Up next</div>
               {next ? (
-                <NextCard item={next} cued={isCued(next.introInstruments)} />
+                <NextCard item={next} cued={isCued(next.introInstruments)}>
+                  {votesEnabled && (
+                    <VoteButtons {...tally(next.queueItem.id)} onVote={(v) => vote(next.queueItem.id, v)} label={next.song.title} />
+                  )}
+                </NextCard>
               ) : (
                 <div className="space-y-3">
                   <p className="text-ink font-medium">This is the last song of {livePart.name}.</p>
@@ -338,18 +357,21 @@ export function StageView({
                       </>
                     );
                     return (
-                      <li key={r.queueItem.id}>
+                      <li key={r.queueItem.id} className="flex items-center gap-1 pr-2">
                         {canControl ? (
                           <button
                             onClick={() => jumpTo(r.queueItem.id)}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-raised group"
+                            className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-raised group"
                             title="Jump to this song"
                           >
                             {body}
                             <span className="text-xs text-faint group-hover:text-brass">Jump</span>
                           </button>
                         ) : (
-                          <div className="flex items-center gap-3 px-3 py-2.5">{body}</div>
+                          <div className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5">{body}</div>
+                        )}
+                        {votesEnabled && (
+                          <VoteButtons {...tally(r.queueItem.id)} onVote={(v) => vote(r.queueItem.id, v)} label={r.song.title} />
                         )}
                       </li>
                     );
@@ -429,7 +451,7 @@ function LoopPips({ current, total }: { current: number; total: number }) {
   );
 }
 
-function NextCard({ item, cued }: { item: ResolvedQueueItem; cued: boolean }) {
+function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boolean; children?: React.ReactNode }) {
   return (
     <div className={cx('rounded-xl p-4 border', cued ? 'border-brass/60 bg-brass-soft' : 'border-line bg-raised/60')}>
       {cued && <div className="text-xs font-bold uppercase tracking-wider text-brass mb-1">Your cue next</div>}
@@ -445,6 +467,7 @@ function NextCard({ item, cued }: { item: ResolvedQueueItem; cued: boolean }) {
       <div className="mt-1 text-sm text-muted">{item.introInstruments.join(', ') || 'No intro instruments'}</div>
       {item.song.rhythms.length > 0 && <Rhythms rhythms={item.song.rhythms} className="mt-2" />}
       {item.hasOverride && <Badge tone="override" className="mt-2">Adjusted</Badge>}
+      {children && <div className="mt-3">{children}</div>}
     </div>
   );
 }

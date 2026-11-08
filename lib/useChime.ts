@@ -7,7 +7,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * Web Audio mixes with the lock-screen's silent <audio> loop instead of
  * replacing it, so the lock-screen display keeps working.
  * `enable()` must be called from a tap: browsers block sound until then.
- * Note: on iPhone the ring/silent switch mutes Web Audio.
+ *
+ * iPhone: Web Audio is muted by the silent switch and suspended in the
+ * background unless the page's audio session is "playback" (Safari 17+
+ * `navigator.audioSession`). We set that, and resume the context whenever
+ * iOS reports it as "interrupted"/"suspended".
  */
 
 export type ChimeKind = 'change' | 'cue';
@@ -35,6 +39,16 @@ function tone(ctx: Ctx, freq: number, start: number, length: number, peak: numbe
   osc.stop(start + length + 0.05);
 }
 
+/** Ask iOS to treat our sound as media playback (ignores silent switch, keeps playing when locked). */
+export function setPlaybackAudioSession() {
+  try {
+    const nav = navigator as unknown as { audioSession?: { type: string } };
+    if (nav.audioSession) nav.audioSession.type = 'playback';
+  } catch {
+    // not supported
+  }
+}
+
 function playChime(ctx: Ctx, kind: ChimeKind) {
   const t = ctx.currentTime + 0.02;
   if (kind === 'cue') {
@@ -56,6 +70,7 @@ export function useChime() {
     const AC = getAudioContextClass();
     if (!AC) return false;
     try {
+      setPlaybackAudioSession();
       if (!ctxRef.current) ctxRef.current = new AC();
       await ctxRef.current.resume();
       playChime(ctxRef.current, 'change');
@@ -73,7 +88,8 @@ export function useChime() {
       const ctx = ctxRef.current;
       if (!enabled || !ctx) return;
       const go = () => playChime(ctx, kind);
-      if (ctx.state === 'suspended') ctx.resume().then(go).catch(() => undefined);
+      // iOS uses the non-standard "interrupted" state after calls/locking
+      if ((ctx.state as string) !== 'running') ctx.resume().then(go).catch(() => undefined);
       else go();
       try {
         navigator.vibrate?.(kind === 'cue' ? [180, 80, 180, 80, 180] : [120]);
@@ -83,6 +99,21 @@ export function useChime() {
     },
     [enabled]
   );
+
+  // Wake the audio context back up when the page returns to the foreground
+  useEffect(() => {
+    if (!enabled) return;
+    const wake = () => {
+      const ctx = ctxRef.current;
+      if (ctx && (ctx.state as string) !== 'running') ctx.resume().catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('pageshow', wake);
+    return () => {
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('pageshow', wake);
+    };
+  }, [enabled]);
 
   useEffect(() => () => void ctxRef.current?.close().catch(() => undefined), []);
 

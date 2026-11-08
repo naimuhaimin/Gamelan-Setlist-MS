@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import type {
   DatabaseSnapshot,
+  QueueVote,
   Part,
   QueueItem,
   RoleRow,
@@ -84,6 +85,32 @@ export async function fetchSnapshot(): Promise<DatabaseSnapshot> {
     fetchRoles(),
   ]);
   return { sessions, parts, songs, queueItems, roomState, instruments, roles };
+}
+
+/** Votes live in their own table; if it doesn't exist yet the app simply shows no votes. */
+export async function fetchVotes(): Promise<QueueVote[] | null> {
+  const res = await db().from('queue_votes').select('queue_item_id, device_id, vote');
+  if (res.error) return null; // table not created yet
+  return res.data as QueueVote[];
+}
+
+export async function setVote(queueItemId: string, deviceId: string, vote: 1 | -1 | 0) {
+  if (vote === 0) {
+    check(
+      await db().from('queue_votes').delete().eq('queue_item_id', queueItemId).eq('device_id', deviceId),
+      'Remove vote'
+    );
+  } else {
+    check(
+      await db()
+        .from('queue_votes')
+        .upsert(
+          { queue_item_id: queueItemId, device_id: deviceId, vote, updated_at: new Date().toISOString() },
+          { onConflict: 'queue_item_id,device_id' }
+        ),
+      'Save vote'
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

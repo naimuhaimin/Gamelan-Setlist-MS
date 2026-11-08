@@ -30,6 +30,7 @@ Supabase is the only backend. There is no server code; the browser talks to Supa
 - Realtime only works for tables in the `supabase_realtime` publication. `roles` is NOT in it, and subscribing to it breaks the whole channel. Don't add it to the channel.
 - Auth is client-side. Only Admin needs a passkey (`roles.admin`). Controller and Maestro are open by the user's choice; a Controller can always switch the live Sidang/Bahagian (`canSwitchLive`, `components/LivePicker.tsx`) but can change songs/loops only while the live part has `controller_enabled`. `sessions.maestro_passkey`, `parts.controller_passkey` and the `roles` maestro/controller rows are legacy and unused. The saved Admin sign-in is re-validated after every load.
 - `room_state` (`id = 'main_stage'`) is the single live pointer.
+- Ratings: `queue_votes` (queue_item_id, device_id, vote ±1). Device id is a random id in localStorage. Votes load separately (`fetchVotes` returns null if the table is missing → `votesEnabled` false) and use their own realtime channel, so a missing table never breaks the main channel.
 
 ## UI
 

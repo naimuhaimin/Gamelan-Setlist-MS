@@ -4,12 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ListMusic, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { Song } from '@/types';
-import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, Stepper, UnitSwitch, cx } from './ui';
+import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, Stepper, UnitSwitch, VoteCounts, cx } from './ui';
 import { formatIntro, introUnitWord } from '@/lib/format';
 import type { IntroUnit } from '@/types';
 
 export function LibraryView() {
-  const { songs, instruments, queueItems, isManager, selectedInstrument, removeSong } = useStage();
+  const { songs, instruments, queueItems, isManager, selectedInstrument, removeSong, songTally } = useStage();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<Song | 'new' | null>(null);
@@ -83,6 +83,7 @@ export function LibraryView() {
                       <span className="truncate">{s.intro_instruments.join(', ') || 'no intro instrument'}</span>
                     </div>
                     {s.rhythms.length > 0 && <Rhythms rhythms={s.rhythms} className="mt-1.5" />}
+                    <VoteCounts {...songTally(s.id)} className="mt-1.5" />
                   </div>
                   {isManager && (
                     <div className="flex items-center gap-0.5 shrink-0">

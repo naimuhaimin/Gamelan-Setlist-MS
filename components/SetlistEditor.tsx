@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Input, LiveDot, Rhythms, Toggle, cx } from './ui';
+import { Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Input, LiveDot, Rhythms, Toggle, VoteCounts, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
 import { formatIntro } from '@/lib/format';
 import type { IntroUnit } from '@/types';
@@ -35,6 +35,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
     removeFromQueue,
     moveQueueItem,
     editPart,
+    tally,
   } = useStage();
 
   const [sessionId, setSessionId] = useState<string | undefined>(roomState.session_id ?? sessions[0]?.id);
@@ -192,6 +193,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                         {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || 'no intro instrument'}
                       </div>
                       {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
+                      <VoteCounts {...tally(r.queueItem.id)} className="mt-1" />
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
                       <IconButton label="Move up" size="sm" onClick={() => moveQueueItem(part.id, i, i - 1)} disabled={i === 0}>

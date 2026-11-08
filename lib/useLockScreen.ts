@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { setPlaybackAudioSession } from './useChime';
 
 /**
  * Shows the live song on the phone's lock screen via the Media Session API
@@ -148,6 +149,7 @@ export function useLockScreen(info: LockScreenInfo | null) {
   /** Call from a tap/click handler. */
   const start = useCallback(async () => {
     if (!lockScreenSupported()) return false;
+    setPlaybackAudioSession();
     if (!audioRef.current) {
       const a = new Audio(getSilentUrl());
       a.loop = true;

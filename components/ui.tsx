@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
-import { AlertTriangle, CheckCircle2, Info, Minus, Plus, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, Minus, Plus, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 
 export const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ');
@@ -151,6 +151,70 @@ export const Chip = ({
     {children}
   </button>
 );
+
+/** Thumbs up / down for one setlist position. Tap the same thumb again to remove your vote. */
+export const VoteButtons = ({
+  up,
+  down,
+  mine,
+  onVote,
+  size = 'sm',
+  label,
+}: {
+  up: number;
+  down: number;
+  mine: 1 | -1 | 0;
+  onVote: (v: 1 | -1) => void;
+  size?: 'sm' | 'md';
+  label: string; // song title, for screen readers
+}) => {
+  const btn = (v: 1 | -1, count: number) => {
+    const active = mine === v;
+    const Icon = v === 1 ? ThumbsUp : ThumbsDown;
+    return (
+      <button
+        type="button"
+        aria-pressed={active}
+        aria-label={`${v === 1 ? 'Thumbs up' : 'Thumbs down'} for ${label} (${count})`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onVote(v);
+        }}
+        className={cx(
+          'inline-flex items-center gap-1.5 rounded-full border font-semibold tabular transition-colors [touch-action:manipulation]',
+          size === 'md' ? 'h-11 px-4 text-base' : 'h-8 px-2.5 text-xs',
+          active
+            ? v === 1
+              ? 'bg-green-500/20 border-green-500/50 text-green-300'
+              : 'bg-red-500/20 border-red-500/50 text-red-300'
+            : 'bg-raised border-line text-muted hover:text-ink hover:border-line-strong'
+        )}
+      >
+        <Icon className={size === 'md' ? 'w-5 h-5' : 'w-3.5 h-3.5'} fill={active ? 'currentColor' : 'none'} />
+        {count}
+      </button>
+    );
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5 shrink-0">
+      {btn(1, up)}
+      {btn(-1, down)}
+    </span>
+  );
+};
+
+/** Read-only vote counts (Setlist, Library). Renders nothing when there are no votes. */
+export const VoteCounts = ({ up, down, className }: { up: number; down: number; className?: string }) =>
+  up || down ? (
+    <span className={cx('inline-flex items-center gap-2 text-xs font-semibold tabular', className)}>
+      <span className="inline-flex items-center gap-1 text-green-400">
+        <ThumbsUp className="w-3.5 h-3.5" /> {up}
+      </span>
+      <span className="inline-flex items-center gap-1 text-red-400">
+        <ThumbsDown className="w-3.5 h-3.5" /> {down}
+      </span>
+    </span>
+  ) : null;
 
 /** Bars / Beats segmented switch for the intro length. */
 export const UnitSwitch = ({ value, onChange }: { value: 'bars' | 'beats'; onChange: (v: 'bars' | 'beats') => void }) => (

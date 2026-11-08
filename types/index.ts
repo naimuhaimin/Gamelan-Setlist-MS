@@ -69,6 +69,19 @@ export interface RoomState {
   updated_by_role: string;
 }
 
+/** One device's thumbs up (1) or down (-1) for one setlist position. */
+export interface QueueVote {
+  queue_item_id: string;
+  device_id: string;
+  vote: 1 | -1;
+}
+
+export interface VoteTally {
+  up: number;
+  down: number;
+  mine: 1 | -1 | 0;
+}
+
 export interface RoleRow {
   role_name: RoleType;
   passkey: string;

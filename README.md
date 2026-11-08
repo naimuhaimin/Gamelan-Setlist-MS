@@ -48,7 +48,8 @@ Import the repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SU
 - Share the site with *Share with devices* (QR code) in the account menu.
 - Musicians open it, pick their instrument and leave the screen on. The app keeps the screen awake.
 - Musicians who'd rather keep their phone locked tap **Lock screen** on the Stage screen: the live song, intro, loop and "YOUR CUE" then show in the phone's *Now playing* area on the lock screen and update live. Keep the browser tab open (it plays silent audio to stay awake). It needs one tap each time the page is opened.
-- **Sound** on the Stage screen plays a chime on every phone where it's turned on when the song changes (an urgent 4-note chime when it's your cue). Also one tap per page load. On iPhone the silent switch mutes it.
+- **Sound** on the Stage screen plays a chime on every phone where it's turned on when the song changes (an urgent 4-note chime when it's your cue). Also one tap per page load. On iPhone (iOS 17+) it plays even with the silent switch on.
+- Anyone can rate songs in the live setlist with 👍 / 👎 on the Stage screen (one vote per phone, tap again to remove). The Maestro sees counts in Setlist; the Library shows each song's totals.
 - The Maestro picks the Sidang and Bahagian in *Setlist* and presses **Go live**.
 - The controller uses the big bottom bar: **‹ Prev**, **− Loop +**, **Next ›**. On a laptop, arrow keys and presenter clickers work too.
 

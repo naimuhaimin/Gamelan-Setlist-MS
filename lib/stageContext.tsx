@@ -3,6 +3,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   DatabaseSnapshot,
+  QueueVote,
+  VoteTally,
   Part,
   QueueItem,
   ResolvedQueueItem,
@@ -101,6 +103,12 @@ interface StageContextType {
   // Access (admin)
   setRolePasskey: (role: RoleType, passkey: string) => Promise<void>;
 
+  // Ratings (anonymous, one per device per setlist position)
+  votesEnabled: boolean;
+  tally: (queueItemId: string) => VoteTally;
+  songTally: (songId: string) => { up: number; down: number };
+  vote: (queueItemId: string, value: 1 | -1) => void;
+
   // Feedback
   toasts: Toast[];
   notify: (message: string, kind?: Toast['kind']) => void;
@@ -111,6 +119,7 @@ interface StageContextType {
 const StageContext = createContext<StageContextType | undefined>(undefined);
 
 const AUTH_KEY = 'gamelan_auth_v2';
+const DEVICE_KEY = 'gamelan_device_id';
 const INSTRUMENT_KEY = 'gamelan_instrument_v2';
 
 const EMPTY_ROOM: RoomState = {
@@ -177,6 +186,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
   const [instrumentChosen, setInstrumentChosen] = useState(true);
 
+  const [votes, setVotes] = useState<QueueVote[]>([]);
+  const [votesEnabled, setVotesEnabled] = useState(false);
+  const deviceId = useRef<string>('');
+
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
 
@@ -212,6 +225,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     try {
       applySnapshot(await api.fetchSnapshot());
       setLoadError(null);
+      api
+        .fetchVotes()
+        .then((v) => {
+          setVotesEnabled(v !== null);
+          setVotes(v ?? []);
+        })
+        .catch(() => undefined);
     } catch (err) {
       setLoadError((err as Error).message);
     } finally {
@@ -228,6 +248,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       setRole(auth.role);
       setAuthPasskey(auth.passkey || '');
     }
+    let id = safeStorage(() => localStorage.getItem(DEVICE_KEY), null);
+    if (!id) {
+      id = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      safeStorage(() => localStorage.setItem(DEVICE_KEY, id as string), undefined);
+    }
+    deviceId.current = id;
+
     const inst = safeStorage(() => localStorage.getItem(INSTRUMENT_KEY), null);
     if (inst === null) setInstrumentChosen(false);
     else setSelectedInstrument(inst === '' ? null : inst);
@@ -294,6 +321,72 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       client.removeChannel(channel);
     };
   }, [reload]);
+
+  // ---- Ratings: separate realtime channel so a missing table can't break live sync ----
+  useEffect(() => {
+    if (!votesEnabled || !supabase) return;
+    const client = supabase;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const channel = client
+      .channel('queue_votes_v1')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_votes' }, () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          api.fetchVotes().then((v) => v && setVotes(v)).catch(() => undefined);
+        }, 150);
+      })
+      .subscribe();
+    return () => {
+      clearTimeout(timer);
+      client.removeChannel(channel);
+    };
+  }, [votesEnabled]);
+
+  const tallies = useMemo(() => {
+    const map = new Map<string, VoteTally>();
+    for (const v of votes) {
+      const t = map.get(v.queue_item_id) ?? { up: 0, down: 0, mine: 0 };
+      if (v.vote === 1) t.up++;
+      else t.down++;
+      if (v.device_id === deviceId.current) t.mine = v.vote;
+      map.set(v.queue_item_id, t);
+    }
+    return map;
+  }, [votes]);
+
+  const tally = useCallback((id: string): VoteTally => tallies.get(id) ?? { up: 0, down: 0, mine: 0 }, [tallies]);
+
+  const songTally = useCallback(
+    (songId: string) => {
+      let up = 0;
+      let down = 0;
+      for (const q of queueItems) {
+        if (q.song_id !== songId) continue;
+        const t = tallies.get(q.id);
+        if (t) {
+          up += t.up;
+          down += t.down;
+        }
+      }
+      return { up, down };
+    },
+    [queueItems, tallies]
+  );
+
+  const vote = (queueItemId: string, value: 1 | -1) => {
+    const me = deviceId.current;
+    if (!me) return;
+    const current = tally(queueItemId).mine;
+    const next: 1 | -1 | 0 = current === value ? 0 : value; // same thumb again = remove
+    setVotes((prev) => {
+      const rest = prev.filter((v) => !(v.queue_item_id === queueItemId && v.device_id === me));
+      return next === 0 ? rest : [...rest, { queue_item_id: queueItemId, device_id: me, vote: next }];
+    });
+    api.setVote(queueItemId, me, next).catch((err) => {
+      notify(`Vote not saved: ${(err as Error).message}`, 'error');
+      api.fetchVotes().then((v) => v && setVotes(v)).catch(() => undefined);
+    });
+  };
 
   // ---- Derived stage ------------------------------------------------------
   const songById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
@@ -665,6 +758,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     removeInstrument,
     moveInstrument,
     setRolePasskey,
+    votesEnabled,
+    tally,
+    songTally,
+    vote,
     toasts,
     notify,
     dismissToast,

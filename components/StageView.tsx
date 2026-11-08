@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   ChevronLeft,
+  BellRing,
+  BellOff,
   ChevronRight,
   Layers,
   Lock,
@@ -28,7 +30,22 @@ interface LockScreenControl {
   stop: () => void;
 }
 
-export function StageView({ onOpenSetlist, lockScreen }: { onOpenSetlist: () => void; lockScreen: LockScreenControl }) {
+interface ChimeControl {
+  enabled: boolean;
+  supported: boolean;
+  enable: () => Promise<boolean>;
+  disable: () => void;
+}
+
+export function StageView({
+  onOpenSetlist,
+  lockScreen,
+  chime,
+}: {
+  onOpenSetlist: () => void;
+  lockScreen: LockScreenControl;
+  chime: ChimeControl;
+}) {
   const {
     liveSession,
     livePart,
@@ -134,6 +151,22 @@ export function StageView({ onOpenSetlist, lockScreen }: { onOpenSetlist: () => 
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {chime.supported && !canControl && (
+            <Button
+              size="sm"
+              variant={chime.enabled ? 'primary' : 'secondary'}
+              aria-pressed={chime.enabled}
+              onClick={async () => {
+                if (chime.enabled) return chime.disable();
+                const ok = await chime.enable();
+                notify(ok ? 'Sound on: you’ll hear a chime when the song changes.' : 'Your browser blocked sound. Tap again.', ok ? 'info' : 'error');
+              }}
+              title="Play a chime when the song changes"
+            >
+              {chime.enabled ? <BellRing className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+              Sound{chime.enabled ? ' on' : ''}
+            </Button>
+          )}
           {lockScreen.supported && (
             <Button
               size="sm"

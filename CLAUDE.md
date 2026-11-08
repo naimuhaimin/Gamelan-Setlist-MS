@@ -37,6 +37,7 @@ Supabase is the only backend. There is no server code; the browser talks to Supa
 - `components/ui.tsx`: primitives (Button, IconButton, Modal as a bottom sheet on phones, Field, Input, Stepper, Chip, Toggle, Badge, ConfirmDialog, Toaster). Reuse them.
 - `components/StageView.tsx`: the projection screen and the controller's bottom bar (keyboard and presenter-clicker shortcuts, screen wake lock).
 - `lib/useLockScreen.ts`: opt-in lock-screen display via the Media Session API (silent looping audio keeps it shown and the page alive; artwork drawn on a canvas). The info is built in `app/page.tsx` so it keeps updating on every tab. `start()` must run from a tap.
+- `lib/useChime.ts`: opt-in song-change chime synthesised with Web Audio (mixes with the lock-screen audio instead of replacing it). Triggered in `app/page.tsx` on live part/queue-item change; skipped on devices that `canControl`.
 - `components/SetlistEditor.tsx`, `OverrideModal.tsx`, `SidangModal.tsx`: Maestro tools.
 - `components/LibraryView.tsx`: library and song form. `AccountDialogs.tsx`: sign in, instrument picker, share. `AdminDialogs.tsx`: instruments, Admin passkey.
 - Design tokens are in `tailwind.config.js` (`bg`, `surface`, `raised`, `line`, `ink`, `muted`, `brass`, `live`…). Dark only, because it's for stage readability. Test at 375px width; nothing may scroll sideways.

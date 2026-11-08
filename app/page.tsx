@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { TopBar, type Tab } from '@/components/TopBar';
@@ -11,6 +11,7 @@ import { InstrumentPicker, LoginModal, ShareModal } from '@/components/AccountDi
 import { AccessModal, InstrumentsModal } from '@/components/AdminDialogs';
 import { Button, Toaster } from '@/components/ui';
 import { useLockScreen, type LockScreenInfo } from '@/lib/useLockScreen';
+import { useChime } from '@/lib/useChime';
 import { formatIntro } from '@/lib/format';
 
 type Dialog = 'login' | 'instrument' | 'share' | 'instruments' | 'access' | null;
@@ -33,6 +34,7 @@ export default function HomePage() {
     nextPart,
     roomState,
     isCued,
+    canControl,
   } = useStage();
   const [tab, setTab] = useState<Tab>('stage');
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -110,6 +112,20 @@ export default function HomePage() {
   }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued]);
   const lockScreen = useLockScreen(lockInfo);
 
+  // Chime when the song (or live Bahagian) changes. Not on the device doing the
+  // controlling: that person just pressed the button.
+  const chime = useChime();
+  const songKey = `${livePart?.id ?? ''}|${activeItem?.queueItem.id ?? ''}`;
+  const lastSongKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!loaded) return;
+    const prev = lastSongKey.current;
+    lastSongKey.current = songKey;
+    if (prev === null || prev === songKey || !activeItem || canControl) return;
+    chime.play(isCued(activeItem.introInstruments) ? 'cue' : 'change');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songKey, loaded]);
+
   // First visit on a device: ask the musician for their instrument
   useEffect(() => {
     if (loaded && !loadError && !instrumentChosen && role === 'player' && instruments.length) setDialog('instrument');
@@ -166,7 +182,7 @@ export default function HomePage() {
       )}
 
       <main className="flex-1">
-        {tab === 'stage' && <StageView onOpenSetlist={() => setTab('setlist')} lockScreen={lockScreen} />}
+        {tab === 'stage' && <StageView onOpenSetlist={() => setTab('setlist')} lockScreen={lockScreen} chime={chime} />}
         {tab === 'setlist' && isManager && <SetlistEditor onShowStage={() => setTab('stage')} />}
         {tab === 'library' && <LibraryView />}
       </main>

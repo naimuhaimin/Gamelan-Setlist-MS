@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Layers,
   Lock,
+  Smartphone,
   Minus,
   Pause,
   Play,
@@ -20,7 +21,14 @@ import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } fro
 import { LivePicker } from './LivePicker';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
-export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
+interface LockScreenControl {
+  active: boolean;
+  supported: boolean;
+  start: () => Promise<boolean>;
+  stop: () => void;
+}
+
+export function StageView({ onOpenSetlist, lockScreen }: { onOpenSetlist: () => void; lockScreen: LockScreenControl }) {
   const {
     liveSession,
     livePart,
@@ -42,6 +50,7 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
     changeLoop,
     togglePause,
     goLive,
+    notify,
   } = useStage();
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -125,6 +134,23 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {lockScreen.supported && (
+            <Button
+              size="sm"
+              variant={lockScreen.active ? 'primary' : 'secondary'}
+              aria-pressed={lockScreen.active}
+              onClick={async () => {
+                if (lockScreen.active) return lockScreen.stop();
+                const ok = await lockScreen.start();
+                if (!ok) notify('Your browser blocked the lock screen display. Tap again.', 'error');
+                else notify('On: lock your phone to see the live song.', 'info');
+              }}
+              title="Show the live song on your phone’s lock screen"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              Lock screen{lockScreen.active ? ' on' : ''}
+            </Button>
+          )}
           {canControl && activeItem && (
             <Button size="sm" variant={roomState.is_paused ? 'primary' : 'secondary'} onClick={togglePause}>
               {roomState.is_paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}

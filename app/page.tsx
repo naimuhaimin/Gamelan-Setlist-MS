@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { TopBar, type Tab } from '@/components/TopBar';
@@ -10,11 +10,29 @@ import { LibraryView } from '@/components/LibraryView';
 import { InstrumentPicker, LoginModal, ShareModal } from '@/components/AccountDialogs';
 import { AccessModal, InstrumentsModal } from '@/components/AdminDialogs';
 import { Button, Toaster } from '@/components/ui';
+import { useLockScreen, type LockScreenInfo } from '@/lib/useLockScreen';
+import { formatIntro } from '@/lib/format';
 
 type Dialog = 'login' | 'instrument' | 'share' | 'instruments' | 'access' | null;
 
 export default function HomePage() {
-  const { loaded, loadError, reload, connection, isManager, role, instrumentChosen, instruments } = useStage();
+  const {
+    loaded,
+    loadError,
+    reload,
+    connection,
+    isManager,
+    role,
+    instrumentChosen,
+    instruments,
+    liveSession,
+    livePart,
+    liveQueue,
+    activeIndex,
+    activeItem,
+    roomState,
+    isCued,
+  } = useStage();
   const [tab, setTab] = useState<Tab>('stage');
   const [dialog, setDialog] = useState<Dialog>(null);
 
@@ -22,6 +40,39 @@ export default function HomePage() {
   useEffect(() => {
     if (tab === 'setlist' && !isManager) setTab('stage');
   }, [tab, isManager]);
+
+  // Live song on the phone's lock screen (opt-in per device)
+  const lockInfo = useMemo<LockScreenInfo | null>(() => {
+    if (!liveSession || !livePart) return null;
+    const location = `${liveSession.name} · ${livePart.name}`;
+    if (!activeItem)
+      return { title: `${livePart.name}: no songs`, line1: 'Waiting for the Maestro', line2: location, location, detail: '', intro: '–', loop: '–', cued: false, onHold: false };
+    const cued = isCued(activeItem.introInstruments);
+    const loop = `${roomState.current_loop_iteration || 1}/${activeItem.loopCount}`;
+    const intro = formatIntro(activeItem.introBarCount, activeItem.introUnit);
+    const next = liveQueue[activeIndex + 1];
+    const rhythm = activeItem.song.rhythms.join(' → ');
+    return {
+      title: activeItem.song.title,
+      line1: [
+        roomState.is_paused ? '⏸ ON HOLD' : cued ? '★ YOUR CUE' : null,
+        `Intro ${intro}`,
+        `Loop ${loop}`,
+        activeItem.introInstruments.join(', ') || null,
+        rhythm || null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      line2: `${location} · Song ${activeIndex + 1}/${liveQueue.length}${next ? ` · Next: ${next.song.title}` : ' · Last song'}`,
+      location,
+      detail: [activeItem.introInstruments.join(', '), rhythm].filter(Boolean).join(' · '),
+      intro,
+      loop,
+      cued,
+      onHold: roomState.is_paused,
+    };
+  }, [liveSession, livePart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued]);
+  const lockScreen = useLockScreen(lockInfo);
 
   // First visit on a device: ask the musician for their instrument
   useEffect(() => {
@@ -79,7 +130,7 @@ export default function HomePage() {
       )}
 
       <main className="flex-1">
-        {tab === 'stage' && <StageView onOpenSetlist={() => setTab('setlist')} />}
+        {tab === 'stage' && <StageView onOpenSetlist={() => setTab('setlist')} lockScreen={lockScreen} />}
         {tab === 'setlist' && isManager && <SetlistEditor onShowStage={() => setTab('stage')} />}
         {tab === 'library' && <LibraryView />}
       </main>

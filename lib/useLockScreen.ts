@@ -31,11 +31,15 @@ export const lockScreenSupported = () =>
   typeof navigator !== 'undefined' && 'mediaSession' in navigator && typeof Audio !== 'undefined';
 
 let silentUrl: string | null = null;
-/** 2 s of 8-bit mono silence as a WAV blob URL. */
+/**
+ * 10 s of 8-bit mono silence as a WAV blob URL.
+ * Chrome on Android only shows the media notification (and lock-screen controls)
+ * for media at least 5 s long, so the clip must be longer than that.
+ */
 function getSilentUrl() {
   if (silentUrl) return silentUrl;
   const rate = 8000;
-  const samples = rate * 2;
+  const samples = rate * 10;
   const buf = new ArrayBuffer(44 + samples);
   const v = new DataView(buf);
   const str = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));

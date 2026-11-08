@@ -87,7 +87,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
               <span
                 className={cx(
                   'w-4 h-4 rounded-full border-2',
-                  selected === r.id ? 'border-brass bg-brass shadow-[inset_0_0_0_3px_#13151c]' : 'border-line-strong'
+                  selected === r.id ? 'border-brass bg-brass shadow-[inset_0_0_0_3px_#171411]' : 'border-line-strong'
                 )}
               />
             </button>
@@ -170,7 +170,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
     if (!open || !url) return;
     const id = requestAnimationFrame(() => {
       if (canvasRef.current)
-        QRCode.toCanvas(canvasRef.current, url, { width: 220, margin: 1, color: { dark: '#0b0c10', light: '#ffffff' } }).catch(() => undefined);
+        QRCode.toCanvas(canvasRef.current, url, { width: 220, margin: 1, color: { dark: '#0d0b09', light: '#ffffff' } }).catch(() => undefined);
     });
     return () => cancelAnimationFrame(id);
   }, [open, url]);

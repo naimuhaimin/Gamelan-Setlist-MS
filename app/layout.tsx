@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Great_Vibes, Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { StageProvider } from '@/lib/stageContext';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+// Serif for titles (like "SENI" in the logo) and a script for the wordmark (like "Anjung")
+const display = Playfair_Display({ subsets: ['latin'], variable: '--font-display', weight: ['600', '700', '800'], display: 'swap' });
+const script = Great_Vibes({ subsets: ['latin'], variable: '--font-script', weight: '400', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Anjung Live',
@@ -15,12 +18,12 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0b0c10',
+  themeColor: '#0d0b09',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ms" className={inter.variable}>
+    <html lang="ms" className={`${inter.variable} ${display.variable} ${script.variable}`}>
       <body>
         <StageProvider>{children}</StageProvider>
       </body>

@@ -4,27 +4,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Stage palette: near-black for projection, one brass accent for cues & primary actions.
-        bg: '#0b0c10',
-        surface: '#13151c',
-        raised: '#1a1d26',
-        line: '#262a36',
-        'line-strong': '#343a4a',
-        ink: '#f3f4f6',
-        muted: '#9aa1b2',
-        faint: '#6b7285',
+        // Anjung Seni palette (from the logo): warm black, ivory, carved bronze & gold.
+        bg: '#0d0b09',
+        surface: '#171411',
+        raised: '#201c18',
+        line: '#2f2923',
+        'line-strong': '#433a31',
+        ink: '#f4eee4', // ivory
+        muted: '#ab9f8f',
+        faint: '#786d60',
         brass: {
-          DEFAULT: '#f5b335',
-          strong: '#ffc54d',
-          soft: 'rgba(245, 179, 53, 0.14)',
-          ink: '#1a1203',
+          DEFAULT: '#c99a52', // gold leaf: primary actions, cues
+          strong: '#ddb46e',
+          soft: 'rgba(201, 154, 82, 0.15)',
+          ink: '#1c1207',
         },
-        live: '#ef4444',
-        ok: '#22c55e',
-        danger: '#f87171',
+        bronze: '#7a5222', // the logo's carved-corner bronze
+        live: '#e5484d',
+        ok: '#46a758',
+        danger: '#f2797c',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        script: ['var(--font-script)', 'cursive'],
       },
       borderRadius: {
         xl: '0.875rem',
@@ -34,8 +37,8 @@ module.exports = {
         fadeIn: { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },
         sheetUp: { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'none' } },
         cuePulse: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(245,179,53,0.55)' },
-          '50%': { boxShadow: '0 0 0 10px rgba(245,179,53,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(201,154,82,0.55)' },
+          '50%': { boxShadow: '0 0 0 10px rgba(201,154,82,0)' },
         },
       },
       animation: {

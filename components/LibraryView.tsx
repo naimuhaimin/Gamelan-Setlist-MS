@@ -30,7 +30,7 @@ export function LibraryView() {
     <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16">
       <div className="pt-4 sm:pt-6 flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[180px]">
-          <h1 className="text-2xl font-semibold">Song library</h1>
+          <h1 className="font-display text-3xl font-bold">Song library</h1>
           <p className="text-sm text-muted tabular">
             {songs.length} songs{isManager ? '' : ' · view only'}
           </p>
@@ -284,13 +284,13 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
           {rhythms.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {rhythms.map((r, i) => (
-                <span key={r} className="h-9 pl-3 pr-1 rounded-full bg-teal-500/15 text-teal-200 border border-teal-500/30 inline-flex items-center gap-1 text-sm font-medium">
-                  <span className="text-teal-400/70 tabular">{i + 1}.</span> {r}
+                <span key={r} className="h-9 pl-3 pr-1 rounded-full bg-bronze/40 text-brass-strong border border-bronze/70 inline-flex items-center gap-1 text-sm font-medium">
+                  <span className="text-brass/70 tabular">{i + 1}.</span> {r}
                   <button
                     type="button"
                     aria-label={`Remove ${r}`}
                     onClick={() => setRhythms((cur) => cur.filter((x) => x !== r))}
-                    className="w-7 h-7 grid place-items-center rounded-full hover:bg-teal-500/20"
+                    className="w-7 h-7 grid place-items-center rounded-full hover:bg-bronze/60"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

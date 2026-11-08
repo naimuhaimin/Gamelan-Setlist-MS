@@ -147,7 +147,7 @@ export function StageView({
       {/* Status strip */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-4 sm:pt-6">
         {isFinished ? (
-          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-green-500/15 text-green-300 text-sm font-bold">
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-brass-soft text-brass-strong border border-brass/40 text-sm font-bold">
             <CheckCircle2 className="w-4 h-4" /> FINISHED
           </span>
         ) : roomState.is_paused ? (
@@ -214,13 +214,13 @@ export function StageView({
       </div>
 
       {isFinished ? (
-        <Card className="mt-4 p-6 sm:p-10 border-green-500/30">
+        <Card className="mt-4 p-6 sm:p-10 border-brass/40">
           <div className="flex flex-col items-center text-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-green-500/15 text-green-300 grid place-items-center">
+            <div className="w-16 h-16 rounded-full bg-brass-soft text-brass-strong ring-1 ring-brass/40 grid place-items-center">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-green-300">Finished</div>
-            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} is done</h1>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-brass">Finished</div>
+            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} is done</h1>
             <p className="text-lg text-muted">No song is playing right now.</p>
             {nextPart ? (
               <p className="text-base">
@@ -279,7 +279,7 @@ export function StageView({
                   <div className="w-20 h-20 rounded-full bg-brass text-brass-ink grid place-items-center animate-cue-pulse">
                     <Pause className="w-10 h-10" fill="currentColor" />
                   </div>
-                  <div className="text-4xl sm:text-6xl font-black tracking-tight text-brass">ON HOLD</div>
+                  <div className="font-display text-4xl sm:text-6xl font-extrabold tracking-wide text-brass">ON HOLD</div>
                   <div className="text-lg sm:text-xl font-semibold">Wait for the signal</div>
                   <div className="text-sm text-muted">Paused at: {activeItem.song.title}</div>
                 </div>
@@ -299,7 +299,7 @@ export function StageView({
                 <span className="text-sm text-muted font-medium">{roomState.is_paused ? 'On hold' : 'Now playing'}</span>
                 {activeItem.hasOverride && <Badge tone="override">Adjusted for this ceremony</Badge>}
               </div>
-              <h1 className="text-4xl sm:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] [text-wrap:balance] break-words">
+              <h1 className="font-display text-4xl sm:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.08] [text-wrap:balance] break-words">
                 {activeItem.song.title}
               </h1>
             </div>
@@ -311,7 +311,7 @@ export function StageView({
                   className={cx(
                     'ml-2',
                     activeItem.introUnit === 'beats'
-                      ? 'text-2xl font-bold uppercase tracking-wide text-teal-300'
+                      ? 'text-2xl font-bold uppercase tracking-wide text-brass-strong'
                       : 'text-lg text-muted'
                   )}
                 >
@@ -514,7 +514,7 @@ function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boo
   return (
     <div className={cx('rounded-xl p-4 border', cued ? 'border-brass/60 bg-brass-soft' : 'border-line bg-raised/60')}>
       {cued && <div className="text-xs font-bold uppercase tracking-wider text-brass mb-1">Your cue next</div>}
-      <div className="text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
+      <div className="font-display text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted tabular">
         <span>
           <b className="text-ink">{item.introBarCount}</b> {introUnitWord(item.introBarCount, item.introUnit)} intro

@@ -91,17 +91,17 @@ function drawArtwork(info: LockScreenInfo): string | null {
   if (!ctx) return null;
   const font = (w: number, px: number) => `${w} ${px}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
 
-  ctx.fillStyle = info.highlight ? '#f5b335' : '#13151c';
+  ctx.fillStyle = info.highlight ? '#c99a52' : '#171411';
   ctx.fillRect(0, 0, size, size);
-  const ink = info.highlight ? '#1a1203' : '#f3f4f6';
-  const muted = info.highlight ? 'rgba(26,18,3,0.72)' : '#9aa1b2';
+  const ink = info.highlight ? '#1c1207' : '#f4eee4';
+  const muted = info.highlight ? 'rgba(28,18,7,0.72)' : '#ab9f8f';
 
   // Now playing, small, at the top
   ctx.fillStyle = muted;
   ctx.font = font(600, 26);
   wrap(ctx, info.top, size - 64, 1).forEach((l) => ctx.fillText(l, 32, 54));
 
-  ctx.fillStyle = info.highlight ? '#1a1203' : info.onHold ? '#f5b335' : '#5eead4';
+  ctx.fillStyle = info.highlight ? '#1c1207' : info.onHold ? '#c99a52' : '#ddb46e';
   ctx.font = font(800, 34);
   ctx.fillText(info.onHold ? 'ON HOLD' : info.kicker, 32, 112, size - 64);
 

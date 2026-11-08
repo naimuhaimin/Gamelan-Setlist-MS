@@ -48,7 +48,7 @@
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #343a4a;
+    background: #433a31;
     border-radius: 9999px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {

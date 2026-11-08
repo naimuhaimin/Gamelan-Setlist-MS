@@ -109,7 +109,10 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
               className="w-9 h-9 rounded-xl shrink-0 ring-1 ring-line object-cover"
             />
             <div className="min-w-0 hidden min-[420px]:block">
-              <div className="font-semibold leading-tight">Anjung Live</div>
+              <div className="leading-none flex items-baseline gap-1.5" aria-label="Anjung Live">
+                <span className="font-script text-[1.65rem] text-ink -mb-0.5">Anjung</span>
+                <span className="font-display text-[0.7rem] font-semibold tracking-[0.28em] text-brass">LIVE</span>
+              </div>
               <div className="text-xs text-muted truncate leading-tight">
                 {liveSession && livePart ? `${liveSession.name} · ${livePart.name}` : 'Konvokesyen'}
               </div>

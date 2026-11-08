@@ -159,7 +159,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
           <Card className="lg:col-span-7 xl:col-span-8">
             <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-4 border-b border-line">
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold">{part.name}</h2>
+                <h2 className="font-display text-xl font-bold">{part.name}</h2>
                 <p className="text-sm text-muted">Set the order. Adjust a song only for this ceremony with ⚙.</p>
               </div>
               <div className="ml-auto">

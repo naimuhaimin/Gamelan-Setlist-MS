@@ -15,7 +15,7 @@ type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
 const variantClass: Record<ButtonVariant, string> = {
   primary: 'bg-brass text-brass-ink hover:bg-brass-strong font-semibold',
-  secondary: 'bg-raised text-ink border border-line hover:border-line-strong hover:bg-[#20232e]',
+  secondary: 'bg-raised text-ink border border-line hover:border-line-strong hover:bg-[#28231e]',
   ghost: 'text-muted hover:text-ink hover:bg-raised',
   danger: 'bg-red-500/10 text-danger border border-red-500/30 hover:bg-red-500/20',
 };
@@ -246,7 +246,7 @@ export const Rhythms = ({ rhythms, size = 'sm', className }: { rhythms: string[]
           {i > 0 && <span className="text-faint">→</span>}
           <span
             className={cx(
-              'rounded-md bg-teal-500/15 text-teal-300 font-semibold',
+              'rounded-md bg-bronze/40 text-brass-strong border border-bronze/70 font-semibold',
               size === 'lg' ? 'px-3 py-1.5 text-base' : 'px-1.5 py-0.5 text-xs'
             )}
           >
@@ -428,7 +428,7 @@ export const Modal = ({
       >
         <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
           <div className="min-w-0">
-            <h2 id={titleId} className="text-lg font-semibold text-ink">
+            <h2 id={titleId} className="font-display text-xl font-bold text-ink">
               {title}
             </h2>
             {description && <div className="text-sm text-muted mt-0.5">{description}</div>}
@@ -499,7 +499,7 @@ export const Toaster = () => {
           key={t.id}
           className={cx(
             'pointer-events-auto w-full flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm shadow-xl animate-fade-in',
-            t.kind === 'error' && 'bg-[#2a1214] border-red-500/40 text-red-200',
+            t.kind === 'error' && 'bg-[#2b1513] border-red-500/40 text-red-200',
             t.kind === 'success' && 'bg-raised border-line text-ink',
             t.kind === 'info' && 'bg-raised border-line text-ink'
           )}

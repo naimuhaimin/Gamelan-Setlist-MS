@@ -51,7 +51,8 @@ export async function fetchParts() {
 }
 export async function fetchSongs() {
   const res = await db().from('songs').select('*');
-  return sortSongs(check(res, 'Load songs') as Song[]);
+  // `rhythms` may be missing until the column migration has run
+  return sortSongs((check(res, 'Load songs') as Song[]).map((s) => ({ ...s, rhythms: s.rhythms ?? [] })));
 }
 export async function fetchQueueItems() {
   const res = await db().from('queue_items').select('*').order('sort_order', { ascending: true });
@@ -102,9 +103,9 @@ export async function insertSong(song: Song) {
   check(await db().from('songs').insert(song), 'Add song');
 }
 export async function updateSong(song: Song) {
-  const { id, title, intro_bar_count, intro_instruments, loop_count } = song;
+  const { id, title, intro_bar_count, intro_instruments, loop_count, rhythms } = song;
   check(
-    await db().from('songs').update({ title, intro_bar_count, intro_instruments, loop_count }).eq('id', id),
+    await db().from('songs').update({ title, intro_bar_count, intro_instruments, loop_count, rhythms }).eq('id', id),
     'Update song'
   );
 }

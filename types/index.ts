@@ -4,12 +4,12 @@
 export type RoleType = 'admin' | 'maestro' | 'controller' | 'player';
 
 /**
- * STRICT REQUIREMENT:
- * Each song entry in the library supports ONLY these metadata fields:
+ * Song library fields (keep to these; add new ones only on request):
  * 1. Title
  * 2. Intro Bar Count (bars in the intro before the ensemble enters)
  * 3. Intro Instruments (instruments responsible for the intro cue)
  * 4. Loop Count (times the song/section is looped)
+ * 5. Rhythms (one or more rhythm names, in playing order)
  */
 export interface Song {
   id: string;
@@ -17,6 +17,7 @@ export interface Song {
   intro_bar_count: number;
   intro_instruments: string[];
   loop_count: number;
+  rhythms: string[];
   created_at?: string;
 }
 

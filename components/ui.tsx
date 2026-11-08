@@ -152,6 +152,26 @@ export const Chip = ({
   </button>
 );
 
+/** Rhythm names in playing order, e.g. "Inang → Joget". */
+export const Rhythms = ({ rhythms, size = 'sm', className }: { rhythms: string[]; size?: 'sm' | 'lg'; className?: string }) =>
+  rhythms.length ? (
+    <span className={cx('inline-flex flex-wrap items-center gap-1', className)}>
+      {rhythms.map((r, i) => (
+        <React.Fragment key={`${r}-${i}`}>
+          {i > 0 && <span className="text-faint">→</span>}
+          <span
+            className={cx(
+              'rounded-md bg-teal-500/15 text-teal-300 font-semibold',
+              size === 'lg' ? 'px-3 py-1.5 text-base' : 'px-1.5 py-0.5 text-xs'
+            )}
+          >
+            {r}
+          </span>
+        </React.Fragment>
+      ))}
+    </span>
+  ) : null;
+
 // ---------------------------------------------------------------------------
 // Form fields
 // ---------------------------------------------------------------------------

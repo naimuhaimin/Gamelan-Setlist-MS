@@ -33,15 +33,18 @@ CREATE TABLE IF NOT EXISTS public.parts (
 );
 
 -- SONGS TABLE (Main Repertoire Library)
--- STRICT REQUIREMENT: Only Title, Intro Bar Count, Intro Instruments, Loop Count
+-- Fields: Title, Intro Bar Count, Intro Instruments, Loop Count, Rhythms
 CREATE TABLE IF NOT EXISTS public.songs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     title TEXT NOT NULL,
     intro_bar_count INTEGER NOT NULL DEFAULT 4 CHECK (intro_bar_count >= 0),
     intro_instruments TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
     loop_count INTEGER NOT NULL DEFAULT 1 CHECK (loop_count >= 1),
+    rhythms TEXT[] NOT NULL DEFAULT '{}'::TEXT[],   -- one or more rhythm names, in playing order
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Migration for databases created before rhythms existed:
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS rhythms TEXT[] NOT NULL DEFAULT '{}'::TEXT[];
 
 -- QUEUE ITEMS TABLE (Ordered setlist per Bahagian with Instance Overrides)
 CREATE TABLE IF NOT EXISTS public.queue_items (

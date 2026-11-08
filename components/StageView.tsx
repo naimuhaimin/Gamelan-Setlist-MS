@@ -16,7 +16,7 @@ import {
 import { useStage } from '@/lib/stageContext';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, Button, Card, EmptyState, IconButton, LiveDot, cx } from './ui';
+import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } from './ui';
 import { LivePicker } from './LivePicker';
 
 export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
@@ -194,6 +194,13 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
               </Stat>
             </div>
 
+            {activeItem.song.rhythms.length > 0 && (
+              <div>
+                <div className="text-sm text-muted font-medium mb-2">Rhythm</div>
+                <Rhythms rhythms={activeItem.song.rhythms} size="lg" />
+              </div>
+            )}
+
             <div>
               <div className="text-sm text-muted font-medium mb-2">Intro instruments</div>
               <div className="flex flex-wrap gap-2">
@@ -256,6 +263,7 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
                           <span className="block text-xs text-muted tabular">
                             {r.introBarCount} bars · {r.loopCount}× · {r.introInstruments.join(', ') || '—'}
                           </span>
+                          {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
                         </span>
                         {mine && <Badge tone="brass">Cue</Badge>}
                       </>
@@ -366,6 +374,7 @@ function NextCard({ item, cued }: { item: ResolvedQueueItem; cued: boolean }) {
         </span>
       </div>
       <div className="mt-1 text-sm text-muted">{item.introInstruments.join(', ') || 'No intro instruments'}</div>
+      {item.song.rhythms.length > 0 && <Rhythms rhythms={item.song.rhythms} className="mt-2" />}
       {item.hasOverride && <Badge tone="override" className="mt-2">Adjusted</Badge>}
     </div>
   );

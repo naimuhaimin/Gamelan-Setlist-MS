@@ -15,6 +15,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import logoMark from '@/assets/logo-mark.png';
 import { cx } from './ui';
 
 export type Tab = 'stage' | 'setlist' | 'library';
@@ -101,7 +102,7 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
           <div className="flex items-center gap-2.5 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-mark.png"
+              src={logoMark.src}
               alt="Anjung Seni"
               width={36}
               height={36}

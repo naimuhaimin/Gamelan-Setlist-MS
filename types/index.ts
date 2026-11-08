@@ -3,10 +3,13 @@
 
 export type RoleType = 'admin' | 'maestro' | 'controller' | 'player';
 
+/** Whether the intro length is counted in whole bars or in beats. */
+export type IntroUnit = 'bars' | 'beats';
+
 /**
  * Song library fields (keep to these; add new ones only on request):
  * 1. Title
- * 2. Intro Bar Count (bars in the intro before the ensemble enters)
+ * 2. Intro length: `intro_bar_count` + `intro_unit` (bars or beats before the ensemble enters)
  * 3. Intro Instruments (instruments responsible for the intro cue)
  * 4. Loop Count (times the song/section is looped)
  * 5. Rhythms (one or more rhythm names, in playing order)
@@ -14,7 +17,8 @@ export type RoleType = 'admin' | 'maestro' | 'controller' | 'player';
 export interface Song {
   id: string;
   title: string;
-  intro_bar_count: number;
+  intro_bar_count: number; // intro length, counted in `intro_unit`
+  intro_unit: IntroUnit;
   intro_instruments: string[];
   loop_count: number;
   rhythms: string[];
@@ -28,6 +32,7 @@ export interface QueueItem {
   sort_order: number;
   // One-time overrides for this queue position only (null = use the song's value)
   override_intro_bar_count: number | null;
+  override_intro_unit: IntroUnit | null; // used together with override_intro_bar_count
   override_intro_instruments: string[] | null;
   override_loop_count: number | null;
   created_at?: string;
@@ -74,6 +79,7 @@ export interface ResolvedQueueItem {
   queueItem: QueueItem;
   song: Song;
   introBarCount: number;
+  introUnit: IntroUnit;
   introInstruments: string[];
   loopCount: number;
   hasOverride: boolean;

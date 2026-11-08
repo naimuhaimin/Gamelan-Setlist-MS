@@ -52,11 +52,13 @@ export async function fetchParts() {
 export async function fetchSongs() {
   const res = await db().from('songs').select('*');
   // `rhythms` may be missing until the column migration has run
-  return sortSongs((check(res, 'Load songs') as Song[]).map((s) => ({ ...s, rhythms: s.rhythms ?? [] })));
+  return sortSongs(
+    (check(res, 'Load songs') as Song[]).map((s) => ({ ...s, rhythms: s.rhythms ?? [], intro_unit: s.intro_unit ?? 'bars' }))
+  );
 }
 export async function fetchQueueItems() {
   const res = await db().from('queue_items').select('*').order('sort_order', { ascending: true });
-  return check(res, 'Load setlists') as QueueItem[];
+  return (check(res, 'Load setlists') as QueueItem[]).map((q) => ({ ...q, override_intro_unit: q.override_intro_unit ?? null }));
 }
 export async function fetchInstruments() {
   const res = await db().from('instruments').select('name, sort_order').order('sort_order', { ascending: true });
@@ -103,9 +105,9 @@ export async function insertSong(song: Song) {
   check(await db().from('songs').insert(song), 'Add song');
 }
 export async function updateSong(song: Song) {
-  const { id, title, intro_bar_count, intro_instruments, loop_count, rhythms } = song;
+  const { id, title, intro_bar_count, intro_unit, intro_instruments, loop_count, rhythms } = song;
   check(
-    await db().from('songs').update({ title, intro_bar_count, intro_instruments, loop_count, rhythms }).eq('id', id),
+    await db().from('songs').update({ title, intro_bar_count, intro_unit, intro_instruments, loop_count, rhythms }).eq('id', id),
     'Update song'
   );
 }
@@ -132,7 +134,10 @@ export async function reorderQueue(orderedIds: string[]) {
 }
 export async function saveOverride(
   queueItemId: string,
-  overrides: Pick<QueueItem, 'override_intro_bar_count' | 'override_intro_instruments' | 'override_loop_count'>
+  overrides: Pick<
+    QueueItem,
+    'override_intro_bar_count' | 'override_intro_unit' | 'override_intro_instruments' | 'override_loop_count'
+  >
 ) {
   check(await db().from('queue_items').update(overrides).eq('id', queueItemId), 'Save override');
 }

@@ -15,8 +15,8 @@ Next.js 14 App Router, React 18, TypeScript, Tailwind, Lucide icons, `@supabase/
 ## Rules
 
 - **No hardcoded instruments or songs.** They live only in the Supabase `instruments` and `songs` tables. Never add presets, seeds or fallbacks to code.
-- A `Song` has ONLY `title`, `intro_bar_count`, `intro_instruments`, `loop_count`, `rhythms` (text[], ordered). Add fields only when the user asks; a new column needs SQL the user runs in Supabase, plus an update to `supabase-schema.sql`.
-- Setlist overrides (`override_*` on `queue_items`, null = use the song's value) never change the library song.
+- A `Song` has ONLY `title`, `intro_bar_count` + `intro_unit` ('bars' | 'beats'; the count is in that unit), `intro_instruments`, `loop_count`, `rhythms` (text[], ordered). Show intro lengths with `formatIntro` / `introUnitWord` from `lib/format.ts`, never a hardcoded "bars". Add fields only when the user asks; a new column needs SQL the user runs in Supabase, plus an update to `supabase-schema.sql`.
+- Setlist overrides (`override_*` on `queue_items`, null = use the song's value) never change the library song. `override_intro_unit` goes with `override_intro_bar_count`.
 - Song lists are sorted naturally (`naturalCompare` in `lib/supabaseService.ts`) because titles start with numbers.
 - UI copy is English with Malay domain terms (Sidang, Bahagian, Konvokesyen).
 

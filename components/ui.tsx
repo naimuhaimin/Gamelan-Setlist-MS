@@ -152,6 +152,27 @@ export const Chip = ({
   </button>
 );
 
+/** Bars / Beats segmented switch for the intro length. */
+export const UnitSwitch = ({ value, onChange }: { value: 'bars' | 'beats'; onChange: (v: 'bars' | 'beats') => void }) => (
+  <div role="radiogroup" aria-label="Intro counted in" className="inline-flex p-1 rounded-xl bg-bg border border-line">
+    {(['bars', 'beats'] as const).map((u) => (
+      <button
+        key={u}
+        type="button"
+        role="radio"
+        aria-checked={value === u}
+        onClick={() => onChange(u)}
+        className={cx(
+          'h-8 px-4 rounded-lg text-sm font-medium capitalize transition-colors',
+          value === u ? 'bg-brass text-brass-ink' : 'text-muted hover:text-ink'
+        )}
+      >
+        {u}
+      </button>
+    ))}
+  </div>
+);
+
 /** Rhythm names in playing order, e.g. "Inang → Joget". */
 export const Rhythms = ({ rhythms, size = 'sm', className }: { rhythms: string[]; size?: 'sm' | 'lg'; className?: string }) =>
   rhythms.length ? (

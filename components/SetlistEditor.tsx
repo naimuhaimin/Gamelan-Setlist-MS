@@ -17,6 +17,8 @@ import { useStage } from '@/lib/stageContext';
 import type { ResolvedQueueItem } from '@/types';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Input, LiveDot, Rhythms, Toggle, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
+import { formatIntro } from '@/lib/format';
+import type { IntroUnit } from '@/types';
 import { SidangModal } from './SidangModal';
 
 export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
@@ -187,7 +189,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                         {r.hasOverride && <Badge tone="override">Adjusted</Badge>}
                       </div>
                       <div className="text-xs text-muted truncate tabular">
-                        {r.introBarCount} bars · {r.loopCount}× · {r.introInstruments.join(', ') || 'no intro instrument'}
+                        {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || 'no intro instrument'}
                       </div>
                       {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
                     </div>
@@ -276,7 +278,15 @@ function AddSongs({
   countInPart,
   onAdd,
 }: {
-  songs: { id: string; title: string; intro_bar_count: number; loop_count: number; intro_instruments: string[]; rhythms: string[] }[];
+  songs: {
+    id: string;
+    title: string;
+    intro_bar_count: number;
+    intro_unit: IntroUnit;
+    loop_count: number;
+    intro_instruments: string[];
+    rhythms: string[];
+  }[];
   countInPart: (songId: string) => number;
   onAdd: (songId: string) => void;
 }) {
@@ -309,7 +319,7 @@ function AddSongs({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{s.title}</span>
                   <span className="block text-xs text-muted tabular truncate">
-                    {s.intro_bar_count} bars · {s.loop_count}× · {s.intro_instruments.join(', ')}
+                    {formatIntro(s.intro_bar_count, s.intro_unit)} · {s.loop_count}× · {s.intro_instruments.join(', ')}
                     {s.rhythms.length > 0 && ` · ${s.rhythms.join(' → ')}`}
                   </span>
                 </span>

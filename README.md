@@ -12,8 +12,8 @@ Sidang (e.g. Sidang 23)
       └── Ordered setlist of songs (with optional one-time adjustments)
 ```
 
-Each song in the library has five fields: **Title**, **Intro bars**, **Intro instruments**, **Loops** and **Rhythms** (one or more rhythm names, in playing order).
-A setlist position can override intro bars, intro instruments or loops for that ceremony only. The library song stays unchanged.
+Each song in the library has five fields: **Title**, **Intro length** (in bars or beats, e.g. *4 bars* or *2 beats*), **Intro instruments**, **Loops** and **Rhythms** (one or more rhythm names, in playing order).
+A setlist position can override intro length, intro instruments or loops for that ceremony only. The library song stays unchanged.
 
 Instruments and songs live only in the database. There are no built-in presets.
 

@@ -3,13 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import { useStage } from '@/lib/stageContext';
 import type { ResolvedQueueItem } from '@/types';
-import { Button, Chip, Modal, Stepper, Toggle } from './ui';
+import { Button, Chip, Modal, Stepper, Toggle, UnitSwitch } from './ui';
+import { formatIntro } from '@/lib/format';
+import type { IntroUnit } from '@/types';
 
 /** One-time adjustments for a single setlist position; the library song is never changed. */
 export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | null; onClose: () => void }) {
   const { instruments, saveOverride } = useStage();
   const [useBars, setUseBars] = useState(false);
   const [bars, setBars] = useState(4);
+  const [unit, setUnit] = useState<IntroUnit>('bars');
   const [useInst, setUseInst] = useState(false);
   const [insts, setInsts] = useState<string[]>([]);
   const [useLoops, setUseLoops] = useState(false);
@@ -21,6 +24,7 @@ export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | nul
     const q = item.queueItem;
     setUseBars(q.override_intro_bar_count !== null);
     setBars(item.introBarCount);
+    setUnit(item.introUnit);
     setUseInst(q.override_intro_instruments !== null);
     setInsts(item.introInstruments);
     setUseLoops(q.override_loop_count !== null);
@@ -35,6 +39,7 @@ export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | nul
     try {
       await saveOverride(item.queueItem.id, {
         override_intro_bar_count: !clear && useBars ? bars : null,
+        override_intro_unit: !clear && useBars ? unit : null,
         override_intro_instruments: !clear && useInst ? insts : null,
         override_loop_count: !clear && useLoops ? loops : null,
       });
@@ -69,8 +74,11 @@ export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | nul
       }
     >
       <div className="space-y-3">
-        <Row title="Intro bars" original={`${song.intro_bar_count} bars`} on={useBars} setOn={setUseBars}>
-          <Stepper value={bars} onChange={setBars} min={0} max={64} suffix="bars" />
+        <Row title="Intro length" original={formatIntro(song.intro_bar_count, song.intro_unit)} on={useBars} setOn={setUseBars}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Stepper value={bars} onChange={setBars} min={0} max={64} />
+            <UnitSwitch value={unit} onChange={setUnit} />
+          </div>
         </Row>
         <Row
           title="Intro instruments"

@@ -18,6 +18,7 @@ import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
 import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } from './ui';
 import { LivePicker } from './LivePicker';
+import { formatIntro, introUnitWord } from '@/lib/format';
 
 export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
   const {
@@ -167,7 +168,7 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
               <div className="rounded-2xl bg-brass text-brass-ink px-5 py-4 animate-cue-pulse">
                 <div className="text-xs font-bold uppercase tracking-[0.18em]">Your cue</div>
                 <div className="text-xl sm:text-2xl font-bold leading-tight mt-0.5">
-                  {selectedInstrument} starts the intro · {activeItem.introBarCount} bars
+                  {selectedInstrument} starts the intro · {formatIntro(activeItem.introBarCount, activeItem.introUnit)}
                 </div>
               </div>
             )}
@@ -185,7 +186,16 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <Stat label="Intro">
                 <span className="text-5xl sm:text-6xl font-bold tabular">{activeItem.introBarCount}</span>
-                <span className="text-lg text-muted ml-2">bars</span>
+                <span
+                  className={cx(
+                    'ml-2',
+                    activeItem.introUnit === 'beats'
+                      ? 'text-2xl font-bold uppercase tracking-wide text-teal-300'
+                      : 'text-lg text-muted'
+                  )}
+                >
+                  {introUnitWord(activeItem.introBarCount, activeItem.introUnit)}
+                </span>
               </Stat>
               <Stat label="Loop" accent>
                 <span className="text-5xl sm:text-6xl font-bold tabular text-brass">{loop}</span>
@@ -261,7 +271,7 @@ export function StageView({ onOpenSetlist }: { onOpenSetlist: () => void }) {
                         <span className="flex-1 min-w-0">
                           <span className="block truncate font-medium">{r.song.title}</span>
                           <span className="block text-xs text-muted tabular">
-                            {r.introBarCount} bars · {r.loopCount}× · {r.introInstruments.join(', ') || '—'}
+                            {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || '—'}
                           </span>
                           {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
                         </span>
@@ -367,7 +377,7 @@ function NextCard({ item, cued }: { item: ResolvedQueueItem; cued: boolean }) {
       <div className="text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted tabular">
         <span>
-          <b className="text-ink">{item.introBarCount}</b> bars intro
+          <b className="text-ink">{item.introBarCount}</b> {introUnitWord(item.introBarCount, item.introUnit)} intro
         </span>
         <span>
           <b className="text-ink">{item.loopCount}</b>× loop

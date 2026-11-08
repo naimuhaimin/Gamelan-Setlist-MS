@@ -26,7 +26,10 @@ export interface Toast {
   message: string;
 }
 
-type Overrides = Pick<QueueItem, 'override_intro_bar_count' | 'override_intro_instruments' | 'override_loop_count'>;
+type Overrides = Pick<
+  QueueItem,
+  'override_intro_bar_count' | 'override_intro_unit' | 'override_intro_instruments' | 'override_loop_count'
+>;
 
 interface StageContextType {
   // Data
@@ -143,6 +146,7 @@ export function resolveItem(q: QueueItem, song: Song): ResolvedQueueItem {
     queueItem: q,
     song,
     introBarCount: q.override_intro_bar_count ?? song.intro_bar_count,
+    introUnit: q.override_intro_bar_count !== null ? q.override_intro_unit ?? song.intro_unit : song.intro_unit,
     introInstruments: q.override_intro_instruments ?? song.intro_instruments,
     loopCount: q.override_loop_count ?? song.loop_count,
     hasOverride:
@@ -462,6 +466,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       song_id: songId,
       sort_order: existing.reduce((m, q) => Math.max(m, q.sort_order), 0) + 1,
       override_intro_bar_count: null,
+      override_intro_unit: null,
       override_intro_instruments: null,
       override_loop_count: null,
     };

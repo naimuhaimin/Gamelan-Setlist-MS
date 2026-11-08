@@ -4,7 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ListMusic, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { Song } from '@/types';
-import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, Stepper, cx } from './ui';
+import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, Stepper, UnitSwitch, cx } from './ui';
+import { formatIntro, introUnitWord } from '@/lib/format';
+import type { IntroUnit } from '@/types';
 
 export function LibraryView() {
   const { songs, instruments, queueItems, isManager, selectedInstrument, removeSong } = useStage();
@@ -73,7 +75,7 @@ export function LibraryView() {
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted tabular">
                       <span>
-                        <b className="text-ink font-semibold">{s.intro_bar_count}</b> bars intro
+                        <b className="text-ink font-semibold">{s.intro_bar_count}</b> {introUnitWord(s.intro_bar_count, s.intro_unit)} intro
                       </span>
                       <span>
                         <b className="text-ink font-semibold">{s.loop_count}</b>× loop
@@ -142,6 +144,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
   const isNew = song === 'new';
   const [title, setTitle] = useState('');
   const [bars, setBars] = useState(4);
+  const [unit, setUnit] = useState<IntroUnit>('bars');
   const [insts, setInsts] = useState<string[]>([]);
   const [loops, setLoops] = useState(4);
   const [rhythms, setRhythms] = useState<string[]>([]);
@@ -155,12 +158,14 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
     if (song === 'new') {
       setTitle('');
       setBars(4);
+      setUnit('bars');
       setInsts([]);
       setLoops(4);
       setRhythms([]);
     } else {
       setTitle(song.title);
       setBars(song.intro_bar_count);
+      setUnit(song.intro_unit ?? 'bars');
       setInsts(song.intro_instruments);
       setLoops(song.loop_count);
       setRhythms(song.rhythms ?? []);
@@ -196,7 +201,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
       const pending = rhythmDraft.trim();
       const finalRhythms =
         pending && !rhythms.some((x) => x.toLowerCase() === pending.toLowerCase()) ? [...rhythms, pending] : rhythms;
-      const data = { title: t, intro_bar_count: bars, intro_instruments: insts, loop_count: loops, rhythms: finalRhythms };
+      const data = { title: t, intro_bar_count: bars, intro_unit: unit, intro_instruments: insts, loop_count: loops, rhythms: finalRhythms };
       if (isNew) await addSong(data);
       else await editSong({ ...(song as Song), ...data });
       onClose();
@@ -246,8 +251,11 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
         <Field label="Title" htmlFor="song-title">
           <Input id="song-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 54 Joget Pahang" />
         </Field>
-        <Field label="Intro bars" hint="Bars played before the whole ensemble comes in.">
-          <Stepper value={bars} onChange={setBars} min={0} max={64} suffix="bars" />
+        <Field label="Intro length" hint={`Played before the whole ensemble comes in: ${formatIntro(bars, unit)}.`}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Stepper value={bars} onChange={setBars} min={0} max={64} />
+            <UnitSwitch value={unit} onChange={setUnit} />
+          </div>
           {quick([1, 2, 4, 6, 8], bars, setBars, '')}
         </Field>
         <Field label="Intro instruments" hint="Musicians on these instruments get a “Your cue” alert.">

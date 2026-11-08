@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS public.parts (
 CREATE TABLE IF NOT EXISTS public.songs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     title TEXT NOT NULL,
-    intro_bar_count INTEGER NOT NULL DEFAULT 4 CHECK (intro_bar_count >= 0),
+    intro_bar_count INTEGER NOT NULL DEFAULT 4 CHECK (intro_bar_count >= 0),   -- intro length, counted in intro_unit
+    intro_unit TEXT NOT NULL DEFAULT 'bars' CHECK (intro_unit IN ('bars','beats')),
     intro_instruments TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
     loop_count INTEGER NOT NULL DEFAULT 1 CHECK (loop_count >= 1),
     rhythms TEXT[] NOT NULL DEFAULT '{}'::TEXT[],   -- one or more rhythm names, in playing order
@@ -45,6 +46,9 @@ CREATE TABLE IF NOT EXISTS public.songs (
 );
 -- Migration for databases created before rhythms existed:
 ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS rhythms TEXT[] NOT NULL DEFAULT '{}'::TEXT[];
+-- Migration for databases created before intro units existed:
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS intro_unit TEXT NOT NULL DEFAULT 'bars' CHECK (intro_unit IN ('bars','beats'));
+ALTER TABLE public.queue_items ADD COLUMN IF NOT EXISTS override_intro_unit TEXT CHECK (override_intro_unit IN ('bars','beats'));
 
 -- QUEUE ITEMS TABLE (Ordered setlist per Bahagian with Instance Overrides)
 CREATE TABLE IF NOT EXISTS public.queue_items (
@@ -54,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.queue_items (
     sort_order INTEGER NOT NULL DEFAULT 1,
     -- Maestro Instance Overrides (NULL inherits from the master song library)
     override_intro_bar_count INTEGER CHECK (override_intro_bar_count IS NULL OR override_intro_bar_count >= 0),
+    override_intro_unit TEXT CHECK (override_intro_unit IN ('bars','beats')),  -- goes with override_intro_bar_count
     override_intro_instruments TEXT[],
     override_loop_count INTEGER CHECK (override_loop_count IS NULL OR override_loop_count >= 1),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

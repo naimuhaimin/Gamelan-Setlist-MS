@@ -6,9 +6,9 @@ import { StageProvider } from '@/lib/stageContext';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Gamelan Sync',
-  description: 'Live setlist, cue and loop sync for Gamelan Melayu ensembles at Konvokesyen.',
-  appleWebApp: { capable: true, title: 'Gamelan Sync', statusBarStyle: 'black-translucent' },
+  title: 'Anjung Live',
+  description: 'Live setlist, cue and loop sync for Gamelan Anjung Seni at Konvokesyen. By Naim M.',
+  appleWebApp: { capable: true, title: 'Anjung Live', statusBarStyle: 'black-translucent' },
 };
 
 export const viewport: Viewport = {

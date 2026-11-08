@@ -1,4 +1,4 @@
-# Gamelan Sync (Gamelan Queue MS)
+# Anjung Live (Gamelan Queue MS)
 
 Real-time stage setlist / cue / loop sync for Gamelan Melayu ensembles at Konvokesyen. It does **not** play audio. See `README.md` for roles and the day-of workflow.
 

@@ -104,7 +104,7 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
               <Music2 className="w-5 h-5" strokeWidth={2.5} />
             </div>
             <div className="min-w-0 hidden min-[420px]:block">
-              <div className="font-semibold leading-tight">Gamelan Sync</div>
+              <div className="font-semibold leading-tight">Anjung Live</div>
               <div className="text-xs text-muted truncate leading-tight">
                 {liveSession && livePart ? `${liveSession.name} · ${livePart.name}` : 'Konvokesyen'}
               </div>
@@ -191,6 +191,9 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
                       {menuItem(<LogOut className="w-4 h-4" />, 'Sign out', logout, true)}
                     </>
                   )}
+                  <div className="px-3 pt-2 pb-1 mt-1 border-t border-line text-[11px] text-faint">
+                    Anjung Live · Gamelan Anjung Seni · by Naim M.
+                  </div>
                 </div>
               )}
             </div>

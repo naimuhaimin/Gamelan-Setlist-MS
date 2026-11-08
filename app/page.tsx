@@ -201,6 +201,10 @@ export default function HomePage() {
         {tab === 'library' && <LibraryView />}
       </main>
 
+      <footer className={`text-center text-[11px] text-faint py-4 ${tab === 'stage' && canControl ? 'pb-28' : ''}`}>
+        Anjung Live · by Naim M.
+      </footer>
+
       <LoginModal open={dialog === 'login'} onClose={() => setDialog(null)} />
       <InstrumentPicker open={dialog === 'instrument'} onClose={() => setDialog(null)} />
       <ShareModal open={dialog === 'share'} onClose={() => setDialog(null)} />

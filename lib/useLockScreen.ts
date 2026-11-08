@@ -198,8 +198,8 @@ export function useLockScreen(info: LockScreenInfo | null) {
     const data: LockScreenInfo = info ?? {
       title: 'Waiting for the stage',
       line1: 'Nothing is live yet',
-      line2: 'Gamelan Sync',
-      top: 'GAMELAN SYNC',
+      line2: 'Anjung Live',
+      top: 'ANJUNG LIVE',
       kicker: 'WAITING',
       heading: 'Nothing is live yet',
       detail: '',

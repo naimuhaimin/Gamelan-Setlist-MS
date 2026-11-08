@@ -1,4 +1,6 @@
-# Gamelan Sync — Konvokesyen Stage Setlist & Cue System
+# Anjung Live — Konvokesyen Stage Setlist & Cue System
+
+By Naim M. for **Gamelan Anjung Seni**, Pusat Kebudayaan.
 
 A real-time setlist, cue and loop tracker for **Gamelan Melayu** ensembles performing at Konvokesyen (graduation ceremonies). Every musician's phone or tablet shows the current song, its intro, the loop count and what's next, and it updates live the moment the controller moves on.
 

@@ -147,7 +147,7 @@ export function StageView({
       {/* Status strip */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-4 sm:pt-6">
         {isFinished ? (
-          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-brass-soft text-brass-strong border border-brass/40 text-sm font-bold">
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-jade-soft text-jade-light border border-jade/45 text-sm font-bold">
             <CheckCircle2 className="w-4 h-4" /> FINISHED
           </span>
         ) : roomState.is_paused ? (
@@ -155,7 +155,7 @@ export function StageView({
             <Pause className="w-4 h-4" /> ON HOLD
           </span>
         ) : (
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-red-400">
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-songket-light">
             <LiveDot /> LIVE
           </span>
         )}
@@ -214,12 +214,12 @@ export function StageView({
       </div>
 
       {isFinished ? (
-        <Card className="mt-4 p-6 sm:p-10 border-brass/40">
+        <Card className="mt-4 p-6 sm:p-10 border-jade/40 border-t-[3px] border-t-jade">
           <div className="flex flex-col items-center text-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-brass-soft text-brass-strong ring-1 ring-brass/40 grid place-items-center">
+            <div className="w-16 h-16 rounded-full bg-jade-soft text-jade-light ring-1 ring-jade/45 grid place-items-center">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-brass">Finished</div>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-jade-light">Finished</div>
             <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} is done</h1>
             <p className="text-lg text-muted">No song is playing right now.</p>
             {nextPart ? (
@@ -270,7 +270,9 @@ export function StageView({
           <Card
             className={cx(
               'relative overflow-hidden lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6',
-              roomState.is_paused ? 'border-brass/70 [&>*:not(.hold-overlay)]:opacity-25' : cued && 'border-brass/60'
+              roomState.is_paused
+                ? 'border-brass/70 [&>*:not(.hold-overlay)]:opacity-25'
+                : cx('border-t-[3px] border-t-brass', cued && 'border-brass/60')
             )}
           >
             {roomState.is_paused && (
@@ -305,20 +307,20 @@ export function StageView({
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <Stat label="Intro">
+              <Stat label="Intro" tone="jade">
                 <span className="text-5xl sm:text-6xl font-bold tabular">{activeItem.introBarCount}</span>
                 <span
                   className={cx(
                     'ml-2',
                     activeItem.introUnit === 'beats'
-                      ? 'text-2xl font-bold uppercase tracking-wide text-brass-strong'
+                      ? 'text-2xl font-bold uppercase tracking-wide text-jade-light'
                       : 'text-lg text-muted'
                   )}
                 >
                   {introUnitWord(activeItem.introBarCount, activeItem.introUnit)}
                 </span>
               </Stat>
-              <Stat label="Loop" accent>
+              <Stat label="Loop" tone="gold">
                 <span className="text-5xl sm:text-6xl font-bold tabular text-brass">{loop}</span>
                 <span className="text-2xl sm:text-3xl text-muted ml-1.5 tabular">/ {activeItem.loopCount}</span>
                 <LoopPips current={loop} total={activeItem.loopCount} />
@@ -475,10 +477,17 @@ function Shell({ children, padBottom }: { children: React.ReactNode; padBottom?:
   return <div className={cx('max-w-7xl mx-auto w-full px-4 sm:px-6', padBottom ? 'pb-40' : 'pb-10')}>{children}</div>;
 }
 
-function Stat({ label, children, accent }: { label: string; children: React.ReactNode; accent?: boolean }) {
+function Stat({ label, children, tone }: { label: string; children: React.ReactNode; tone: 'gold' | 'jade' }) {
   return (
-    <div className={cx('rounded-2xl border p-4 sm:p-5', accent ? 'border-brass/30 bg-brass/[0.06]' : 'border-line bg-raised/60')}>
-      <div className="text-sm text-muted font-medium mb-1">{label}</div>
+    <div
+      className={cx(
+        'rounded-2xl border p-4 sm:p-5',
+        tone === 'gold' ? 'border-brass/40 bg-brass/[0.08]' : 'border-jade/35 bg-jade/[0.07]'
+      )}
+    >
+      <div className={cx('text-sm font-semibold uppercase tracking-wider mb-1', tone === 'gold' ? 'text-brass' : 'text-jade-light')}>
+        {label}
+      </div>
       <div className="flex items-baseline flex-wrap">{children}</div>
     </div>
   );
@@ -572,7 +581,7 @@ function ControlBar({
           variant="primary"
           onClick={onNext}
           aria-label={isLast ? 'Finish this Bahagian' : 'Next song'}
-          className={cx('px-3 sm:px-6', isLast && 'bg-green-500 hover:bg-green-400 text-black')}
+          className={cx('px-3 sm:px-6', isLast && 'bg-jade hover:bg-jade-light text-black')}
         >
           <span>{isLast ? 'Finish' : 'Next'}</span>
           {isLast ? <CheckCircle2 className="w-6 h-6" /> : <SkipForward className="w-6 h-6" />}

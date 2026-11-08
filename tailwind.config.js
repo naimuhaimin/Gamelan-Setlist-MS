@@ -14,14 +14,26 @@ module.exports = {
         muted: '#ab9f8f',
         faint: '#786d60',
         brass: {
-          DEFAULT: '#c99a52', // gold leaf: primary actions, cues
-          strong: '#ddb46e',
-          soft: 'rgba(201, 154, 82, 0.15)',
+          DEFAULT: '#e3ad48', // gold leaf: primary actions, cues, loop
+          strong: '#f4c76c',
+          soft: 'rgba(227, 173, 72, 0.16)',
           ink: '#1c1207',
         },
         bronze: '#7a5222', // the logo's carved-corner bronze
-        live: '#e5484d',
-        ok: '#46a758',
+        // Songket crimson: LIVE, adjusted-for-ceremony, thumbs down
+        songket: {
+          DEFAULT: '#d0463b',
+          light: '#f3a092',
+          soft: 'rgba(208, 70, 59, 0.16)',
+        },
+        // Batik jade: rhythms, beats, finished, thumbs up
+        jade: {
+          DEFAULT: '#2fa884',
+          light: '#7fdcbc',
+          soft: 'rgba(47, 168, 132, 0.16)',
+        },
+        live: '#d0463b',
+        ok: '#2fa884',
         danger: '#f2797c',
       },
       fontFamily: {
@@ -37,8 +49,8 @@ module.exports = {
         fadeIn: { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },
         sheetUp: { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'none' } },
         cuePulse: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(201,154,82,0.55)' },
-          '50%': { boxShadow: '0 0 0 10px rgba(201,154,82,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(227,173,72,0.55)' },
+          '50%': { boxShadow: '0 0 0 10px rgba(227,173,72,0)' },
         },
       },
       animation: {

@@ -55,7 +55,7 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
                   }}
                   className={cx(
                     'rounded-xl border px-4 py-3.5 text-left transition-colors',
-                    live ? 'border-red-500/50 bg-red-500/[0.08]' : 'border-line bg-raised hover:border-brass/60',
+                    live ? 'border-songket/60 bg-songket-soft' : 'border-line bg-raised hover:border-brass/60',
                     !count && 'opacity-40'
                   )}
                 >

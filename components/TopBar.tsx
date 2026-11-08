@@ -86,7 +86,7 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
       }}
       className={cx(
         'w-full flex items-center gap-3 px-3 h-11 rounded-lg text-sm text-left transition-colors',
-        danger ? 'text-danger hover:bg-red-500/10' : 'text-ink hover:bg-raised'
+        danger ? 'text-danger hover:bg-songket-soft' : 'text-ink hover:bg-raised'
       )}
     >
       <span className={danger ? 'text-danger' : 'text-muted'}>{icon}</span>

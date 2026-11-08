@@ -184,7 +184,7 @@ export default function HomePage() {
       />
 
       {connection === 'offline' && (
-        <div className="bg-red-500/10 border-b border-red-500/30 text-red-200 text-sm">
+        <div className="bg-songket-soft border-b border-songket/40 text-songket-light text-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2">
             <WifiOff className="w-4 h-4 shrink-0" />
             Connection lost. Reconnecting… the screen may be out of date.

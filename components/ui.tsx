@@ -85,9 +85,9 @@ export const Badge = ({
       'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap',
       tone === 'neutral' && 'bg-raised text-muted',
       tone === 'brass' && 'bg-brass-soft text-brass',
-      tone === 'live' && 'bg-red-500/15 text-red-400',
-      tone === 'ok' && 'bg-green-500/15 text-green-400',
-      tone === 'override' && 'bg-violet-500/15 text-violet-300',
+      tone === 'live' && 'bg-songket-soft text-songket-light',
+      tone === 'ok' && 'bg-jade-soft text-jade-light',
+      tone === 'override' && 'bg-songket-soft text-songket-light ring-1 ring-songket/40',
       className
     )}
   >
@@ -185,8 +185,8 @@ export const VoteButtons = ({
           size === 'md' ? 'h-11 px-4 text-base' : 'h-8 px-2.5 text-xs',
           active
             ? v === 1
-              ? 'bg-green-500/20 border-green-500/50 text-green-300'
-              : 'bg-red-500/20 border-red-500/50 text-red-300'
+              ? 'bg-jade-soft border-jade/60 text-jade-light'
+              : 'bg-songket-soft border-songket/60 text-songket-light'
             : 'bg-raised border-line text-muted hover:text-ink hover:border-line-strong'
         )}
       >
@@ -207,10 +207,10 @@ export const VoteButtons = ({
 export const VoteCounts = ({ up, down, className }: { up: number; down: number; className?: string }) =>
   up || down ? (
     <span className={cx('inline-flex items-center gap-2 text-xs font-semibold tabular', className)}>
-      <span className="inline-flex items-center gap-1 text-green-400">
+      <span className="inline-flex items-center gap-1 text-jade-light">
         <ThumbsUp className="w-3.5 h-3.5" /> {up}
       </span>
-      <span className="inline-flex items-center gap-1 text-red-400">
+      <span className="inline-flex items-center gap-1 text-songket-light">
         <ThumbsDown className="w-3.5 h-3.5" /> {down}
       </span>
     </span>
@@ -246,7 +246,7 @@ export const Rhythms = ({ rhythms, size = 'sm', className }: { rhythms: string[]
           {i > 0 && <span className="text-faint">→</span>}
           <span
             className={cx(
-              'rounded-md bg-bronze/40 text-brass-strong border border-bronze/70 font-semibold',
+              'rounded-md bg-jade-soft text-jade-light border border-jade/45 font-semibold',
               size === 'lg' ? 'px-3 py-1.5 text-base' : 'px-1.5 py-0.5 text-xs'
             )}
           >
@@ -499,7 +499,7 @@ export const Toaster = () => {
           key={t.id}
           className={cx(
             'pointer-events-auto w-full flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm shadow-xl animate-fade-in',
-            t.kind === 'error' && 'bg-[#2b1513] border-red-500/40 text-red-200',
+            t.kind === 'error' && 'bg-[#2b1513] border-songket/50 text-songket-light',
             t.kind === 'success' && 'bg-raised border-line text-ink',
             t.kind === 'info' && 'bg-raised border-line text-ink'
           )}

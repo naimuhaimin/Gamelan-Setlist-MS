@@ -41,7 +41,7 @@ Supabase is the only backend. There is no server code; the browser talks to Supa
 - `lib/useChime.ts`: opt-in song-change chime synthesised with Web Audio (mixes with the lock-screen audio instead of replacing it). Triggered in `app/page.tsx` on live part/queue-item change; skipped on devices that `canControl`.
 - `components/SetlistEditor.tsx`, `OverrideModal.tsx`, `SidangModal.tsx`: Maestro tools.
 - `components/LibraryView.tsx`: library and song form. `AccountDialogs.tsx`: sign in, instrument picker, share. `AdminDialogs.tsx`: instruments, Admin passkey.
-- Design tokens are in `tailwind.config.js`, taken from the Anjung Seni logo: warm black `bg`/`surface`/`raised`, ivory `ink`, gold `brass` (primary actions, cues), deep `bronze` (rhythm tags). Fonts: Inter (`font-sans`), Playfair Display (`font-display`, titles), Great Vibes (`font-script`, wordmark only). Dark only, for stage readability. Test at 375px width; nothing may scroll sideways. Avoid hardcoded colours.
+- Design tokens are in `tailwind.config.js`, taken from the Anjung Seni logo: warm black `bg`/`surface`/`raised`, ivory `ink`, gold `brass` (primary actions, cues, loop), deep `bronze`, plus two textile accents: `songket` crimson (LIVE, adjusted songs, 👎, errors) and `jade` (rhythms, intro/beats, finished, 👍). Keep each accent to its meaning. Fonts: Inter (`font-sans`), Playfair Display (`font-display`, titles), Great Vibes (`font-script`, wordmark only). Dark only, for stage readability. Test at 375px width; nothing may scroll sideways. Avoid hardcoded colours.
 
 ## Notes
 

@@ -180,7 +180,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                 {queue.map((r, i) => (
                   <li
                     key={r.queueItem.id}
-                    className={cx('flex items-center gap-3 px-3 sm:px-4 py-3', r.queueItem.id === liveCurrentId && 'bg-red-500/[0.06]')}
+                    className={cx('flex items-center gap-3 px-3 sm:px-4 py-3', r.queueItem.id === liveCurrentId && 'bg-songket-soft')}
                   >
                     <span className="w-7 text-center text-sm font-semibold text-muted tabular shrink-0">{i + 1}</span>
                     <div className="min-w-0 flex-1">
@@ -206,7 +206,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                         label="Adjust for this ceremony"
                         size="sm"
                         onClick={() => setOverrideItem(r)}
-                        className={r.hasOverride ? 'text-violet-300' : undefined}
+                        className={r.hasOverride ? 'text-songket-light' : undefined}
                       >
                         <SlidersHorizontal className="w-4 h-4" />
                       </IconButton>

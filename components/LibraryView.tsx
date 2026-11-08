@@ -284,13 +284,13 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
           {rhythms.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {rhythms.map((r, i) => (
-                <span key={r} className="h-9 pl-3 pr-1 rounded-full bg-bronze/40 text-brass-strong border border-bronze/70 inline-flex items-center gap-1 text-sm font-medium">
-                  <span className="text-brass/70 tabular">{i + 1}.</span> {r}
+                <span key={r} className="h-9 pl-3 pr-1 rounded-full bg-jade-soft text-jade-light border border-jade/45 inline-flex items-center gap-1 text-sm font-medium">
+                  <span className="text-jade/80 tabular">{i + 1}.</span> {r}
                   <button
                     type="button"
                     aria-label={`Remove ${r}`}
                     onClick={() => setRhythms((cur) => cur.filter((x) => x !== r))}
-                    className="w-7 h-7 grid place-items-center rounded-full hover:bg-bronze/60"
+                    className="w-7 h-7 grid place-items-center rounded-full hover:bg-jade/30"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

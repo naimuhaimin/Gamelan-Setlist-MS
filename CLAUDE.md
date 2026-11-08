@@ -46,4 +46,6 @@ Supabase is the only backend. There is no server code; the browser talks to Supa
 ## Notes
 
 - `.env.local` is gitignored; `.env.example` is the template.
-- Commits use Conventional Commits (`feat:`, `fix:`, `refactor:`). Work on a branch; Vercel builds a Preview URL for every non-`main` push.
+- Commits use Conventional Commits (`feat:`, `fix:`, `refactor:`).
+- **Release workflow (owner's rule): never push straight to `main`.** Commit and push to the `staging` branch first; Vercel builds it as a Preview at `gamelan-setlist-ms-git-staging-naimuhaimin.vercel.app`. Only merge `staging` into `main` (the live site) after the owner says it's tested and asks to release.
+- Previews use the same Supabase database as production, so testing there changes live data. Test on throwaway Sidang and restore anything you touch.

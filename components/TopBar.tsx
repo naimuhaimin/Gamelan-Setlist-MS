@@ -8,7 +8,6 @@ import {
   LogIn,
   LogOut,
   MonitorPlay,
-  Music2,
   QrCode,
   Settings2,
   ShieldCheck,
@@ -100,9 +99,14 @@ export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstr
         <div className="h-16 flex items-center gap-3">
           {/* Brand */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-brass text-brass-ink grid place-items-center shrink-0">
-              <Music2 className="w-5 h-5" strokeWidth={2.5} />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-mark.png"
+              alt="Anjung Seni"
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-xl shrink-0 ring-1 ring-line object-cover"
+            />
             <div className="min-w-0 hidden min-[420px]:block">
               <div className="font-semibold leading-tight">Anjung Live</div>
               <div className="text-xs text-muted truncate leading-tight">

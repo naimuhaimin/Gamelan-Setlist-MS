@@ -1,33 +1,28 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { StageProvider } from '@/lib/stageContext';
 
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+
 export const metadata: Metadata = {
-  title: 'Gamelan Konvokesyen Queue & Stage Sync MS',
-  description:
-    'Real-time stage setlist and queue synchronization management system for live Gamelan ensemble graduation performances.',
-  keywords: ['Gamelan', 'Konvokesyen', 'Setlist Queue', 'Realtime Sync', 'Stage Monitor'],
+  title: 'Gamelan Sync',
+  description: 'Live setlist, cue and loop sync for Gamelan Melayu ensembles at Konvokesyen.',
+  appleWebApp: { capable: true, title: 'Gamelan Sync', statusBarStyle: 'black-translucent' },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#090a0f',
+  viewportFit: 'cover',
+  themeColor: '#0b0c10',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ms" className="dark">
-      <body className="bg-[#090a0f] text-slate-100 antialiased selection:bg-amber-500 selection:text-black">
-        <StageProvider>
-          {children}
-        </StageProvider>
+    <html lang="ms" className={inter.variable}>
+      <body>
+        <StageProvider>{children}</StageProvider>
       </body>
     </html>
   );

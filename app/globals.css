@@ -2,42 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 248, 250, 252;
-  --background-start-rgb: 9, 10, 15;
-  --background-end-rgb: 14, 17, 28;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: #090a0f;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  overflow-x: hidden;
-  user-select: none; /* Prevents accidental text selection on touch devices on stage */
-}
-
-/* Custom Stage High-Contrast Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0e111d;
-}
-::-webkit-scrollbar-thumb {
-  background: #252e47;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #f59e0b;
-}
-
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 25px -3px rgba(245, 158, 11, 0.45);
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
   }
-  50% {
-    box-shadow: 0 0 45px 5px rgba(245, 158, 11, 0.75);
+  body {
+    @apply bg-bg text-ink antialiased;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  /* Stage screens: no accidental text selection while tapping, but forms stay selectable */
+  main {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  select {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brass/70 ring-offset-2 ring-offset-bg;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #343a4a;
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
   }
 }

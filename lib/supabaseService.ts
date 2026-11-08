@@ -1,357 +1,211 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Session, Part, Song, QueueItem, RoomState } from '@/types';
-import {
-  INITIAL_SONGS,
-  INITIAL_SESSIONS,
-  INITIAL_PARTS,
-  INITIAL_QUEUE_ITEMS,
-  INITIAL_ROOM_STATE,
-  INITIAL_INSTRUMENTS,
-} from './seedData';
-
-export interface SupabaseFullState {
-  sessions: Session[];
-  parts: Part[];
-  songs: Song[];
-  queueItems: QueueItem[];
-  roomState: RoomState;
-  instruments: string[];
-}
+import { supabase } from '@/lib/supabaseClient';
+import type {
+  DatabaseSnapshot,
+  Part,
+  QueueItem,
+  RoleRow,
+  RoleType,
+  RoomState,
+  Session,
+  Song,
+} from '@/types';
 
 /**
- * Fetches all stage data directly from Supabase tables.
- * Returns null if Supabase is not configured or query fails.
+ * All reads and writes go straight to Supabase. Every write THROWS on failure,
+ * so the UI can tell the user instead of silently pretending it saved.
+ * There is no seeding and no fallback data: what is in the database is what the app shows.
  */
-export async function fetchFullDatabaseState(): Promise<SupabaseFullState | null> {
-  if (!isSupabaseConfigured || !supabase) return null;
 
-  try {
-    const [
-      sessionsRes,
-      partsRes,
-      songsRes,
-      queueRes,
-      roomRes,
-      instrumentsRes,
-    ] = await Promise.all([
-      supabase.from('sessions').select('*').order('sidang_number', { ascending: true }),
-      supabase.from('parts').select('*').order('part_number', { ascending: true }),
-      supabase.from('songs').select('*').order('title', { ascending: true }),
-      supabase.from('queue_items').select('*').order('sort_order', { ascending: true }),
-      supabase.from('room_state').select('*').eq('id', 'main_stage').maybeSingle(),
-      supabase.from('instruments').select('*').order('sort_order', { ascending: true }),
-    ]);
+export const ROOM_ID = 'main_stage';
 
-    // If query failed on critical tables, return null
-    if (sessionsRes.error || partsRes.error || songsRes.error || queueRes.error) {
-      console.warn('[SupabaseService] Query error:', {
-        sessions: sessionsRes.error,
-        parts: partsRes.error,
-        songs: songsRes.error,
-        queue: queueRes.error,
-      });
-      return null;
-    }
-
-    const sessions = (sessionsRes.data as Session[]) || [];
-    const parts = (partsRes.data as Part[]) || [];
-    const songs = (songsRes.data as Song[]) || [];
-    const queueItems = (queueRes.data as QueueItem[]) || [];
-    const roomState = (roomRes.data as RoomState) || INITIAL_ROOM_STATE;
-    const instruments = instrumentsRes.data && instrumentsRes.data.length > 0
-      ? (instrumentsRes.data as Array<{ name: string }>).map((i) => i.name)
-      : INITIAL_INSTRUMENTS;
-
-    // If tables are empty (first run after creating tables), auto-seed from client
-    if (sessions.length === 0 && songs.length === 0) {
-      await seedDatabaseIfEmpty();
-      return {
-        sessions: INITIAL_SESSIONS,
-        parts: INITIAL_PARTS,
-        songs: INITIAL_SONGS,
-        queueItems: INITIAL_QUEUE_ITEMS,
-        roomState: INITIAL_ROOM_STATE,
-        instruments: INITIAL_INSTRUMENTS,
-      };
-    }
-
-    return {
-      sessions: sessions.length > 0 ? sessions : INITIAL_SESSIONS,
-      parts: parts.length > 0 ? parts : INITIAL_PARTS,
-      songs: songs.length > 0 ? songs : INITIAL_SONGS,
-      queueItems,
-      roomState,
-      instruments,
-    };
-  } catch (err) {
-    console.error('[SupabaseService] Unexpected error loading state:', err);
-    return null;
-  }
+function db() {
+  if (!supabase) throw new Error('Database is not configured.');
+  return supabase;
 }
 
-/**
- * Seeds Supabase with the default traditional repertoire if tables are empty.
- */
-export async function seedDatabaseIfEmpty(): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) return false;
-
-  try {
-    await supabase.from('roles').upsert([
-      { role_name: 'admin', passkey: 'admin999', description: 'Admin master authority' },
-      { role_name: 'maestro', passkey: 'sidang1', description: 'Maestro passkey' },
-      { role_name: 'controller', passkey: 'ctrl1', description: 'Controller passkey' },
-      { role_name: 'player', passkey: '', description: 'Musician view' },
-    ], { onConflict: 'role_name' });
-
-    await supabase.from('songs').upsert(INITIAL_SONGS, { onConflict: 'id' });
-    await supabase.from('sessions').upsert(INITIAL_SESSIONS, { onConflict: 'id' });
-    await supabase.from('parts').upsert(INITIAL_PARTS, { onConflict: 'id' });
-    await supabase.from('queue_items').upsert(INITIAL_QUEUE_ITEMS, { onConflict: 'id' });
-    await supabase.from('room_state').upsert(INITIAL_ROOM_STATE, { onConflict: 'id' });
-    await supabase.from('instruments').upsert(
-      INITIAL_INSTRUMENTS.map((name, i) => ({ id: `inst-${i + 1}`, name, sort_order: i + 1 })),
-      { onConflict: 'name' }
-    );
-    return true;
-  } catch (err) {
-    console.warn('[SupabaseService] Auto-seed failed:', err);
-    return false;
-  }
+function check<T>(res: { data: T; error: { message: string } | null }, what: string): T {
+  if (res.error) throw new Error(`${what}: ${res.error.message}`);
+  return res.data;
 }
 
-/**
- * Updates stage room state in Supabase.
- */
-export async function updateRoomStateInSupabase(updates: Partial<RoomState>): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    const payload = {
-      ...updates,
-      updated_at: new Date().toISOString(),
-    };
-    await supabase.from('room_state').upsert({ id: 'main_stage', ...payload }, { onConflict: 'id' });
-  } catch (err) {
-    console.error('[SupabaseService] Failed to update room_state:', err);
-  }
+/** Natural sort so "2 Togok" comes before "10 Ganda Melati". */
+export const naturalCompare = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+export const sortSongs = (songs: Song[]) => [...songs].sort((a, b) => naturalCompare(a.title, b.title));
+
+export const newId = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+// ---------------------------------------------------------------------------
+// Reads
+// ---------------------------------------------------------------------------
+
+export async function fetchSessions() {
+  const res = await db().from('sessions').select('*').order('sidang_number', { ascending: true });
+  return check(res, 'Load Sidang') as Session[];
+}
+export async function fetchParts() {
+  const res = await db().from('parts').select('*').order('part_number', { ascending: true });
+  return (check(res, 'Load Bahagian') as Part[]).map((p) => ({ ...p, name: p.name || `Bahagian ${p.part_number}` }));
+}
+export async function fetchSongs() {
+  const res = await db().from('songs').select('*');
+  return sortSongs(check(res, 'Load songs') as Song[]);
+}
+export async function fetchQueueItems() {
+  const res = await db().from('queue_items').select('*').order('sort_order', { ascending: true });
+  return check(res, 'Load setlists') as QueueItem[];
+}
+export async function fetchInstruments() {
+  const res = await db().from('instruments').select('name, sort_order').order('sort_order', { ascending: true });
+  return (check(res, 'Load instruments') as Array<{ name: string }>).map((i) => i.name);
+}
+export async function fetchRoles() {
+  const res = await db().from('roles').select('role_name, passkey');
+  return check(res, 'Load access settings') as RoleRow[];
+}
+export async function fetchRoomState() {
+  const res = await db().from('room_state').select('*').eq('id', ROOM_ID).maybeSingle();
+  return check(res, 'Load stage state') as RoomState | null;
 }
 
-/**
- * Adds a new song to the song library.
- */
-export async function addSongInSupabase(song: Song): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('songs').insert(song);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to insert song:', err);
-  }
+export async function fetchSnapshot(): Promise<DatabaseSnapshot> {
+  const [sessions, parts, songs, queueItems, roomState, instruments, roles] = await Promise.all([
+    fetchSessions(),
+    fetchParts(),
+    fetchSongs(),
+    fetchQueueItems(),
+    fetchRoomState(),
+    fetchInstruments(),
+    fetchRoles(),
+  ]);
+  return { sessions, parts, songs, queueItems, roomState, instruments, roles };
 }
 
-/**
- * Updates an existing song in the library.
- */
-export async function updateSongInSupabase(song: Song): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('songs').update(song).eq('id', song.id);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to update song:', err);
-  }
+// ---------------------------------------------------------------------------
+// Live stage
+// ---------------------------------------------------------------------------
+
+export async function updateRoomState(updates: Partial<RoomState>) {
+  const res = await db()
+    .from('room_state')
+    .upsert({ id: ROOM_ID, ...updates, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  check(res, 'Update stage');
 }
 
-/**
- * Deletes a song from the library and cleans up references.
- */
-export async function deleteSongInSupabase(songId: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('queue_items').delete().eq('song_id', songId);
-    await supabase.from('songs').delete().eq('id', songId);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to delete song:', err);
-  }
+// ---------------------------------------------------------------------------
+// Songs
+// ---------------------------------------------------------------------------
+
+export async function insertSong(song: Song) {
+  check(await db().from('songs').insert(song), 'Add song');
+}
+export async function updateSong(song: Song) {
+  const { id, title, intro_bar_count, intro_instruments, loop_count } = song;
+  check(
+    await db().from('songs').update({ title, intro_bar_count, intro_instruments, loop_count }).eq('id', id),
+    'Update song'
+  );
+}
+export async function deleteSong(songId: string) {
+  // queue_items cascade on delete
+  check(await db().from('songs').delete().eq('id', songId), 'Delete song');
 }
 
-/**
- * Adds a song to a specific Bahagian setlist queue.
- */
-export async function addQueueItemInSupabase(item: QueueItem): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('queue_items').insert(item);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to insert queue item:', err);
-  }
-}
+// ---------------------------------------------------------------------------
+// Setlists
+// ---------------------------------------------------------------------------
 
-/**
- * Removes a queue item from a Bahagian setlist.
- */
-export async function removeQueueItemInSupabase(queueItemId: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('queue_items').delete().eq('id', queueItemId);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to delete queue item:', err);
-  }
+export async function insertQueueItem(item: QueueItem) {
+  check(await db().from('queue_items').insert(item), 'Add to setlist');
 }
-
-/**
- * Reorders items in a Bahagian setlist.
- */
-export async function reorderQueueInSupabase(orderedIds: string[]): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    const updates = orderedIds.map((id, index) =>
-      supabase!.from('queue_items').update({ sort_order: index + 1 }).eq('id', id)
-    );
-    await Promise.all(updates);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to reorder queue items:', err);
-  }
+export async function deleteQueueItem(id: string) {
+  check(await db().from('queue_items').delete().eq('id', id), 'Remove from setlist');
 }
-
-/**
- * Saves one-time instance overrides for a queue item.
- */
-export async function saveOverrideInSupabase(
+export async function reorderQueue(orderedIds: string[]) {
+  const results = await Promise.all(
+    orderedIds.map((id, index) => db().from('queue_items').update({ sort_order: index + 1 }).eq('id', id))
+  );
+  results.forEach((r) => check(r, 'Reorder setlist'));
+}
+export async function saveOverride(
   queueItemId: string,
-  overrides: {
-    override_intro_bar_count: number | null;
-    override_intro_instruments: string[] | null;
-    override_loop_count: number | null;
-  }
-): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('queue_items').update(overrides).eq('id', queueItemId);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to save overrides:', err);
-  }
+  overrides: Pick<QueueItem, 'override_intro_bar_count' | 'override_intro_instruments' | 'override_loop_count'>
+) {
+  check(await db().from('queue_items').update(overrides).eq('id', queueItemId), 'Save override');
 }
 
-/**
- * Updates controller settings for a Bahagian.
- */
-export async function updatePartControllerInSupabase(
-  partId: string,
-  enabled: boolean,
-  passkey?: string
-): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    const payload: Partial<Part> = { controller_enabled: enabled };
-    if (passkey) payload.controller_passkey = passkey;
-    await supabase.from('parts').update(payload).eq('id', partId);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to update part controller:', err);
-  }
+// ---------------------------------------------------------------------------
+// Sidang & Bahagian
+// ---------------------------------------------------------------------------
+
+export async function updatePart(partId: string, updates: Partial<Pick<Part, 'controller_enabled' | 'controller_passkey'>>) {
+  check(await db().from('parts').update(updates).eq('id', partId), 'Update Bahagian');
+}
+export async function insertSession(session: Session, parts: Part[]) {
+  check(await db().from('sessions').insert(session), 'Create Sidang');
+  check(await db().from('parts').insert(parts), 'Create Bahagian');
+}
+export async function updateSession(sessionId: string, updates: Partial<Session>) {
+  check(await db().from('sessions').update(updates).eq('id', sessionId), 'Update Sidang');
+}
+export async function deleteSession(sessionId: string) {
+  // parts and their queue_items cascade on delete
+  check(await db().from('sessions').delete().eq('id', sessionId), 'Delete Sidang');
 }
 
-/**
- * Adds a new Sidang session and its 4 parts.
- */
-export async function addSessionInSupabase(session: Session, parts: Part[]): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('sessions').insert(session);
-    await supabase.from('parts').insert(parts);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to add session:', err);
-  }
-}
+// ---------------------------------------------------------------------------
+// Instruments (renames/deletes also rewrite every song & override that uses them)
+// ---------------------------------------------------------------------------
 
-/**
- * Deletes a session and cascades to its parts and queue items.
- */
-export async function deleteSessionInSupabase(sessionId: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('sessions').delete().eq('id', sessionId);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to delete session:', err);
-  }
-}
-
-/**
- * Updates session metadata (name, date, passkey, etc.).
- */
-export async function updateSessionInSupabase(
-  sessionId: string,
-  updates: Partial<Session>
-): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('sessions').update(updates).eq('id', sessionId);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to update session:', err);
-  }
-}
-
-/**
- * Adds an instrument to the ensemble library.
- */
-export async function addInstrumentInSupabase(name: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('instruments').upsert({ id: `inst-${Date.now()}`, name, sort_order: 99 }, { onConflict: 'name' });
-  } catch (err) {
-    console.error('[SupabaseService] Failed to add instrument:', err);
-  }
-}
-
-/**
- * Renames an instrument.
- */
-export async function updateInstrumentInSupabase(oldName: string, newName: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('instruments').update({ name: newName }).eq('name', oldName);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to update instrument:', err);
-  }
-}
-
-/**
- * Deletes an instrument.
- */
-export async function deleteInstrumentInSupabase(name: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('instruments').delete().eq('name', name);
-  } catch (err) {
-    console.error('[SupabaseService] Failed to delete instrument:', err);
-  }
-}
-
-/**
- * Restores the default 12 Gamelan instruments.
- */
-export async function restoreDefaultInstrumentsInSupabase(): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('instruments').delete().neq('id', 'keep-all');
-    await supabase.from('instruments').upsert(
-      INITIAL_INSTRUMENTS.map((name, i) => ({ id: `inst-${i + 1}`, name, sort_order: i + 1 })),
-      { onConflict: 'name' }
+async function rewriteInstrumentReferences(map: (list: string[]) => string[], affected: (list: string[]) => boolean) {
+  const [songs, queue] = await Promise.all([fetchSongs(), fetchQueueItems()]);
+  const songUpdates = songs
+    .filter((s) => affected(s.intro_instruments))
+    .map((s) => db().from('songs').update({ intro_instruments: map(s.intro_instruments) }).eq('id', s.id));
+  const queueUpdates = queue
+    .filter((q) => q.override_intro_instruments && affected(q.override_intro_instruments))
+    .map((q) =>
+      db()
+        .from('queue_items')
+        .update({ override_intro_instruments: map(q.override_intro_instruments as string[]) })
+        .eq('id', q.id)
     );
-  } catch (err) {
-    console.error('[SupabaseService] Failed to restore default instruments:', err);
-  }
+  (await Promise.all([...songUpdates, ...queueUpdates])).forEach((r) => check(r, 'Update instrument references'));
 }
 
-/**
- * Resets all tables in Supabase to initial seed repertoire.
- */
-export async function resetAllInSupabase(): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    await supabase.from('queue_items').delete().neq('id', 'none');
-    await supabase.from('parts').delete().neq('id', 'none');
-    await supabase.from('sessions').delete().neq('id', 'none');
-    await supabase.from('songs').delete().neq('id', 'none');
-    await seedDatabaseIfEmpty();
-  } catch (err) {
-    console.error('[SupabaseService] Failed to reset database:', err);
-  }
+export async function insertInstrument(name: string, sortOrder: number) {
+  check(await db().from('instruments').insert({ id: newId('inst'), name, sort_order: sortOrder }), 'Add instrument');
+}
+export async function renameInstrument(oldName: string, newName: string) {
+  check(await db().from('instruments').update({ name: newName }).eq('name', oldName), 'Rename instrument');
+  await rewriteInstrumentReferences(
+    (list) => list.map((i) => (i === oldName ? newName : i)),
+    (list) => list.includes(oldName)
+  );
+}
+export async function deleteInstrument(name: string) {
+  check(await db().from('instruments').delete().eq('name', name), 'Delete instrument');
+  await rewriteInstrumentReferences(
+    (list) => list.filter((i) => i !== name),
+    (list) => list.includes(name)
+  );
+}
+export async function reorderInstruments(names: string[]) {
+  const results = await Promise.all(
+    names.map((name, i) => db().from('instruments').update({ sort_order: i + 1 }).eq('name', name))
+  );
+  results.forEach((r) => check(r, 'Reorder instruments'));
+}
+
+// ---------------------------------------------------------------------------
+// Access (global passkeys in the roles table)
+// ---------------------------------------------------------------------------
+
+export async function updateRolePasskey(role: RoleType, passkey: string) {
+  check(
+    await db().from('roles').upsert({ role_name: role, passkey }, { onConflict: 'role_name' }),
+    'Update passkey'
+  );
 }

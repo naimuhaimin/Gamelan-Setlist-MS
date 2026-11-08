@@ -1,57 +1,49 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
-  darkMode: 'class',
+  content: ['./components/**/*.{js,ts,jsx,tsx}', './app/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        stage: {
-          bg: '#090a0f',
-          card: '#12141d',
-          cardHover: '#181b26',
-          border: '#242a3a',
-          accent: '#f59e0b', // Royal Gamelan Brass / Gold
-          accentHover: '#fbbf24',
-          cyan: '#06b6d4',
-          emerald: '#10b981',
-          danger: '#ef4444',
-          muted: '#8e98ad',
-          text: '#f8fafc',
-        }
+        // Stage palette: near-black for projection, one brass accent for cues & primary actions.
+        bg: '#0b0c10',
+        surface: '#13151c',
+        raised: '#1a1d26',
+        line: '#262a36',
+        'line-strong': '#343a4a',
+        ink: '#f3f4f6',
+        muted: '#9aa1b2',
+        faint: '#6b7285',
+        brass: {
+          DEFAULT: '#f5b335',
+          strong: '#ffc54d',
+          soft: 'rgba(245, 179, 53, 0.14)',
+          ink: '#1a1203',
+        },
+        live: '#ef4444',
+        ok: '#22c55e',
+        danger: '#f87171',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
-      fontSize: {
-        'stage-title': ['3.75rem', { lineHeight: '1.05', letterSpacing: '-0.03em' }],
-        'stage-counter': ['5rem', { lineHeight: '1' }],
-        'stage-cue': ['2rem', { lineHeight: '1.2' }],
-      },
-      boxShadow: {
-        'glow-gold': '0 0 35px -5px rgba(245, 158, 11, 0.45)',
-        'glow-cyan': '0 0 30px -5px rgba(6, 182, 212, 0.45)',
-        'glow-emerald': '0 0 30px -5px rgba(16, 185, 129, 0.45)',
-      },
-      animation: {
-        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'fade-in': 'fadeIn 0.3s ease-out forwards',
+      borderRadius: {
+        xl: '0.875rem',
+        '2xl': '1.125rem',
       },
       keyframes: {
-        pulseGlow: {
-          '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-          '50%': { opacity: 0.85, transform: 'scale(1.02)' },
+        fadeIn: { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },
+        sheetUp: { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'none' } },
+        cuePulse: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(245,179,53,0.55)' },
+          '50%': { boxShadow: '0 0 0 10px rgba(245,179,53,0)' },
         },
-        fadeIn: {
-          '0%': { opacity: 0, transform: 'translateY(6px)' },
-          '100%': { opacity: 1, transform: 'translateY(0)' },
-        }
-      }
+      },
+      animation: {
+        'fade-in': 'fadeIn 160ms ease-out',
+        'sheet-up': 'sheetUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        'cue-pulse': 'cuePulse 1.6s ease-in-out infinite',
+      },
     },
   },
   plugins: [],
-}
+};

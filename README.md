@@ -1,119 +1,55 @@
-# 🎵 Gamelan Konvokesyen Stage Setlist & Queue Sync MS
+# Gamelan Sync — Konvokesyen Stage Setlist & Cue System
 
-A responsive, high-contrast, real-time Stage Setlist & Queue Synchronization Web Application tailored specifically for live **Gamelan ensemble performances during Konvokesyen (Graduation Ceremonies)**.
+A real-time setlist, cue and loop tracker for **Gamelan Melayu** ensembles performing at Konvokesyen (graduation ceremonies). Every musician's phone or tablet shows the current song, its intro, the loop count and what's next, and it updates live the moment the controller moves on.
 
-Optimized for stage readability (visible from 10–20 meters away on tablets/monitors), multi-device access (mobile, tablet, desktop), and seamless deployment to **Vercel** and **Supabase**.
+> The app does **not** play audio. It keeps everyone on the same song, the same loop and the right intro cue.
 
----
-
-## 🏛️ Domain Concept & Hierarchical Structure
+## How it's organised
 
 ```
-Event (Konvokesyen)
- └── Session / Sidang (Sidang Pagi / Sidang Petang)
-      └── Part / Bahagian (Bahagian 1, 2, 3, 4)
-           └── Ordered Queue of Songs (with One-Time Special Overrides)
+Sidang (e.g. Sidang 23)
+ └── Bahagian 1 – 4
+      └── Ordered setlist of songs (with optional one-time adjustments)
 ```
 
-> **Important**: This application does **NOT** play audio. It broadcasts live queue state, sequence progression, loop counters, and instrument intro cues in real-time across all ensemble musician devices.
+Each song in the library has exactly four fields: **Title**, **Intro bars**, **Intro instruments** and **Loops**.
+A setlist position can override intro bars, intro instruments or loops for that ceremony only. The library song stays unchanged.
 
----
+Instruments and songs live only in the database. There are no built-in presets.
 
-## 🎼 Strict Song Metadata Requirements
+## Who does what
 
-Each song entry in the library supports **ONLY** the following 4 metadata fields:
-1. **Title** (e.g., *Gending Raja Berangkat*, *Lancar Lambang Sari*)
-2. **Intro Bar Count** (Number of bars in the intro before the main ensemble entry)
-3. **Intro Instruments** (Array/Selection of Gamelan instruments responsible for the cue, e.g., *Bonang Barung*, *Gendang*, *Saron Demung*)
-4. **Loop Count** (Number of times the song/section is looped)
-
-*Note: No extra metadata fields are permitted in accordance with strict domain specifications.*
-
----
-
-## 👥 Multi-Role Access Control System
-
-| Role | Access Passkey / Method | Responsibilities |
+| Role | Signs in with | Can |
 | :--- | :--- | :--- |
-| **Admin** | Master PIN (`admin999`) | Full master rights over user roles, sessions, database resets, and library templates. |
-| **Maestro** | Session Passkey (`pagi123` / `petang123`) | Assigned per Sidang. Manages & reorders setlists. Performs **One-Time Special Overrides** on Intro Bars, Intro Instruments, or Loop Count for a single Bahagian instance without altering the main library template. Assigns & toggles Controller permissions. |
-| **Controller** | Delegated Passkey (`ctrl1` / `ctrl2` / etc.) | Granted by the Maestro per Bahagian. Controls live stage progression: **NEXT SONG**, **PREVIOUS SONG**, **JUMP TO SONG**, loop increment/decrement, and pause/resume. |
-| **Player View** | Public (Room Code / No PIN) | Read-only live stage display synced across all musician devices via Supabase Realtime / Local broadcast. Features **Instrument Filter Selector** with **Dynamic Cue Highlighting** (pulsing golden banner if their instrument cues the active song). |
+| **Musician** | Nothing | See the live stage, pick their instrument, get a "Your cue" alert, browse the library |
+| **Controller** | A Bahagian's passkey, or the master controller passkey | Next / previous / jump to a song, change the loop count, hold/resume — only while their Bahagian is live and controller access is on |
+| **Maestro** | The Maestro passkey | Everything a controller can do, plus build setlists, adjust songs per ceremony, create/edit Sidang, add/edit library songs, choose what goes live |
+| **Admin** | The Admin passkey | Everything, plus manage instruments and change passkeys |
 
----
+Passkeys are stored in the `roles` table (Admin → *Access & passkeys*). Per-Bahagian controller passkeys are set by the Maestro in *Setlist → Controller access*.
 
-## 🛠️ Technology Stack
+## Stack
 
-- **Framework**: Next.js 14 (App Router, React 18, TypeScript)
-- **Styling**: Tailwind CSS (Stage high-contrast dark mode with giant readable fonts)
-- **Built-in Persistent Database**: Server-side transactional JSON database (`data/gamelan_db.json`) with ACID write safety and automatic seeding.
-- **Cross-Device Real-Time Sync Engine**: Server-Sent Events (SSE `/api/realtime`) with instant multi-device state broadcast.
-- **QR Code Pairing**: Built-in camera QR pairing for phones, iPads, Android tablets, and stage monitors.
-- **Cloud DB (Optional)**: Supabase (PostgreSQL + Realtime WebSockets) for remote cloud deployment.
-- **Icons**: Lucide React
+Next.js 14 (App Router, TypeScript), Tailwind CSS, Supabase (PostgreSQL + Realtime), deployed on Vercel.
 
----
+## Setup
 
-## 🚀 Getting Started & Multi-Device Access
+1. Create a project at [supabase.com](https://supabase.com) and run [`supabase-schema.sql`](./supabase-schema.sql) in its SQL Editor.
+2. Copy `.env.example` to `.env.local` and fill in the project URL and anon/publishable key.
+3. `npm install` then `npm run dev` → <http://localhost:3000>.
+4. Sign in as Admin with the passkey from the schema file and **change all passkeys** under *Access & passkeys*.
 
-### 1. Run Development Server
-```bash
-npm run dev
-```
+## Deploy
 
-The server automatically binds to `0.0.0.0:3000` (all network interfaces).
+Import the repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as **Config** (not Secret) environment variables. Every push to `main` redeploys.
 
-### 2. Connect Stage Devices (Laptops, Tablets, Phones, Stage Monitors)
-- **On this machine**: Open [http://localhost:3000](http://localhost:3000)
-- **On any phone, tablet, or stage display on the same Wi-Fi**:
-  1. Click the **"Devices"** button with the phone icon in the top navbar.
-  2. Scan the on-screen **QR Code** with any smartphone or iPad camera, or navigate directly to `http://<YOUR_LOCAL_IP>:3000` (e.g. `http://10.6.48.147:3000`).
-  3. Every device syncs in real-time with zero delay!
+## Using it on the day
 
-### 3. Persistent Server Database & Cloud Sync
-All changes made on **any** device (adding songs, reordering setlists, advancing songs, loop counts, intro bar overrides) are automatically committed to the database and broadcast in real-time.
+- Share the site with *Share with devices* (QR code) in the account menu.
+- Musicians open it, pick their instrument and leave the screen on. The app keeps the screen awake.
+- The Maestro picks the Sidang and Bahagian in *Setlist* and presses **Go live**.
+- The controller uses the big bottom bar: **‹ Prev**, **− Loop +**, **Next ›**. On a laptop, arrow keys and presenter clickers work too.
 
-### 4. Supabase Cloud Setup (Production)
-1. Create a project at [supabase.com](https://supabase.com).
-2. Go to the **SQL Editor** in the Supabase Dashboard.
-3. Paste and run the entire contents of [`supabase-schema.sql`](./supabase-schema.sql).
-4. Go to **Project Settings -> API** and copy:
-   - `Project URL`
-   - `anon public key`
-5. Add to `.env.local` or Vercel Environment Variables:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-6. Run `npm run dev` or deploy to Vercel. The status badge will display **SUPABASE CLOUD**.
+## Security note
 
----
-
-## 🌐 Deployment to Vercel
-
-1. Push this repository to GitHub, GitLab, or Bitbucket.
-2. Sign in to [Vercel](https://vercel.com) and click **Add New Project**.
-3. Import your repository.
-4. In the **Environment Variables** section, add:
-   - `NEXT_PUBLIC_SUPABASE_URL` = `https://your-project-id.supabase.co`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
-5. Click **Deploy**.
-6. Once deployed, open your live URL on any phone, tablet, or laptop to use the real-time stage sync!
-
----
-
-## 🔑 Default Credentials for Testing
-
-| Role | Passkey / PIN |
-| :--- | :--- |
-| **Admin Master PIN** | `admin999` |
-| **Maestro (Sidang Pagi)** | `pagi123` |
-| **Maestro (Sidang Petang)** | `petang123` |
-| **Controller (Bahagian 1)** | `ctrl1` |
-| **Controller (Bahagian 2)** | `ctrl2` |
-| **Player View** | Public (no passkey needed) |
-
----
-
-## 📄 License
-MIT License. Built for traditional music ensembles and university graduation stage coordinators.
+Passkeys are checked in the browser and the database accepts writes from anyone with the public key. This keeps honest people out of the wrong screens but won't stop a determined attacker. Don't publish the URL widely.

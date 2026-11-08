@@ -30,6 +30,7 @@ export default function HomePage() {
     liveQueue,
     activeIndex,
     activeItem,
+    nextPart,
     roomState,
     isCued,
   } = useStage();
@@ -42,36 +43,71 @@ export default function HomePage() {
   }, [tab, isManager]);
 
   // Live song on the phone's lock screen (opt-in per device)
+  // The NEXT song is the headline; the current song is the small line.
   const lockInfo = useMemo<LockScreenInfo | null>(() => {
     if (!liveSession || !livePart) return null;
     const location = `${liveSession.name} · ${livePart.name}`;
+    const onHold = roomState.is_paused;
     if (!activeItem)
-      return { title: `${livePart.name}: no songs`, line1: 'Waiting for the Maestro', line2: location, location, detail: '', intro: '–', loop: '–', cued: false, onHold: false };
-    const cued = isCued(activeItem.introInstruments);
-    const loop = `${roomState.current_loop_iteration || 1}/${activeItem.loopCount}`;
-    const intro = formatIntro(activeItem.introBarCount, activeItem.introUnit);
+      return {
+        title: `${livePart.name}: no songs yet`,
+        line1: 'Waiting for the Maestro',
+        line2: location,
+        top: location.toUpperCase(),
+        kicker: 'WAITING',
+        heading: `${livePart.name} has no songs yet`,
+        detail: '',
+        stats: [],
+        highlight: false,
+        onHold,
+      };
+
+    const now = `Now: ${activeItem.song.title} · Loop ${roomState.current_loop_iteration || 1}/${activeItem.loopCount}`;
     const next = liveQueue[activeIndex + 1];
-    const rhythm = activeItem.song.rhythms.join(' → ');
+    const after = liveQueue[activeIndex + 2];
+
+    if (!next) {
+      return {
+        title: nextPart ? `Last song · then ${nextPart.name}` : 'Last song',
+        line1: [onHold ? '⏸ ON HOLD' : null, now].filter(Boolean).join(' · '),
+        line2: location,
+        top: `NOW · ${activeItem.song.title} · loop ${roomState.current_loop_iteration || 1}/${activeItem.loopCount}`,
+        kicker: 'LAST SONG',
+        heading: nextPart ? `Then ${nextPart.name}` : `End of ${livePart.name}`,
+        detail: location,
+        stats: [],
+        highlight: false,
+        onHold,
+      };
+    }
+
+    const cuedNext = isCued(next.introInstruments);
+    const intro = formatIntro(next.introBarCount, next.introUnit);
+    const rhythm = next.song.rhythms.join(' → ');
     return {
-      title: activeItem.song.title,
+      title: `Next: ${next.song.title}`,
       line1: [
-        roomState.is_paused ? '⏸ ON HOLD' : cued ? '★ YOUR CUE' : null,
+        onHold ? '⏸ ON HOLD' : cuedNext ? '★ YOUR CUE NEXT' : null,
         `Intro ${intro}`,
-        `Loop ${loop}`,
-        activeItem.introInstruments.join(', ') || null,
+        next.introInstruments.join(', ') || null,
         rhythm || null,
+        now,
       ]
         .filter(Boolean)
         .join(' · '),
-      line2: `${location} · Song ${activeIndex + 1}/${liveQueue.length}${next ? ` · Next: ${next.song.title}` : ' · Last song'}`,
-      location,
-      detail: [activeItem.introInstruments.join(', '), rhythm].filter(Boolean).join(' · '),
-      intro,
-      loop,
-      cued,
-      onHold: roomState.is_paused,
+      line2: `${location} · ${after ? `Then: ${after.song.title}` : 'Then: last song'}`,
+      top: `NOW · ${activeItem.song.title} · loop ${roomState.current_loop_iteration || 1}/${activeItem.loopCount}`,
+      kicker: cuedNext ? 'YOUR CUE NEXT' : 'NEXT',
+      heading: next.song.title,
+      detail: [next.introInstruments.join(', '), rhythm].filter(Boolean).join(' · '),
+      stats: [
+        { label: 'Intro', value: intro },
+        { label: 'Loops', value: `${next.loopCount}×` },
+      ],
+      highlight: cuedNext,
+      onHold,
     };
-  }, [liveSession, livePart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued]);
+  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued]);
   const lockScreen = useLockScreen(lockInfo);
 
   // First visit on a device: ask the musician for their instrument

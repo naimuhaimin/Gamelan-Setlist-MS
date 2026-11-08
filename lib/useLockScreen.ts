@@ -13,15 +13,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  */
 
 export interface LockScreenInfo {
-  title: string; // big line
-  line1: string; // e.g. "★ YOUR CUE · Intro 4 bars · Loop 2/4"
-  line2: string; // e.g. "Sidang 23 · Bahagian 1 · Next: 22 Jerai"
-  // for the artwork
-  location: string;
-  detail: string; // intro instruments · rhythm
-  intro: string;
-  loop: string;
-  cued: boolean;
+  // Text shown by the phone
+  title: string; // big line, e.g. "Next: 9 Baba Layar"
+  line1: string; // e.g. "★ YOUR CUE NEXT · Intro 4 bars · Bonang · Now: 45 Bayonan · Loop 1/4"
+  line2: string; // e.g. "Sidang 27 · Bahagian 2 · Then: 22 Jerai"
+  // Artwork
+  top: string; // small line at the top, e.g. "NOW · 45 Bayonan · loop 1/4"
+  kicker: string; // e.g. "NEXT", "YOUR CUE NEXT", "LAST SONG"
+  heading: string; // big title in the artwork
+  detail: string; // e.g. "Bonang · Inang → Joget"
+  stats: Array<{ label: string; value: string }>; // up to two
+  highlight: boolean; // gold background (your cue)
   onHold: boolean;
 }
 
@@ -84,40 +86,40 @@ function drawArtwork(info: LockScreenInfo): string | null {
   if (!ctx) return null;
   const font = (w: number, px: number) => `${w} ${px}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
 
-  ctx.fillStyle = info.cued ? '#f5b335' : '#13151c';
+  ctx.fillStyle = info.highlight ? '#f5b335' : '#13151c';
   ctx.fillRect(0, 0, size, size);
-  const ink = info.cued ? '#1a1203' : '#f3f4f6';
-  const muted = info.cued ? 'rgba(26,18,3,0.7)' : '#9aa1b2';
+  const ink = info.highlight ? '#1a1203' : '#f3f4f6';
+  const muted = info.highlight ? 'rgba(26,18,3,0.72)' : '#9aa1b2';
 
+  // Now playing, small, at the top
   ctx.fillStyle = muted;
   ctx.font = font(600, 26);
-  ctx.fillText(info.location.toUpperCase(), 32, 56, size - 64);
+  wrap(ctx, info.top, size - 64, 1).forEach((l) => ctx.fillText(l, 32, 54));
 
-  if (info.cued || info.onHold) {
-    ctx.fillStyle = info.cued ? '#1a1203' : '#f5b335';
-    ctx.font = font(800, 34);
-    ctx.fillText(info.onHold ? 'ON HOLD' : 'YOUR CUE', 32, 104);
-  }
+  ctx.fillStyle = info.highlight ? '#1a1203' : info.onHold ? '#f5b335' : '#5eead4';
+  ctx.font = font(800, 34);
+  ctx.fillText(info.onHold ? 'ON HOLD' : info.kicker, 32, 112, size - 64);
 
   ctx.fillStyle = ink;
-  ctx.font = font(800, 60);
-  const titleLines = wrap(ctx, info.title, size - 64, 3);
-  titleLines.forEach((l, i) => ctx.fillText(l, 32, 180 + i * 66));
+  ctx.font = font(800, 58);
+  const titleLines = wrap(ctx, info.heading, size - 64, 3);
+  titleLines.forEach((l, i) => ctx.fillText(l, 32, 184 + i * 64));
 
   if (info.detail) {
     ctx.fillStyle = muted;
     ctx.font = font(600, 30);
-    wrap(ctx, info.detail, size - 64, 1).forEach((l) => ctx.fillText(l, 32, Math.min(360, 180 + titleLines.length * 66 + 20)));
+    wrap(ctx, info.detail, size - 64, 1).forEach((l) => ctx.fillText(l, 32, Math.min(362, 184 + titleLines.length * 64 + 16)));
   }
 
-  ctx.fillStyle = muted;
-  ctx.font = font(600, 26);
-  ctx.fillText('INTRO', 32, 410);
-  ctx.fillText('LOOP', 290, 410);
-  ctx.fillStyle = ink;
-  ctx.font = font(800, 54);
-  ctx.fillText(info.intro, 32, 470, 240);
-  ctx.fillText(info.loop, 290, 470, 200);
+  info.stats.slice(0, 2).forEach((st, k) => {
+    const x = 32 + k * 258;
+    ctx.fillStyle = muted;
+    ctx.font = font(600, 26);
+    ctx.fillText(st.label.toUpperCase(), x, 412);
+    ctx.fillStyle = ink;
+    ctx.font = font(800, 52);
+    ctx.fillText(st.value, x, 470, 230);
+  });
 
   try {
     return c.toDataURL('image/png');
@@ -187,15 +189,16 @@ export function useLockScreen(info: LockScreenInfo | null) {
   const key = info ? JSON.stringify(info) : '';
   useEffect(() => {
     if (!active || !lockScreenSupported()) return;
-    const data = info ?? {
+    const data: LockScreenInfo = info ?? {
       title: 'Waiting for the stage',
       line1: 'Nothing is live yet',
       line2: 'Gamelan Sync',
-      location: 'Gamelan Sync',
+      top: 'GAMELAN SYNC',
+      kicker: 'WAITING',
+      heading: 'Nothing is live yet',
       detail: '',
-      intro: '–',
-      loop: '–',
-      cued: false,
+      stats: [],
+      highlight: false,
       onHold: false,
     };
     const art = drawArtwork(data);

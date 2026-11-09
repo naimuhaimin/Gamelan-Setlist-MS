@@ -98,6 +98,8 @@ interface StageContextType {
   addToQueue: (partId: string, songId: string) => Promise<void>;
   /** Emergency add during a live Bahagian (controller too): right after the current item, or at the end. */
   addLiveSong: (songId: string, where: 'next' | 'end') => Promise<void>;
+  /** Move an upcoming item of the live Bahagian up (-1) or down (+1); never before the current item. Controller too. */
+  moveLiveItem: (queueItemId: string, delta: -1 | 1) => Promise<void>;
   removeFromQueue: (queueItemId: string) => Promise<void>;
   moveQueueItem: (partId: string, fromIndex: number, toIndex: number) => Promise<void>;
   saveOverride: (queueItemId: string, overrides: Overrides) => Promise<void>;
@@ -711,6 +713,16 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const moveLiveItem = async (queueItemId: string, delta: -1 | 1) => {
+    if (!canControl || !livePart) return;
+    const ordered = queueItems.filter((q) => q.part_id === livePart.id).sort((a, b) => a.sort_order - b.sort_order);
+    const from = ordered.findIndex((q) => q.id === queueItemId);
+    const current = activeItem ? ordered.findIndex((q) => q.id === activeItem.queueItem.id) : -1;
+    const to = from + delta;
+    if (from < 0 || from <= current || to <= current || to >= ordered.length) return;
+    await moveQueueItem(livePart.id, from, to);
+  };
+
   const addBreak = async (partId: string, label: string, minutes: number | null) => {
     const existing = queueItems.filter((q) => q.part_id === partId);
     const item: QueueItem = {
@@ -994,6 +1006,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     editInterlude,
     addToQueue,
     addLiveSong,
+    moveLiveItem,
     removeFromQueue,
     moveQueueItem,
     saveOverride,

@@ -12,6 +12,7 @@ import {
   Play,
   Plus,
   ListPlus,
+  ArrowUpDown,
   Radio,
   SkipForward,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythm
 import { LivePicker } from './LivePicker';
 import { IntermissionStage } from './Intermission';
 import { LiveAddSong } from './LiveAddSong';
+import { LiveReorder } from './LiveReorder';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
 export function StageView() {
@@ -57,6 +59,7 @@ export function StageView() {
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const picker = (
     <>
       <LivePicker open={pickerOpen} onClose={() => setPickerOpen(false)} />
@@ -390,8 +393,19 @@ export function StageView() {
 
           {/* NEXT */}
           <div className="min-w-0 lg:col-span-4 flex flex-col gap-4">
+            {reordering && canControl && upcoming.length > 1 ? (
+              <LiveReorder onDone={() => setReordering(false)} />
+            ) : (
+            <>
             <Card className="p-5">
-              <div className="text-sm text-muted font-medium mb-3">Up next</div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="text-sm text-muted font-medium flex-1">Up next</div>
+                {canControl && upcoming.length > 1 && (
+                  <Button size="sm" variant="ghost" onClick={() => setReordering(true)} className="-my-1.5">
+                    <ArrowUpDown className="w-4 h-4" /> Reorder
+                  </Button>
+                )}
+              </div>
               {next ? (
                 <NextCard item={next} cued={isCued(next.introInstruments)}>
                   {votesEnabled && !next.isBreak && (
@@ -462,6 +476,8 @@ export function StageView() {
                   })}
                 </ol>
               </Card>
+            )}
+            </>
             )}
           </div>
         </div>

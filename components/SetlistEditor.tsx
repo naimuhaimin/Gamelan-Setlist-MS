@@ -1,29 +1,17 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ArrowDown,
-  ArrowUp,
-  CalendarDays,
-  Check,
-  Plus,
-  Radio,
-  Search,
-  Settings2,
-  SlidersHorizontal,
-  Trash2,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, IconButton, Input, LiveDot, Rhythms, Toggle, VoteCounts, cx } from './ui';
+import { Badge, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, Input, LiveDot, Modal, Rhythms, Stepper, Toggle, VoteCounts, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
 import { formatIntro } from '@/lib/format';
 import type { IntroUnit } from '@/types';
-import { SidangModal } from './SidangModal';
 
-export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
+/** The Maestro's editor for one Sidang: Bahagian tabs, ordered songs & breaks, controller access. */
+export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; onShowStage: () => void }) {
   const {
-    sessions,
     parts,
     songs,
     roomState,
@@ -32,98 +20,39 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
     resolveQueue,
     goLive,
     addToQueue,
+    addBreak,
     removeFromQueue,
     moveQueueItem,
     editPart,
     tally,
   } = useStage();
 
-  const [sessionId, setSessionId] = useState<string | undefined>(roomState.session_id ?? sessions[0]?.id);
-  const [partNumber, setPartNumber] = useState<number>(() => parts.find((p) => p.id === roomState.part_id)?.part_number ?? 1);
-  const [sidangModal, setSidangModal] = useState<'create' | 'edit' | null>(null);
-  const [overrideItem, setOverrideItem] = useState<ResolvedQueueItem | null>(null);
-  const [toRemove, setToRemove] = useState<ResolvedQueueItem | null>(null);
-
-  // Keep the selection valid as Sidang are added/removed
-  useEffect(() => {
-    if (!sessions.some((s) => s.id === sessionId)) setSessionId(roomState.session_id ?? sessions[0]?.id);
-  }, [sessions, sessionId, roomState.session_id]);
-
-  const session = sessions.find((s) => s.id === sessionId);
   const sessionParts = useMemo(
     () => parts.filter((p) => p.session_id === sessionId).sort((a, b) => a.part_number - b.part_number),
     [parts, sessionId]
   );
+  const [partNumber, setPartNumber] = useState<number>(
+    () => sessionParts.find((p) => p.id === roomState.part_id)?.part_number ?? 1
+  );
+  const [overrideItem, setOverrideItem] = useState<ResolvedQueueItem | null>(null);
+  const [breakItem, setBreakItem] = useState<ResolvedQueueItem | 'new' | null>(null);
+  const [toRemove, setToRemove] = useState<ResolvedQueueItem | null>(null);
+
+  useEffect(() => {
+    if (sessionParts.length && !sessionParts.some((p) => p.part_number === partNumber)) setPartNumber(sessionParts[0].part_number);
+  }, [sessionParts, partNumber]);
+
   const part = sessionParts.find((p) => p.part_number === partNumber) ?? sessionParts[0];
   const queue = part ? resolveQueue(part.id) : [];
   const isLive = !!part && roomState.part_id === part.id;
   const liveCurrentId = isLive && activeIndex >= 0 ? liveQueue[activeIndex]?.queueItem.id : null;
 
-  if (!sessions.length) {
-    return (
-      <Page>
-        <Card className="mt-6">
-          <EmptyState
-            icon={<CalendarDays className="w-10 h-10" />}
-            title="No Sidang yet"
-            action={
-              <Button variant="primary" onClick={() => setSidangModal('create')}>
-                <Plus className="w-4 h-4" /> Create the first Sidang
-              </Button>
-            }
-          >
-            Each Sidang gets Bahagian 1–4 automatically. Then add songs to each Bahagian.
-          </EmptyState>
-        </Card>
-        <SidangModal mode="create" open={sidangModal === 'create'} onClose={() => setSidangModal(null)} onSaved={(s) => setSessionId(s.id)} />
-      </Page>
-    );
-  }
-
   return (
-    <Page>
-      {/* Sidang bar */}
-      <div className="pt-4 sm:pt-6 flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-1">
-          <label htmlFor="sidang" className="block text-sm text-muted mb-1.5">
-            Sidang
-          </label>
-          <div className="flex items-center gap-2">
-            <select
-              id="sidang"
-              value={sessionId}
-              onChange={(e) => {
-                setSessionId(e.target.value);
-                setPartNumber(1);
-              }}
-              className="h-11 min-w-0 flex-1 sm:flex-none sm:w-72 rounded-xl bg-surface border border-line px-3 text-base font-semibold focus:outline-none focus:border-brass/70"
-            >
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.id === roomState.session_id ? ' — live' : ''}
-                </option>
-              ))}
-            </select>
-            <IconButton label="Sidang settings" variant="secondary" onClick={() => setSidangModal('edit')}>
-              <Settings2 className="w-5 h-5" />
-            </IconButton>
-          </div>
-        </div>
-        <Button onClick={() => setSidangModal('create')}>
-          <Plus className="w-4 h-4" /> New Sidang
-        </Button>
-      </div>
-      {session?.date && (
-        <p className="text-sm text-muted mt-2">
-          {new Date(session.date + 'T00:00').toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
-      )}
-
+    <div>
       {/* Bahagian tabs */}
-      <div className="mt-4 grid grid-cols-4 gap-2" role="tablist" aria-label="Bahagian">
+      <div className="grid grid-cols-4 gap-2" role="tablist" aria-label="Bahagian">
         {sessionParts.map((p) => {
-          const count = resolveQueue(p.id).length;
+          const count = resolveQueue(p.id).filter((r) => !r.isBreak).length;
           const selected = p.id === part?.id;
           const live = roomState.part_id === p.id;
           return (
@@ -160,12 +89,15 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
             <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-4 border-b border-line">
               <div className="min-w-0">
                 <h2 className="font-display text-xl font-bold">{part.name}</h2>
-                <p className="text-sm text-muted">Set the order. Adjust a song only for this ceremony with ⚙.</p>
+                <p className="text-sm text-muted">Set the order. Adjust a song for this ceremony with ⚙. Add breaks anywhere.</p>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                <Button onClick={() => setBreakItem('new')}>
+                  <Coffee className="w-4 h-4" /> Add break
+                </Button>
                 {isLive ? (
                   <Button variant="secondary" onClick={onShowStage}>
-                    <LiveDot /> Live now — view stage
+                    <LiveDot /> Live now
                   </Button>
                 ) : (
                   <Button variant="primary" onClick={() => goLive(part.id)} disabled={!queue.length}>
@@ -180,20 +112,35 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                 {queue.map((r, i) => (
                   <li
                     key={r.queueItem.id}
-                    className={cx('flex items-center gap-3 px-3 sm:px-4 py-3', r.queueItem.id === liveCurrentId && 'bg-songket-soft')}
+                    className={cx(
+                      'flex items-center gap-3 px-3 sm:px-4 py-3',
+                      r.queueItem.id === liveCurrentId && 'bg-songket-soft',
+                      r.isBreak && r.queueItem.id !== liveCurrentId && 'bg-jade/[0.05]'
+                    )}
                   >
                     <span className="w-7 text-center text-sm font-semibold text-muted tabular shrink-0">{i + 1}</span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium truncate">{r.song.title}</span>
-                        {r.queueItem.id === liveCurrentId && <Badge tone="live">Playing</Badge>}
-                        {r.hasOverride && <Badge tone="override">Adjusted</Badge>}
-                      </div>
-                      <div className="text-xs text-muted truncate tabular">
-                        {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || 'no intro instrument'}
-                      </div>
-                      {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
-                      <VoteCounts {...tally(r.queueItem.id)} className="mt-1" />
+                      {r.isBreak ? (
+                        <div className="flex items-center gap-2 min-w-0 text-jade-light font-medium">
+                          <Coffee className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{r.song.title}</span>
+                          {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
+                          {r.queueItem.id === liveCurrentId && <Badge tone="live">Now</Badge>}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium truncate">{r.song.title}</span>
+                            {r.queueItem.id === liveCurrentId && <Badge tone="live">Playing</Badge>}
+                            {r.hasOverride && <Badge tone="override">Adjusted</Badge>}
+                          </div>
+                          <div className="text-xs text-muted truncate tabular">
+                            {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || 'no intro instrument'}
+                          </div>
+                          {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
+                          <VoteCounts {...tally(r.queueItem.id)} className="mt-1" />
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
                       <IconButton label="Move up" size="sm" onClick={() => moveQueueItem(part.id, i, i - 1)} disabled={i === 0}>
@@ -202,14 +149,20 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                       <IconButton label="Move down" size="sm" onClick={() => moveQueueItem(part.id, i, i + 1)} disabled={i === queue.length - 1}>
                         <ArrowDown className="w-4 h-4" />
                       </IconButton>
-                      <IconButton
-                        label="Adjust for this ceremony"
-                        size="sm"
-                        onClick={() => setOverrideItem(r)}
-                        className={r.hasOverride ? 'text-songket-light' : undefined}
-                      >
-                        <SlidersHorizontal className="w-4 h-4" />
-                      </IconButton>
+                      {r.isBreak ? (
+                        <IconButton label="Edit break" size="sm" onClick={() => setBreakItem(r)}>
+                          <Pencil className="w-4 h-4" />
+                        </IconButton>
+                      ) : (
+                        <IconButton
+                          label="Adjust for this ceremony"
+                          size="sm"
+                          onClick={() => setOverrideItem(r)}
+                          className={r.hasOverride ? 'text-songket-light' : undefined}
+                        >
+                          <SlidersHorizontal className="w-4 h-4" />
+                        </IconButton>
+                      )}
                       <IconButton label="Remove from setlist" size="sm" onClick={() => setToRemove(r)} className="hover:text-danger">
                         <Trash2 className="w-4 h-4" />
                       </IconButton>
@@ -218,7 +171,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
                 ))}
               </ol>
             ) : (
-              <EmptyState title="No songs in this Bahagian">Add songs from the library on the right.</EmptyState>
+              <EmptyState title="No songs in this Bahagian">Add songs from the library.</EmptyState>
             )}
           </Card>
 
@@ -227,7 +180,7 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
             <AddSongs
               key={part.id}
               songs={songs}
-              countInPart={(songId) => queue.filter((r) => r.song.id === songId).length}
+              countInPart={(songId) => queue.filter((r) => !r.isBreak && r.song.id === songId).length}
               onAdd={(songId) => addToQueue(part.id, songId)}
             />
             <ControllerCard
@@ -241,9 +194,16 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
       )}
 
       <OverrideModal item={overrideItem} onClose={() => setOverrideItem(null)} />
+      {part && (
+        <BreakModal
+          item={breakItem}
+          onClose={() => setBreakItem(null)}
+          onAdd={(label, minutes) => addBreak(part.id, label, minutes)}
+        />
+      )}
       <ConfirmDialog
         open={!!toRemove}
-        title="Remove from setlist?"
+        title={toRemove?.isBreak ? 'Remove break?' : 'Remove from setlist?'}
         confirmLabel="Remove"
         onCancel={() => setToRemove(null)}
         onConfirm={() => {
@@ -252,25 +212,93 @@ export function SetlistEditor({ onShowStage }: { onShowStage: () => void }) {
         }}
       >
         <p>
-          “{toRemove?.song.title}” will be removed from {part?.name}. The song stays in the library.
+          {toRemove?.isBreak
+            ? `“${toRemove.song.title}” will be removed from ${part?.name}.`
+            : `“${toRemove?.song.title}” will be removed from ${part?.name}. The song stays in the library.`}
         </p>
       </ConfirmDialog>
-      <SidangModal
-        mode={sidangModal ?? 'create'}
-        open={!!sidangModal}
-        session={sidangModal === 'edit' ? session : undefined}
-        onClose={() => setSidangModal(null)}
-        onSaved={(s) => {
-          setSessionId(s.id);
-          setPartNumber(1);
-        }}
-      />
-    </Page>
+    </div>
   );
 }
 
-function Page({ children }: { children: React.ReactNode }) {
-  return <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pb-16">{children}</div>;
+function BreakModal({
+  item,
+  onClose,
+  onAdd,
+}: {
+  item: ResolvedQueueItem | 'new' | null;
+  onClose: () => void;
+  onAdd: (label: string, minutes: number | null) => Promise<void>;
+}) {
+  const { editBreak } = useStage();
+  const [label, setLabel] = useState('Break');
+  const [timed, setTimed] = useState(false);
+  const [minutes, setMinutes] = useState(10);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!item) return;
+    if (item === 'new') {
+      setLabel('Break');
+      setTimed(false);
+      setMinutes(10);
+    } else {
+      setLabel(item.song.title);
+      setTimed(!!item.breakMinutes);
+      setMinutes(item.breakMinutes ?? 10);
+    }
+  }, [item]);
+
+  if (!item) return null;
+  const isNew = item === 'new';
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (isNew) await onAdd(label, timed ? minutes : null);
+      else await editBreak(item.queueItem.id, label, timed ? minutes : null);
+      onClose();
+    } catch {
+      // toast shown
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={isNew ? 'Add a break' : 'Edit break'}
+      description={isNew ? 'It goes to the end of this Bahagian. Move it into place with the arrows.' : undefined}
+      size="sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form="break-form" disabled={saving}>
+            {saving ? 'Saving…' : isNew ? 'Add break' : 'Save'}
+          </Button>
+        </>
+      }
+    >
+      <form id="break-form" onSubmit={save} className="space-y-4">
+        <Field label="Label" htmlFor="break-label" hint="e.g. “Break”, “Ucapan Canselor”, “Penyampaian Ijazah”">
+          <Input id="break-label" value={label} onChange={(e) => setLabel(e.target.value)} />
+        </Field>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="font-medium text-sm">Show a length</div>
+            <div className="text-xs text-muted">Optional, for musicians’ info only.</div>
+          </div>
+          <Toggle checked={timed} onChange={setTimed} label="Show a length" />
+        </div>
+        {timed && <Stepper value={minutes} onChange={setMinutes} min={1} max={240} suffix="minutes" />}
+      </form>
+    </Modal>
+  );
 }
 
 // ---------------------------------------------------------------------------

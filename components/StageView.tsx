@@ -3,13 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   ChevronLeft,
-  BellRing,
-  BellOff,
   CheckCircle2,
+  Coffee,
   ChevronRight,
   Layers,
   Lock,
-  Smartphone,
   Minus,
   Pause,
   Play,
@@ -17,6 +15,7 @@ import {
   Radio,
   SkipForward,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useStage } from '@/lib/stageContext';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
@@ -24,29 +23,7 @@ import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButt
 import { LivePicker } from './LivePicker';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
-interface LockScreenControl {
-  active: boolean;
-  supported: boolean;
-  start: () => Promise<boolean>;
-  stop: () => void;
-}
-
-interface ChimeControl {
-  enabled: boolean;
-  supported: boolean;
-  enable: () => Promise<boolean>;
-  disable: () => void;
-}
-
-export function StageView({
-  onOpenSetlist,
-  lockScreen,
-  chime,
-}: {
-  onOpenSetlist: () => void;
-  lockScreen: LockScreenControl;
-  chime: ChimeControl;
-}) {
+export function StageView() {
   const {
     liveSession,
     livePart,
@@ -68,13 +45,14 @@ export function StageView({
     changeLoop,
     togglePause,
     goLive,
-    notify,
     votesEnabled,
     tally,
     vote,
     isFinished,
   } = useStage();
 
+  const router = useRouter();
+  const onOpenSetlist = () => liveSession && router.push(`/sidang/${liveSession.id}?view=edit`);
   const [pickerOpen, setPickerOpen] = useState(false);
   const picker = <LivePicker open={pickerOpen} onClose={() => setPickerOpen(false)} />;
   const openPicker = () => setPickerOpen(true);
@@ -162,43 +140,10 @@ export function StageView({
         <span className="text-sm sm:text-base font-medium text-ink">{location}</span>
         {liveQueue.length > 0 && (
           <span className="text-sm text-muted tabular">
-            {isFinished ? `All ${liveQueue.length} songs done` : `Song ${activeIndex + 1} of ${liveQueue.length}`}
+            {isFinished ? `All ${liveQueue.length} items done` : `${activeIndex + 1} of ${liveQueue.length}`}
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {chime.supported && !canControl && (
-            <Button
-              size="sm"
-              variant={chime.enabled ? 'primary' : 'secondary'}
-              aria-pressed={chime.enabled}
-              onClick={async () => {
-                if (chime.enabled) return chime.disable();
-                const ok = await chime.enable();
-                notify(ok ? 'Sound on: you’ll hear a chime when the song changes.' : 'Your browser blocked sound. Tap again.', ok ? 'info' : 'error');
-              }}
-              title="Play a chime when the song changes"
-            >
-              {chime.enabled ? <BellRing className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
-              Sound{chime.enabled ? ' on' : ''}
-            </Button>
-          )}
-          {lockScreen.supported && (
-            <Button
-              size="sm"
-              variant={lockScreen.active ? 'primary' : 'secondary'}
-              aria-pressed={lockScreen.active}
-              onClick={async () => {
-                if (lockScreen.active) return lockScreen.stop();
-                const ok = await lockScreen.start();
-                if (!ok) notify('Your browser blocked the lock screen display. Tap again.', 'error');
-                else notify('On: lock your phone to see the live song.', 'info');
-              }}
-              title="Show the live song on your phone’s lock screen"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              Lock screen{lockScreen.active ? ' on' : ''}
-            </Button>
-          )}
           {canControl && activeItem && !isFinished && (
             <Button size="sm" variant={roomState.is_paused ? 'primary' : 'secondary'} onClick={togglePause}>
               {roomState.is_paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -261,7 +206,7 @@ export function StageView({
               ) : undefined
             }
           >
-            {isManager ? 'Add songs to this Bahagian in the Setlist tab.' : 'The Maestro has not added songs to this Bahagian.'}
+            {isManager ? 'Add songs to this Bahagian on its Sidang page.' : 'The Maestro has not added songs to this Bahagian.'}
           </EmptyState>
         </Card>
       ) : (
@@ -272,7 +217,7 @@ export function StageView({
               'relative overflow-hidden lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6',
               roomState.is_paused
                 ? 'border-brass/70 [&>*:not(.hold-overlay)]:opacity-25'
-                : cx('border-t-[3px] border-t-brass', cued && 'border-brass/60')
+                : cx('border-t-[3px]', activeItem.isBreak ? 'border-t-jade' : 'border-t-brass', cued && 'border-brass/60')
             )}
           >
             {roomState.is_paused && (
@@ -287,6 +232,10 @@ export function StageView({
                 </div>
               </div>
             )}
+            {activeItem.isBreak ? (
+              <BreakBody item={activeItem} next={next} />
+            ) : (
+            <>
             {cued && (
               <div className="rounded-2xl bg-brass text-brass-ink px-5 py-4 animate-cue-pulse">
                 <div className="text-xs font-bold uppercase tracking-[0.18em]">Your cue</div>
@@ -366,6 +315,8 @@ export function StageView({
                 />
               </div>
             )}
+            </>
+            )}
 
             {canControl && (
               <div className="hidden lg:flex items-center gap-2 text-xs text-faint">
@@ -380,13 +331,13 @@ export function StageView({
               <div className="text-sm text-muted font-medium mb-3">Up next</div>
               {next ? (
                 <NextCard item={next} cued={isCued(next.introInstruments)}>
-                  {votesEnabled && (
+                  {votesEnabled && !next.isBreak && (
                     <VoteButtons {...tally(next.queueItem.id)} onVote={(v) => vote(next.queueItem.id, v)} label={next.song.title} />
                   )}
                 </NextCard>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-ink font-medium">This is the last song of {livePart.name}.</p>
+                  <p className="text-ink font-medium">This is the last item of {livePart.name}.</p>
                   {nextPart && canSwitchLive && (
                     <Button variant="primary" className="w-full" onClick={() => goLive(nextPart.id)}>
                       Go live: {nextPart.name} <ChevronRight className="w-4 h-4" />
@@ -404,7 +355,16 @@ export function StageView({
                   {later.map((r) => {
                     const pos = liveQueue.indexOf(r) + 1;
                     const mine = isCued(r.introInstruments);
-                    const body = (
+                    const body = r.isBreak ? (
+                      <>
+                        <span className="w-6 text-sm text-faint tabular shrink-0">{pos}</span>
+                        <span className="flex-1 min-w-0 inline-flex items-center gap-2 text-jade-light font-medium">
+                          <Coffee className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{r.song.title}</span>
+                          {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
+                        </span>
+                      </>
+                    ) : (
                       <>
                         <span className="w-6 text-sm text-faint tabular shrink-0">{pos}</span>
                         <span className="flex-1 min-w-0">
@@ -431,7 +391,7 @@ export function StageView({
                         ) : (
                           <div className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5">{body}</div>
                         )}
-                        {votesEnabled && (
+                        {votesEnabled && !r.isBreak && (
                           <VoteButtons {...tally(r.queueItem.id)} onVote={(v) => vote(r.queueItem.id, v)} label={r.song.title} />
                         )}
                       </li>
@@ -449,6 +409,7 @@ export function StageView({
         <ControlBar
           canPrev={activeIndex > 0}
           isLast={isLast}
+          isBreak={activeItem.isBreak}
           loop={loop}
           onPrev={goPrev}
           onNext={goNext}
@@ -456,7 +417,7 @@ export function StageView({
         />
       )}
       {role === 'controller' && !canControl && controlBlockedReason && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur safe-bottom">
+        <div className="fixed inset-x-0 z-30 border-t border-line bg-surface/95 backdrop-blur pb-3 bottom-[calc(4.1rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="max-w-7xl mx-auto px-4 pt-3 flex items-center gap-3 text-sm text-muted">
             <Lock className="w-4 h-4 shrink-0" />
             <span className="flex-1">{controlBlockedReason}</span>
@@ -520,6 +481,16 @@ function LoopPips({ current, total }: { current: number; total: number }) {
 }
 
 function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boolean; children?: React.ReactNode }) {
+  if (item.isBreak)
+    return (
+      <div className="rounded-xl p-4 border border-jade/45 bg-jade-soft">
+        <div className="text-xs font-bold uppercase tracking-wider text-jade-light mb-1 inline-flex items-center gap-1.5">
+          <Coffee className="w-3.5 h-3.5" /> Break next
+        </div>
+        <div className="font-display text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
+        {item.breakMinutes ? <div className="mt-1 text-sm text-muted tabular">About {item.breakMinutes} minutes</div> : null}
+      </div>
+    );
   return (
     <div className={cx('rounded-xl p-4 border', cued ? 'border-brass/60 bg-brass-soft' : 'border-line bg-raised/60')}>
       {cued && <div className="text-xs font-bold uppercase tracking-wider text-brass mb-1">Your cue next</div>}
@@ -543,6 +514,7 @@ function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boo
 function ControlBar({
   canPrev,
   isLast,
+  isBreak,
   loop,
   onPrev,
   onNext,
@@ -550,19 +522,25 @@ function ControlBar({
 }: {
   canPrev: boolean;
   isLast: boolean;
+  isBreak: boolean;
   loop: number;
   onPrev: () => void;
   onNext: () => void;
   onLoop: (d: number) => void;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur-md safe-bottom">
+    <div className="fixed inset-x-0 z-30 border-t border-line bg-bg/95 backdrop-blur-md pb-3 bottom-[calc(4.1rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 pt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.5fr)] gap-2 sm:gap-3 items-stretch">
         <Button size="xl" variant="secondary" onClick={onPrev} disabled={!canPrev} className="px-2" aria-label="Previous song">
           <ChevronLeft className="w-6 h-6" />
           <span className="hidden sm:inline">Prev</span>
         </Button>
 
+        {isBreak ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-jade/40 bg-jade-soft px-4 text-jade-light font-semibold">
+            <Coffee className="w-5 h-5" /> Break
+          </div>
+        ) : (
         <div className="flex items-center gap-0.5 sm:gap-1 rounded-2xl border border-brass/30 bg-brass/[0.06] px-1 sm:px-1.5">
           <IconButton label="Loop −1" onClick={() => onLoop(-1)} disabled={loop <= 1} className="w-11 h-11 sm:w-12 sm:h-12 text-ink">
             <Minus className="w-5 h-5" />
@@ -575,18 +553,41 @@ function ControlBar({
             <Plus className="w-5 h-5" />
           </IconButton>
         </div>
+        )}
 
         <Button
           size="xl"
           variant="primary"
           onClick={onNext}
-          aria-label={isLast ? 'Finish this Bahagian' : 'Next song'}
+          aria-label={isLast ? 'Finish this Bahagian' : 'Next item'}
           className={cx('px-3 sm:px-6', isLast && 'bg-jade hover:bg-jade-light text-black')}
         >
           <span>{isLast ? 'Finish' : 'Next'}</span>
           {isLast ? <CheckCircle2 className="w-6 h-6" /> : <SkipForward className="w-6 h-6" />}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function BreakBody({ item, next }: { item: ResolvedQueueItem; next: ResolvedQueueItem | undefined }) {
+  return (
+    <div className="flex flex-col items-center text-center gap-3 py-6 sm:py-10">
+      <div className="w-20 h-20 rounded-full bg-jade-soft text-jade-light ring-1 ring-jade/45 grid place-items-center">
+        <Coffee className="w-10 h-10" />
+      </div>
+      <div className="text-sm font-bold uppercase tracking-[0.2em] text-jade-light">Break</div>
+      <h1 className="font-display text-4xl sm:text-6xl font-bold tracking-tight [text-wrap:balance]">{item.song.title}</h1>
+      {item.breakMinutes ? (
+        <p className="text-lg text-muted tabular">About {item.breakMinutes} minutes</p>
+      ) : (
+        <p className="text-lg text-muted">Rest until the signal</p>
+      )}
+      {next && !next.isBreak && (
+        <p className="text-base">
+          After the break: <b className="text-ink">{next.song.title}</b>
+        </p>
+      )}
     </div>
   );
 }

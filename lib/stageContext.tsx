@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  ConvoEvent,
   DatabaseSnapshot,
   QueueVote,
   VoteTally,
@@ -47,6 +48,9 @@ interface StageContextType {
 
   // Live stage (derived)
   liveSession: Session | undefined;
+  liveEvent: ConvoEvent | undefined;
+  events: ConvoEvent[];
+  eventsEnabled: boolean; // false until the events table exists
   livePart: Part | undefined;
   liveQueue: ResolvedQueueItem[];
   activeIndex: number; // -1 when the Bahagian is empty
@@ -86,7 +90,16 @@ interface StageContextType {
   saveOverride: (queueItemId: string, overrides: Overrides) => Promise<void>;
 
   // Sidang & Bahagian
-  createSession: (input: { sidangNumber: number; name: string; date: string }) => Promise<Session>;
+  createSession: (input: { eventId: string | null; sidangNumber: number; name: string; date: string }) => Promise<Session>;
+
+  // Konvo
+  createEvent: (input: { name: string; venue: string; startDate: string; thumbnail: File | null }) => Promise<ConvoEvent>;
+  editEvent: (id: string, input: { name: string; venue: string; startDate: string; thumbnail: File | null; removeThumbnail?: boolean }) => Promise<void>;
+  removeEvent: (id: string) => Promise<void>;
+
+  // Breaks
+  addBreak: (partId: string, label: string, minutes: number | null) => Promise<void>;
+  editBreak: (queueItemId: string, label: string, minutes: number | null) => Promise<void>;
   editSession: (sessionId: string, updates: Partial<Pick<Session, 'name' | 'date'>>) => Promise<void>;
   removeSession: (sessionId: string) => Promise<void>;
   editPart: (partId: string, updates: Partial<Pick<Part, 'controller_enabled' | 'controller_passkey'>>) => Promise<void>;
@@ -152,10 +165,27 @@ function moveItem<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
+export function resolveBreak(q: QueueItem): ResolvedQueueItem {
+  const label = q.break_label?.trim() || 'Break';
+  return {
+    queueItem: q,
+    song: { id: `break:${q.id}`, title: label, intro_bar_count: 0, intro_unit: 'bars', intro_instruments: [], loop_count: 0, rhythms: [] },
+    isBreak: true,
+    breakMinutes: q.break_minutes,
+    introBarCount: 0,
+    introUnit: 'bars',
+    introInstruments: [],
+    loopCount: 0,
+    hasOverride: false,
+  };
+}
+
 export function resolveItem(q: QueueItem, song: Song): ResolvedQueueItem {
   return {
     queueItem: q,
     song,
+    isBreak: false,
+    breakMinutes: null,
     introBarCount: q.override_intro_bar_count ?? song.intro_bar_count,
     introUnit: q.override_intro_bar_count !== null ? q.override_intro_unit ?? song.intro_unit : song.intro_unit,
     introInstruments: q.override_intro_instruments ?? song.intro_instruments,
@@ -174,6 +204,7 @@ export function resolveItem(q: QueueItem, song: Song): ResolvedQueueItem {
 export function StageProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [events, setEvents] = useState<ConvoEvent[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -208,6 +239,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Loading ------------------------------------------------------------
   const applySnapshot = useCallback((s: DatabaseSnapshot) => {
+    setEvents(s.events);
     setSessions(s.sessions);
     setParts(s.parts);
     setSongs(s.songs);
@@ -399,13 +431,16 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         .filter((q) => q.part_id === partId)
         .sort((a, b) => a.sort_order - b.sort_order)
         .flatMap((q) => {
-          const song = songById.get(q.song_id);
+          if (q.kind === 'break') return [resolveBreak(q)];
+          const song = q.song_id ? songById.get(q.song_id) : undefined;
           return song ? [resolveItem(q, song)] : [];
         }),
     [queueItems, songById]
   );
 
   const liveSession = useMemo(() => sessions.find((s) => s.id === roomState.session_id), [sessions, roomState.session_id]);
+  const liveEvent = useMemo(() => events.find((e) => e.id === liveSession?.event_id), [events, liveSession?.event_id]);
+  const eventsEnabled = events.length > 0 || sessions.some((s) => s.event_id);
   const livePart = useMemo(() => parts.find((p) => p.id === roomState.part_id), [parts, roomState.part_id]);
   const liveQueue = useMemo(() => (livePart ? resolveQueue(livePart.id) : []), [livePart, resolveQueue]);
   const activeIndex = useMemo(() => {
@@ -580,6 +615,9 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       id: api.newId('q'),
       part_id: partId,
       song_id: songId,
+      kind: 'song',
+      break_label: null,
+      break_minutes: null,
       sort_order: existing.reduce((m, q) => Math.max(m, q.sort_order), 0) + 1,
       override_intro_bar_count: null,
       override_intro_unit: null,
@@ -588,6 +626,31 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     };
     setQueueItems((prev) => [...prev, item]);
     await commit(() => api.insertQueueItem(item));
+  };
+
+  const addBreak = async (partId: string, label: string, minutes: number | null) => {
+    const existing = queueItems.filter((q) => q.part_id === partId);
+    const item: QueueItem = {
+      id: api.newId('q'),
+      part_id: partId,
+      song_id: null,
+      kind: 'break',
+      break_label: label.trim() || 'Break',
+      break_minutes: minutes,
+      sort_order: existing.reduce((m, q) => Math.max(m, q.sort_order), 0) + 1,
+      override_intro_bar_count: null,
+      override_intro_unit: null,
+      override_intro_instruments: null,
+      override_loop_count: null,
+    };
+    setQueueItems((prev) => [...prev, item]);
+    await commit(() => api.insertQueueItem(item), { success: 'Break added' });
+  };
+
+  const editBreak = async (id: string, label: string, minutes: number | null) => {
+    const l = label.trim() || 'Break';
+    setQueueItems((prev) => prev.map((q) => (q.id === id ? { ...q, break_label: l, break_minutes: minutes } : q)));
+    await commit(() => api.updateBreak(id, l, minutes), { success: 'Break updated', rethrow: true });
   };
 
   const removeFromQueue = async (id: string) => {
@@ -611,10 +674,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ---- Sidang & Bahagian -------------------------------------------------------
-  const createSession: StageContextType['createSession'] = async ({ sidangNumber, name, date }) => {
+  const createSession: StageContextType['createSession'] = async ({ eventId, sidangNumber, name, date }) => {
     const id = api.newId(`session-${sidangNumber}`);
     const session: Session = {
       id,
+      event_id: eventId,
       sidang_number: sidangNumber,
       name: name.trim() || `Sidang ${sidangNumber}`,
       code: `S${sidangNumber}`,
@@ -718,6 +782,73 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     await commit(() => api.reorderInstruments(next));
   };
 
+  // ---- Konvo -----------------------------------------------------------------------
+  const createEvent: StageContextType['createEvent'] = async ({ name, venue, startDate, thumbnail }) => {
+    const ev: ConvoEvent = {
+      id: api.newId('event'),
+      name: name.trim() || 'Konvokesyen',
+      venue: venue.trim() || null,
+      start_date: startDate || null,
+      thumbnail_url: null,
+      sort_order: events.reduce((m, e) => Math.max(m, e.sort_order), 0) + 1,
+    };
+    await commit(
+      async () => {
+        if (thumbnail) ev.thumbnail_url = await api.uploadThumbnail(thumbnail, thumbnail.name);
+        await api.insertEvent(ev);
+      },
+      { success: `${ev.name} created`, rethrow: true }
+    );
+    setEvents((prev) => [...prev, ev]);
+    return ev;
+  };
+
+  const editEvent: StageContextType['editEvent'] = async (id, { name, venue, startDate, thumbnail, removeThumbnail }) => {
+    const updates: Partial<ConvoEvent> = { name: name.trim() || 'Konvokesyen', venue: venue.trim() || null, start_date: startDate || null };
+    if (removeThumbnail) updates.thumbnail_url = null;
+    await commit(
+      async () => {
+        if (thumbnail) updates.thumbnail_url = await api.uploadThumbnail(thumbnail, thumbnail.name);
+        await api.updateEvent(id, updates);
+      },
+      { success: 'Konvo updated', rethrow: true }
+    );
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
+  };
+
+  const removeEvent = async (id: string) => {
+    const goneSessions = new Set(sessions.filter((s) => s.event_id === id).map((s) => s.id));
+    await commit(
+      async () => {
+        if (roomState.session_id && goneSessions.has(roomState.session_id)) {
+          await api.updateRoomState({ session_id: null, part_id: null, current_queue_item_id: null, current_loop_iteration: 1 });
+        }
+        await api.deleteEvent(id);
+      },
+      { success: 'Konvo deleted' }
+    );
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    setSessions((prev) => prev.filter((s) => s.event_id !== id));
+  };
+
+  // Konvo changes sync on their own channel (table may not exist on older databases)
+  useEffect(() => {
+    if (!eventsEnabled || !supabase) return;
+    const client = supabase;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const channel = client
+      .channel('events_v1')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => api.fetchEvents().then(setEvents).catch(() => undefined), 150);
+      })
+      .subscribe();
+    return () => {
+      clearTimeout(timer);
+      client.removeChannel(channel);
+    };
+  }, [eventsEnabled]);
+
   // ---- Access --------------------------------------------------------------------
   const setRolePasskey = async (r: RoleType, passkey: string) => {
     const key = passkey.trim();
@@ -732,6 +863,8 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const value: StageContextType = {
     loaded,
     loadError,
+    events,
+    eventsEnabled,
     sessions,
     parts,
     songs,
@@ -740,6 +873,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     roomState,
     connection,
     liveSession,
+    liveEvent,
     livePart,
     liveQueue,
     activeIndex,
@@ -771,6 +905,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     removeFromQueue,
     moveQueueItem,
     saveOverride,
+    addBreak,
+    editBreak,
+    createEvent,
+    editEvent,
+    removeEvent,
     createSession,
     editSession,
     removeSession,

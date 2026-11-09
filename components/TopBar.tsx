@@ -1,216 +1,150 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  ChevronDown,
-  KeyRound,
-  ListMusic,
-  LogIn,
-  LogOut,
-  MonitorPlay,
-  QrCode,
-  Settings2,
-  ShieldCheck,
-  SlidersHorizontal,
-  UserRound,
-} from 'lucide-react';
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ChevronDown, Home, KeyRound, ListMusic, MonitorPlay, Settings, ShieldCheck, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import logoMark from '@/assets/logo-mark.png';
+import { useShell } from './AppShell';
 import { cx } from './ui';
-
-export type Tab = 'stage' | 'setlist' | 'library';
 
 const ROLE_LABEL = { player: 'Musician', controller: 'Controller', maestro: 'Maestro', admin: 'Admin' } as const;
 
-interface TopBarProps {
-  tab: Tab;
-  onTab: (t: Tab) => void;
-  onLogin: () => void;
-  onPickInstrument: () => void;
-  onShare: () => void;
-  onInstruments: () => void;
-  onAccess: () => void;
+const NAV = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/live', label: 'Live', icon: MonitorPlay },
+  { href: '/library', label: 'Library', icon: ListMusic },
+  { href: '/settings', label: 'Settings', icon: Settings },
+] as const;
+
+function useActive() {
+  const path = usePathname() || '/';
+  return (href: string) =>
+    href === '/' ? path === '/' || path.startsWith('/konvo') || path.startsWith('/sidang') : path.startsWith(href);
 }
 
-export function TopBar({ tab, onTab, onLogin, onPickInstrument, onShare, onInstruments, onAccess }: TopBarProps) {
-  const { role, isManager, selectedInstrument, connection, logout, liveSession, livePart } = useStage();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (e: MouseEvent | TouchEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
-    document.addEventListener('mousedown', close);
-    document.addEventListener('touchstart', close);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('touchstart', close);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [menuOpen]);
-
-  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-    { id: 'stage', label: 'Stage', icon: <MonitorPlay className="w-4 h-4" /> },
-    ...(isManager ? [{ id: 'setlist' as Tab, label: 'Setlist', icon: <SlidersHorizontal className="w-4 h-4" /> }] : []),
-    { id: 'library', label: 'Library', icon: <ListMusic className="w-4 h-4" /> },
-  ];
-
-  const tabBar = (
-    <nav className="flex items-center gap-1 p-1 rounded-xl bg-surface border border-line" aria-label="Views">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onTab(t.id)}
-          aria-current={tab === t.id ? 'page' : undefined}
-          className={cx(
-            'flex-1 sm:flex-none h-9 px-3.5 rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 transition-colors',
-            tab === t.id ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'
-          )}
-        >
-          {t.icon}
-          {t.label}
-        </button>
-      ))}
-    </nav>
+function LiveDotSmall() {
+  return (
+    <span className="relative inline-flex w-2 h-2">
+      <span className="absolute inset-0 rounded-full bg-live animate-ping opacity-60" />
+      <span className="relative w-2 h-2 rounded-full bg-live" />
+    </span>
   );
+}
 
-  const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, danger = false) => (
-    <button
-      onClick={() => {
-        setMenuOpen(false);
-        onClick();
-      }}
-      className={cx(
-        'w-full flex items-center gap-3 px-3 h-11 rounded-lg text-sm text-left transition-colors',
-        danger ? 'text-danger hover:bg-songket-soft' : 'text-ink hover:bg-raised'
-      )}
-    >
-      <span className={danger ? 'text-danger' : 'text-muted'}>{icon}</span>
-      {label}
-    </button>
-  );
+export function TopBar() {
+  const { role, selectedInstrument, connection, liveSession, livePart } = useStage();
+  const { openInstrumentPicker } = useShell();
+  const isActive = useActive();
+  const isLive = !!liveSession && !!livePart;
 
   return (
     <header className="sticky top-0 z-40 bg-bg/90 backdrop-blur-md border-b border-line">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="h-16 flex items-center gap-3">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={logoMark.src}
-              alt="Anjung Seni"
-              width={36}
-              height={36}
-              className="w-9 h-9 rounded-xl shrink-0 ring-1 ring-line object-cover"
-            />
-            <div className="min-w-0 hidden min-[420px]:block">
-              <div className="leading-none flex items-baseline gap-1.5" aria-label="Anjung Live">
-                <span className="font-script text-[1.65rem] text-ink -mb-0.5">Anjung</span>
-                <span className="font-display text-[0.7rem] font-semibold tracking-[0.28em] text-brass">LIVE</span>
-              </div>
-              <div className="text-xs text-muted truncate leading-tight">
-                {liveSession && livePart ? `${liveSession.name} · ${livePart.name}` : 'Konvokesyen'}
-              </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
+        {/* Brand */}
+        <Link href="/" className="flex items-center gap-2.5 min-w-0" aria-label="Anjung Live home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoMark.src} alt="" width={36} height={36} className="w-9 h-9 rounded-xl shrink-0 ring-1 ring-line object-cover" />
+          <div className="min-w-0 hidden min-[380px]:block">
+            <div className="leading-none flex items-baseline gap-1.5">
+              <span className="font-script text-[1.65rem] text-ink -mb-0.5">Anjung</span>
+              <span className="font-display text-[0.7rem] font-semibold tracking-[0.28em] text-brass">LIVE</span>
             </div>
+            <div className="text-[11px] text-muted truncate leading-tight mt-0.5">Gamelan Anjung Seni</div>
           </div>
+        </Link>
 
-          <div className="hidden md:block mx-auto">{tabBar}</div>
-
-          <div className="ml-auto flex items-center gap-2">
-            {/* Instrument */}
-            <button
-              onClick={onPickInstrument}
+        {/* Desktop navigation */}
+        <nav className="hidden md:flex items-center gap-1 mx-auto p-1 rounded-xl bg-surface border border-line" aria-label="Main">
+          {NAV.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              aria-current={isActive(href) ? 'page' : undefined}
               className={cx(
-                'h-10 px-3 rounded-xl border text-sm font-medium inline-flex items-center gap-2 max-w-[44vw] transition-colors',
-                selectedInstrument
-                  ? 'border-brass/50 bg-brass-soft text-brass'
-                  : 'border-line bg-surface text-muted hover:text-ink'
+                'h-9 px-3.5 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition-colors',
+                isActive(href) ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'
               )}
-              title="Choose your instrument"
             >
-              <span className="truncate">{selectedInstrument ?? 'Instrument'}</span>
-              <ChevronDown className="w-4 h-4 shrink-0 opacity-70" />
-            </button>
+              <Icon className="w-4 h-4" />
+              {label}
+              {href === '/live' && isLive && <LiveDotSmall />}
+            </Link>
+          ))}
+        </nav>
 
-            {/* Account */}
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setMenuOpen((o) => !o)}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                aria-label={`Account: ${ROLE_LABEL[role]}`}
-                className="h-10 pl-2.5 pr-2 rounded-xl border border-line bg-surface hover:border-line-strong inline-flex items-center gap-2 text-sm font-medium"
-              >
-                <span className="relative">
-                  {role === 'admin' ? (
-                    <ShieldCheck className="w-5 h-5 text-brass" />
-                  ) : role === 'player' ? (
-                    <UserRound className="w-5 h-5 text-muted" />
-                  ) : (
-                    <KeyRound className="w-5 h-5 text-brass" />
-                  )}
-                  <span
-                    className={cx(
-                      'absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 rounded-full border-2 border-surface',
-                      connection === 'live' ? 'bg-ok' : connection === 'connecting' ? 'bg-brass' : 'bg-live'
-                    )}
-                  />
-                </span>
-                <span className="hidden sm:inline">{ROLE_LABEL[role]}</span>
-                <ChevronDown className="w-4 h-4 text-muted" />
-              </button>
+        <div className="ml-auto md:ml-0 flex items-center gap-2">
+          <button
+            onClick={openInstrumentPicker}
+            className={cx(
+              'h-10 px-3 rounded-xl border text-sm font-medium inline-flex items-center gap-2 max-w-[42vw] transition-colors',
+              selectedInstrument ? 'border-brass/50 bg-brass-soft text-brass' : 'border-line bg-surface text-muted hover:text-ink'
+            )}
+            title="Choose your instrument"
+          >
+            <span className="truncate">{selectedInstrument ?? 'Instrument'}</span>
+            <ChevronDown className="w-4 h-4 shrink-0 opacity-70" />
+          </button>
 
-              {menuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-64 rounded-2xl border border-line bg-surface shadow-2xl p-1.5 animate-fade-in"
-                >
-                  <div className="px-3 pt-2 pb-2.5 border-b border-line mb-1">
-                    <div className="text-sm font-semibold">{ROLE_LABEL[role]}</div>
-                    <div className="text-xs text-muted flex items-center gap-1.5 mt-0.5">
-                      <span
-                        className={cx(
-                          'w-1.5 h-1.5 rounded-full',
-                          connection === 'live' ? 'bg-ok' : connection === 'connecting' ? 'bg-brass' : 'bg-live'
-                        )}
-                      />
-                      {connection === 'live' ? 'Live sync on' : connection === 'connecting' ? 'Connecting…' : 'Offline — reconnecting'}
-                    </div>
-                  </div>
-                  {role === 'player'
-                    ? menuItem(<LogIn className="w-4 h-4" />, 'Switch role', onLogin)
-                    : menuItem(<KeyRound className="w-4 h-4" />, 'Switch role', onLogin)}
-                  {menuItem(<QrCode className="w-4 h-4" />, 'Share with devices', onShare)}
-                  {role === 'admin' && (
-                    <>
-                      <div className="h-px bg-line my-1" />
-                      {menuItem(<Settings2 className="w-4 h-4" />, 'Instruments', onInstruments)}
-                      {menuItem(<ShieldCheck className="w-4 h-4" />, 'Admin passkey', onAccess)}
-                    </>
-                  )}
-                  {role !== 'player' && (
-                    <>
-                      <div className="h-px bg-line my-1" />
-                      {menuItem(<LogOut className="w-4 h-4" />, 'Sign out', logout, true)}
-                    </>
-                  )}
-                  <div className="px-3 pt-2 pb-1 mt-1 border-t border-line text-[11px] text-faint">
-                    Anjung Live · Gamelan Anjung Seni · by Naim M.
-                  </div>
-                </div>
+          <Link
+            href="/settings"
+            aria-label={`Settings · ${ROLE_LABEL[role]}`}
+            className="h-10 pl-2.5 pr-3 rounded-xl border border-line bg-surface hover:border-line-strong inline-flex items-center gap-2 text-sm font-medium"
+          >
+            <span className="relative">
+              {role === 'admin' ? (
+                <ShieldCheck className="w-5 h-5 text-brass" />
+              ) : role === 'player' ? (
+                <UserRound className="w-5 h-5 text-muted" />
+              ) : (
+                <KeyRound className="w-5 h-5 text-brass" />
               )}
-            </div>
-          </div>
+              <span
+                className={cx(
+                  'absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 rounded-full border-2 border-surface',
+                  connection === 'live' ? 'bg-ok' : connection === 'connecting' ? 'bg-brass' : 'bg-live'
+                )}
+              />
+            </span>
+            <span className="hidden sm:inline">{ROLE_LABEL[role]}</span>
+          </Link>
         </div>
-
-        {/* Mobile tabs */}
-        <div className="md:hidden pb-3">{tabBar}</div>
       </div>
     </header>
+  );
+}
+
+/** App-style bottom tabs on phones. */
+export function BottomNav() {
+  const { liveSession, livePart } = useStage();
+  const isActive = useActive();
+  const isLive = !!liveSession && !!livePart;
+  return (
+    <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 backdrop-blur-md safe-bottom" aria-label="Main">
+      <div className="grid grid-cols-4 pt-1.5">
+        {NAV.map(({ href, label, icon: Icon }) => {
+          const active = isActive(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              className={cx('flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium', active ? 'text-brass' : 'text-muted')}
+            >
+              <span className="relative">
+                <Icon className="w-6 h-6" strokeWidth={active ? 2.4 : 2} />
+                {href === '/live' && isLive && (
+                  <span className="absolute -top-0.5 -right-1.5">
+                    <LiveDotSmall />
+                  </span>
+                )}
+              </span>
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

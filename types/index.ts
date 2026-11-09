@@ -25,10 +25,26 @@ export interface Song {
   created_at?: string;
 }
 
+/** A Konvokesyen (convocation). Holds many Sidang. */
+export interface ConvoEvent {
+  id: string;
+  name: string;
+  venue: string | null;
+  start_date: string | null;
+  thumbnail_url: string | null;
+  sort_order: number;
+  created_at?: string;
+}
+
+export type QueueKind = 'song' | 'break';
+
 export interface QueueItem {
   id: string;
   part_id: string;
-  song_id: string;
+  song_id: string | null; // null for breaks
+  kind: QueueKind;
+  break_label: string | null;
+  break_minutes: number | null;
   sort_order: number;
   // One-time overrides for this queue position only (null = use the song's value)
   override_intro_bar_count: number | null;
@@ -50,6 +66,7 @@ export interface Part {
 
 export interface Session {
   id: string;
+  event_id: string | null;
   sidang_number: number;
   name: string;
   code: string;
@@ -88,10 +105,15 @@ export interface RoleRow {
   passkey: string;
 }
 
-/** A queue item resolved against its song, with overrides applied. */
+/**
+ * A queue item resolved against its song, with overrides applied.
+ * Breaks resolve to a stand-in `song` (title = break label, no intro/loops) and `isBreak: true`.
+ */
 export interface ResolvedQueueItem {
   queueItem: QueueItem;
   song: Song;
+  isBreak: boolean;
+  breakMinutes: number | null;
   introBarCount: number;
   introUnit: IntroUnit;
   introInstruments: string[];
@@ -100,6 +122,7 @@ export interface ResolvedQueueItem {
 }
 
 export interface DatabaseSnapshot {
+  events: ConvoEvent[];
   sessions: Session[];
   parts: Part[];
   songs: Song[];

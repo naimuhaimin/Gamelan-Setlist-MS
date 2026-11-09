@@ -32,9 +32,15 @@ Supabase is the only backend. There is no server code; the browser talks to Supa
 - `room_state` (`id = 'main_stage'`) is the single live pointer. `is_paused` = on hold; `is_finished` = the live Bahagian has ended (Next on the last song finishes it; Prev returns to the last song; navigation/go-live reset it). Only write `is_finished` when the fetched row has that key.
 - Ratings: `queue_votes` (queue_item_id, device_id, vote ±1). Device id is a random id in localStorage. Votes load separately (`fetchVotes` returns null if the table is missing → `votesEnabled` false) and use their own realtime channel, so a missing table never breaks the main channel.
 
+## Data shape
+
+Konvo (`events`) → Sidang (`sessions.event_id`) → Bahagian (`parts`) → ordered `queue_items` (kind `song` or `break`; breaks have `break_label`/`break_minutes` and no song). Breaks resolve to a stand-in song with `isBreak: true` (see `resolveBreak`), so navigation treats them as items. Konvo thumbnails live in the public Supabase Storage bucket `thumbnails` (`uploadThumbnail`). Konvo realtime uses its own channel like votes.
+
 ## UI
 
-- `app/page.tsx`: shell with three tabs (Stage / Setlist for managers / Library), the dialogs, and the toaster.
+- Routes: `/` (HomeView), `/live` (StageView), `/konvo/[id]` (ConvoView), `/sidang/[id]?view=live|list|edit` (SidangView), `/library`, `/settings` (SettingsView).
+- `components/AppShell.tsx` (in `app/layout.tsx`): navbar + phone bottom tabs (`TopBar.tsx`), dialogs, toaster, and the lock-screen/chime hooks so they keep running across pages. Use `useShell()` to open dialogs or reach those features.
+- `components/Cards.tsx`: Konvo/Sidang/Live-now cards and helpers (`formatDate`, `sidangUrl`).
 - `components/ui.tsx`: primitives (Button, IconButton, Modal as a bottom sheet on phones, Field, Input, Stepper, Chip, Toggle, Badge, ConfirmDialog, Toaster). Reuse them.
 - `components/StageView.tsx`: the projection screen and the controller's bottom bar (keyboard and presenter-clicker shortcuts, screen wake lock).
 - `lib/useLockScreen.ts`: opt-in lock-screen display via the Media Session API (silent looping audio keeps it shown and the page alive; artwork drawn on a canvas). The info is built in `app/page.tsx` so it keeps updating on every tab. `start()` must run from a tap.

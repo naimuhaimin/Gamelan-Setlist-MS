@@ -227,3 +227,40 @@ DO $$ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.queue_votes;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- 7. KONVO, BREAKS & THUMBNAILS (migration; safe to re-run)
+CREATE TABLE IF NOT EXISTS public.events (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    name TEXT NOT NULL,
+    venue TEXT,
+    start_date DATE,
+    thumbnail_url TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Events" ON public.events;
+CREATE POLICY "Public Read Events" ON public.events FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Events" ON public.events;
+CREATE POLICY "Public Write Events" ON public.events FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.events; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+INSERT INTO public.events (id, name, sort_order) VALUES ('event-default', 'Konvokesyen 2026', 1) ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE;
+UPDATE public.sessions SET event_id = 'event-default' WHERE event_id IS NULL;
+ALTER TABLE public.sessions DROP CONSTRAINT IF EXISTS sessions_code_key;
+
+ALTER TABLE public.queue_items ALTER COLUMN song_id DROP NOT NULL;
+ALTER TABLE public.queue_items ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'song' CHECK (kind IN ('song','break'));
+ALTER TABLE public.queue_items ADD COLUMN IF NOT EXISTS break_label TEXT;
+ALTER TABLE public.queue_items ADD COLUMN IF NOT EXISTS break_minutes INTEGER;
+
+INSERT INTO storage.buckets (id, name, public) VALUES ('thumbnails', 'thumbnails', true) ON CONFLICT (id) DO NOTHING;
+DROP POLICY IF EXISTS "Thumbnails read" ON storage.objects;
+CREATE POLICY "Thumbnails read" ON storage.objects FOR SELECT USING (bucket_id = 'thumbnails');
+DROP POLICY IF EXISTS "Thumbnails upload" ON storage.objects;
+CREATE POLICY "Thumbnails upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'thumbnails');
+DROP POLICY IF EXISTS "Thumbnails update" ON storage.objects;
+CREATE POLICY "Thumbnails update" ON storage.objects FOR UPDATE USING (bucket_id = 'thumbnails');
+DROP POLICY IF EXISTS "Thumbnails delete" ON storage.objects;
+CREATE POLICY "Thumbnails delete" ON storage.objects FOR DELETE USING (bucket_id = 'thumbnails');

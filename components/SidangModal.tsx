@@ -9,17 +9,24 @@ export function SidangModal({
   mode,
   open,
   session,
+  eventId = null,
   onClose,
   onSaved,
 }: {
   mode: 'create' | 'edit';
+  eventId?: string | null;
   open: boolean;
   session?: Session;
   onClose: () => void;
   onSaved?: (s: Session) => void;
 }) {
   const { sessions, createSession, editSession, removeSession, roomState } = useStage();
-  const nextNumber = useMemo(() => sessions.reduce((m, s) => Math.max(m, s.sidang_number || 0), 0) + 1, [sessions]);
+  // Sidang numbers are unique within a Konvo
+  const siblings = useMemo(
+    () => sessions.filter((s) => (s.event_id ?? null) === (mode === 'edit' ? session?.event_id ?? null : eventId)),
+    [sessions, mode, session?.event_id, eventId]
+  );
+  const nextNumber = useMemo(() => siblings.reduce((m, s) => Math.max(m, s.sidang_number || 0), 0) + 1, [siblings]);
 
   const [num, setNum] = useState(nextNumber);
   const [name, setName] = useState('');
@@ -52,14 +59,14 @@ export function SidangModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (mode === 'create' && sessions.some((s) => s.sidang_number === num)) {
+    if (mode === 'create' && siblings.some((s) => s.sidang_number === num)) {
       setError(`Sidang ${num} already exists.`);
       return;
     }
     setSaving(true);
     try {
       if (mode === 'create') {
-        const created = await createSession({ sidangNumber: num, name, date });
+        const created = await createSession({ eventId, sidangNumber: num, name, date });
         onSaved?.(created);
       } else if (session) {
         await editSession(session.id, { name: name.trim() || session.name, date });

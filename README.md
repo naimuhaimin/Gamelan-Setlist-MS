@@ -9,10 +9,19 @@ A real-time setlist, cue and loop tracker for **Gamelan Melayu** ensembles perfo
 ## How it's organised
 
 ```
-Sidang (e.g. Sidang 23)
- └── Bahagian 1 – 4
-      └── Ordered setlist of songs (with optional one-time adjustments)
+Konvo (e.g. Konvokesyen 2026, with a photo)
+ └── Sidang (e.g. Sidang 23) — each has its own link: /sidang/<id>
+      └── Bahagian 1 – 4
+           └── Ordered setlist: songs (with optional one-time adjustments) and breaks
 ```
+
+## Pages
+
+- **Home** (`/`): live-now card and the Konvo list.
+- **Konvo** (`/konvo/<id>`): its Sidang; the live one is marked.
+- **Sidang** (`/sidang/<id>`): **Live** (stage screen), **List** (every Bahagian in order, live item highlighted), **Edit** (Maestro).
+- **Live** (`/live`): whatever is on stage now.
+- **Library** and **Settings** (role, instrument, sound, lock screen, sharing, admin tools).
 
 Each song in the library has five fields: **Title**, **Intro length** (in bars or beats, e.g. *4 bars* or *2 beats*), **Intro instruments**, **Loops** and **Rhythms** (one or more rhythm names, in playing order).
 A setlist position can override intro length, intro instruments or loops for that ceremony only. The library song stays unchanged.

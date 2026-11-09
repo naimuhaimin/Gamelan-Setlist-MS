@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import type {
+  ConvoEvent,
   DatabaseSnapshot,
   QueueVote,
   Part,
@@ -44,7 +45,13 @@ export const newId = (prefix: string) =>
 
 export async function fetchSessions() {
   const res = await db().from('sessions').select('*').order('sidang_number', { ascending: true });
-  return check(res, 'Load Sidang') as Session[];
+  return (check(res, 'Load Sidang') as Session[]).map((s) => ({ ...s, event_id: s.event_id ?? null }));
+}
+/** Konvo list; empty if the events table hasn't been created yet. */
+export async function fetchEvents(): Promise<ConvoEvent[]> {
+  const res = await db().from('events').select('*').order('sort_order', { ascending: true });
+  if (res.error) return [];
+  return res.data as ConvoEvent[];
 }
 export async function fetchParts() {
   const res = await db().from('parts').select('*').order('part_number', { ascending: true });
@@ -59,7 +66,13 @@ export async function fetchSongs() {
 }
 export async function fetchQueueItems() {
   const res = await db().from('queue_items').select('*').order('sort_order', { ascending: true });
-  return (check(res, 'Load setlists') as QueueItem[]).map((q) => ({ ...q, override_intro_unit: q.override_intro_unit ?? null }));
+  return (check(res, 'Load setlists') as QueueItem[]).map((q) => ({
+    ...q,
+    override_intro_unit: q.override_intro_unit ?? null,
+    kind: q.kind ?? 'song',
+    break_label: q.break_label ?? null,
+    break_minutes: q.break_minutes ?? null,
+  }));
 }
 export async function fetchInstruments() {
   const res = await db().from('instruments').select('name, sort_order').order('sort_order', { ascending: true });
@@ -75,7 +88,8 @@ export async function fetchRoomState() {
 }
 
 export async function fetchSnapshot(): Promise<DatabaseSnapshot> {
-  const [sessions, parts, songs, queueItems, roomState, instruments, roles] = await Promise.all([
+  const [events, sessions, parts, songs, queueItems, roomState, instruments, roles] = await Promise.all([
+    fetchEvents(),
     fetchSessions(),
     fetchParts(),
     fetchSongs(),
@@ -84,7 +98,7 @@ export async function fetchSnapshot(): Promise<DatabaseSnapshot> {
     fetchInstruments(),
     fetchRoles(),
   ]);
-  return { sessions, parts, songs, queueItems, roomState, instruments, roles };
+  return { events, sessions, parts, songs, queueItems, roomState, instruments, roles };
 }
 
 /** Votes live in their own table; if it doesn't exist yet the app simply shows no votes. */
@@ -148,7 +162,13 @@ export async function deleteSong(songId: string) {
 // ---------------------------------------------------------------------------
 
 export async function insertQueueItem(item: QueueItem) {
-  check(await db().from('queue_items').insert(item), 'Add to setlist');
+  // Only send break columns for breaks, so song inserts work even before the breaks migration
+  const { kind, break_label, break_minutes, ...rest } = item;
+  const row = kind === 'break' ? { ...rest, kind, break_label, break_minutes } : rest;
+  check(await db().from('queue_items').insert(row), item.kind === 'break' ? 'Add break' : 'Add to setlist');
+}
+export async function updateBreak(id: string, label: string, minutes: number | null) {
+  check(await db().from('queue_items').update({ break_label: label, break_minutes: minutes }).eq('id', id), 'Update break');
 }
 export async function deleteQueueItem(id: string) {
   check(await db().from('queue_items').delete().eq('id', id), 'Remove from setlist');
@@ -177,7 +197,8 @@ export async function updatePart(partId: string, updates: Partial<Pick<Part, 'co
   check(await db().from('parts').update(updates).eq('id', partId), 'Update Bahagian');
 }
 export async function insertSession(session: Session, parts: Part[]) {
-  check(await db().from('sessions').insert(session), 'Create Sidang');
+  const { event_id, ...rest } = session;
+  check(await db().from('sessions').insert(event_id ? session : rest), 'Create Sidang');
   check(await db().from('parts').insert(parts), 'Create Bahagian');
 }
 export async function updateSession(sessionId: string, updates: Partial<Session>) {
@@ -186,6 +207,28 @@ export async function updateSession(sessionId: string, updates: Partial<Session>
 export async function deleteSession(sessionId: string) {
   // parts and their queue_items cascade on delete
   check(await db().from('sessions').delete().eq('id', sessionId), 'Delete Sidang');
+}
+
+// ---------------------------------------------------------------------------
+// Konvo (events) & thumbnails
+// ---------------------------------------------------------------------------
+
+export async function insertEvent(ev: ConvoEvent) {
+  check(await db().from('events').insert(ev), 'Create Konvo');
+}
+export async function updateEvent(id: string, updates: Partial<ConvoEvent>) {
+  check(await db().from('events').update(updates).eq('id', id), 'Update Konvo');
+}
+export async function deleteEvent(id: string) {
+  // sessions → parts → queue_items cascade on delete
+  check(await db().from('events').delete().eq('id', id), 'Delete Konvo');
+}
+/** Uploads an image to the public `thumbnails` bucket and returns its URL. */
+export async function uploadThumbnail(file: Blob, name: string): Promise<string> {
+  const path = `${newId('thumb')}-${name.replace(/[^a-z0-9.]+/gi, '-').toLowerCase()}`;
+  const up = await db().storage.from('thumbnails').upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false });
+  if (up.error) throw new Error(`Upload photo: ${up.error.message}`);
+  return db().storage.from('thumbnails').getPublicUrl(path).data.publicUrl;
 }
 
 // ---------------------------------------------------------------------------

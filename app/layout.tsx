@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Great_Vibes, Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { StageProvider } from '@/lib/stageContext';
+import { AppShell } from '@/components/AppShell';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 // Serif for titles (like "SENI" in the logo) and a script for the wordmark (like "Anjung")
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ms" className={`${inter.variable} ${display.variable} ${script.variable}`}>
       <body>
-        <StageProvider>{children}</StageProvider>
+        <StageProvider>
+          <AppShell>{children}</AppShell>
+        </StageProvider>
       </body>
     </html>
   );

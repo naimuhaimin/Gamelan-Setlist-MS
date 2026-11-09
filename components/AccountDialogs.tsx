@@ -157,14 +157,22 @@ export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: ()
 // Share
 // ---------------------------------------------------------------------------
 
-export function ShareModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ShareModal({
+  open,
+  onClose,
+  target,
+}: {
+  open: boolean;
+  onClose: () => void;
+  target?: { url: string; title: string };
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [url, setUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (open) setUrl(window.location.origin);
-  }, [open]);
+    if (open) setUrl(target?.url ?? window.location.origin);
+  }, [open, target?.url]);
 
   useEffect(() => {
     if (!open || !url) return;
@@ -186,7 +194,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Open on other devices" description="Scan with a phone or tablet camera." size="sm">
+    <Modal open={open} onClose={onClose} title={target?.title ?? 'Open on other devices'} description="Scan with a phone or tablet camera." size="sm">
       <div className="flex flex-col items-center gap-4">
         <div className="p-3 bg-white rounded-2xl">
           <canvas ref={canvasRef} className="block w-[220px] h-[220px]" />

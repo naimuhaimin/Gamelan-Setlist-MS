@@ -6,7 +6,8 @@ import { LiveDot, Modal, cx } from './ui';
 
 /** Quick "what is live" switcher for Controller, Maestro and Admin. */
 export function LivePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { sessions, parts, roomState, resolveQueue, goLive } = useStage();
+  const { sessions, parts, events, roomState, resolveQueue, goLive } = useStage();
+  const eventName = (id: string | null) => events.find((e) => e.id === id)?.name;
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
             >
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
+                  {eventName(s.event_id) ? `${eventName(s.event_id)} · ` : ''}
                   {s.name}
                   {s.id === roomState.session_id ? ' — live' : ''}
                 </option>

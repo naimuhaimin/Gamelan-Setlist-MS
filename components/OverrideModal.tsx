@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import type { ResolvedQueueItem } from '@/types';
 import { Button, Chip, Modal, Stepper, Toggle, UnitSwitch } from './ui';
 import { formatIntro } from '@/lib/format';
@@ -18,6 +19,7 @@ export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | nul
   const [useLoops, setUseLoops] = useState(false);
   const [loops, setLoops] = useState(1);
   const [saving, setSaving] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     if (!item) return;
@@ -55,34 +57,34 @@ export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | nul
     <Modal
       open
       onClose={onClose}
-      title={`Adjust “${song.title}”`}
-      description="Only for this spot in this Bahagian. The song in the library stays the same."
+      title={t('Adjust “{title}”', { title: song.title })}
+      description={t('Only for this spot in this Bahagian. The song in the library stays the same.')}
       footer={
         <>
           {item.hasOverride && (
             <Button variant="ghost" className="mr-auto" onClick={() => save(true)} disabled={saving}>
-              Reset to default
+              {t('Reset to default')}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button variant="primary" onClick={() => save()} disabled={saving || (useInst && insts.length === 0)}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('Saving…') : t('Save')}
           </Button>
         </>
       }
     >
       <div className="space-y-3">
-        <Row title="Intro length" original={formatIntro(song.intro_bar_count, song.intro_unit)} on={useBars} setOn={setUseBars}>
+        <Row title={t('Intro length')} original={formatIntro(song.intro_bar_count, song.intro_unit)} on={useBars} setOn={setUseBars}>
           <div className="flex flex-wrap items-center gap-3">
             <Stepper value={bars} onChange={setBars} min={0} max={64} />
             <UnitSwitch value={unit} onChange={setUnit} />
           </div>
         </Row>
         <Row
-          title="Intro instruments"
-          original={song.intro_instruments.join(', ') || 'none'}
+          title={t('Intro instruments')}
+          original={song.intro_instruments.join(', ') || t('none')}
           on={useInst}
           setOn={setUseInst}
         >
@@ -97,10 +99,10 @@ export function OverrideModal({ item, onClose }: { item: ResolvedQueueItem | nul
               </Chip>
             ))}
           </div>
-          {insts.length === 0 && <p className="text-xs text-danger">Pick at least one instrument.</p>}
+          {insts.length === 0 && <p className="text-xs text-danger">{t('Pick at least one instrument.')}</p>}
         </Row>
-        <Row title="Loops" original={`${song.loop_count}×`} on={useLoops} setOn={setUseLoops}>
-          <Stepper value={loops} onChange={setLoops} min={1} max={99} suffix="times" />
+        <Row title={t('Loops')} original={`${song.loop_count}×`} on={useLoops} setOn={setUseLoops}>
+          <Stepper value={loops} onChange={setLoops} min={1} max={99} suffix={t('times')} />
         </Row>
       </div>
     </Modal>
@@ -120,15 +122,16 @@ function Row({
   setOn: (v: boolean) => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-xl border border-line p-4 space-y-3">
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <div className="font-medium">{title}</div>
-          <div className="text-xs text-muted">Song default: {original}</div>
+          <div className="text-xs text-muted">{t('Song default: {value}', { value: original })}</div>
         </div>
-        <span className="text-xs text-muted">{on ? 'Changed' : 'Default'}</span>
-        <Toggle checked={on} onChange={setOn} label={`Change ${title.toLowerCase()}`} />
+        <span className="text-xs text-muted">{on ? t('Changed') : t('Default')}</span>
+        <Toggle checked={on} onChange={setOn} label={t('Change {what}', { what: title.toLowerCase() })} />
       </div>
       {on && children}
     </div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { plural, useT } from '@/lib/i18n';
 import type { RoleType } from '@/types';
 import { Button, ConfirmDialog, Field, IconButton, Input, Modal } from './ui';
 
@@ -12,6 +13,7 @@ import { Button, ConfirmDialog, Field, IconButton, Input, Modal } from './ui';
 
 export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { instruments, songs, addInstrument, renameInstrument, removeInstrument, moveInstrument } = useStage();
+  const { t } = useT();
   const [name, setName] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -55,18 +57,18 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
       <Modal
         open={open && !toDelete}
         onClose={onClose}
-        title="Instruments"
-        description="The ensemble’s instruments. Renaming updates every song that uses it."
+        title={t('Instruments')}
+        description={t('The ensemble’s instruments. Renaming updates every song that uses it.')}
         footer={
           <Button variant="primary" onClick={onClose}>
-            Done
+            {t('Done')}
           </Button>
         }
       >
         <form onSubmit={add} className="flex gap-2 mb-4">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New instrument name" aria-label="New instrument name" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('New instrument name')} aria-label={t('New instrument name')} />
           <Button type="submit" disabled={!name.trim()}>
-            <Plus className="w-4 h-4" /> Add
+            <Plus className="w-4 h-4" /> {t('Add')}
           </Button>
         </form>
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
@@ -82,10 +84,10 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
                   }}
                 >
                   <Input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} className="h-9" />
-                  <IconButton label="Save name" size="sm" variant="primary" onClick={saveEdit}>
+                  <IconButton label={t('Save name')} size="sm" variant="primary" onClick={saveEdit}>
                     <Check className="w-4 h-4" />
                   </IconButton>
-                  <IconButton label="Cancel" size="sm" onClick={() => setEditing(null)}>
+                  <IconButton label={t('Cancel')} size="sm" onClick={() => setEditing(null)}>
                     <X className="w-4 h-4" />
                   </IconButton>
                 </form>
@@ -94,17 +96,17 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
                   <span className="flex-1 min-w-0">
                     <span className="block font-medium truncate">{inst}</span>
                     <span className="block text-xs text-muted">
-                      Intro in {usage(inst)} {usage(inst) === 1 ? 'song' : 'songs'}
+                      {t('Intro in {songs}', { songs: plural(usage(inst), '{n} song', '{n} songs') })}
                     </span>
                   </span>
-                  <IconButton label="Move up" size="sm" onClick={() => moveInstrument(idx, idx - 1)} disabled={idx === 0}>
+                  <IconButton label={t('Move up')} size="sm" onClick={() => moveInstrument(idx, idx - 1)} disabled={idx === 0}>
                     <ArrowUp className="w-4 h-4" />
                   </IconButton>
-                  <IconButton label="Move down" size="sm" onClick={() => moveInstrument(idx, idx + 1)} disabled={idx === instruments.length - 1}>
+                  <IconButton label={t('Move down')} size="sm" onClick={() => moveInstrument(idx, idx + 1)} disabled={idx === instruments.length - 1}>
                     <ArrowDown className="w-4 h-4" />
                   </IconButton>
                   <IconButton
-                    label={`Rename ${inst}`}
+                    label={t('Rename {name}', { name: inst })}
                     size="sm"
                     onClick={() => {
                       setEditing(inst);
@@ -114,21 +116,21 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
                   >
                     <Pencil className="w-4 h-4" />
                   </IconButton>
-                  <IconButton label={`Delete ${inst}`} size="sm" onClick={() => setToDelete(inst)} className="hover:text-danger">
+                  <IconButton label={t('Delete {name}', { name: inst })} size="sm" onClick={() => setToDelete(inst)} className="hover:text-danger">
                     <Trash2 className="w-4 h-4" />
                   </IconButton>
                 </>
               )}
             </li>
           ))}
-          {!instruments.length && <li className="px-3 py-6 text-center text-sm text-muted">No instruments yet.</li>}
+          {!instruments.length && <li className="px-3 py-6 text-center text-sm text-muted">{t('No instruments yet.')}</li>}
         </ul>
       </Modal>
 
       <ConfirmDialog
         open={!!toDelete}
-        title={`Delete ${toDelete}?`}
-        confirmLabel="Delete instrument"
+        title={t('Delete {name}?', { name: toDelete })}
+        confirmLabel={t('Delete instrument')}
         onCancel={() => setToDelete(null)}
         onConfirm={() => {
           if (toDelete) removeInstrument(toDelete);
@@ -136,12 +138,9 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
         }}
       >
         {toDelete && usage(toDelete) > 0 ? (
-          <p>
-            It will also be removed from the intro of <b className="text-ink">{usage(toDelete)}</b>{' '}
-            {usage(toDelete) === 1 ? 'song' : 'songs'}.
-          </p>
+          <p>{t('It will also be removed from the intro of {songs}.', { songs: plural(usage(toDelete), '{n} song', '{n} songs') })}</p>
         ) : (
-          <p>No songs use it.</p>
+          <p>{t('No songs use it.')}</p>
         )}
       </ConfirmDialog>
     </>
@@ -161,6 +160,7 @@ export function AccessModal({ open, onClose }: { open: boolean; onClose: () => v
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useT();
 
   useEffect(() => {
     if (open) {
@@ -171,7 +171,7 @@ export function AccessModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!values.admin?.trim()) return setError('The Admin passkey cannot be empty, or nobody could sign in as Admin.');
+    if (!values.admin?.trim()) return setError(t('The Admin passkey cannot be empty, or nobody could sign in as Admin.'));
     setSaving(true);
     try {
       for (const a of ACCESS) {
@@ -189,22 +189,22 @@ export function AccessModal({ open, onClose }: { open: boolean; onClose: () => v
     <Modal
       open={open}
       onClose={onClose}
-      title="Admin passkey"
-      description="Only Admin needs a passkey. Controller and Maestro are open to anyone using the app."
+      title={t('Admin passkey')}
+      description={t('Only Admin needs a passkey. Controller and Maestro are open to anyone using the app.')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button variant="primary" type="submit" form="access-form" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('Saving…') : t('Save')}
           </Button>
         </>
       }
     >
       <form id="access-form" onSubmit={save} className="space-y-4">
         {ACCESS.map((a) => (
-          <Field key={a.role} label={a.label} hint={a.hint} htmlFor={`pk-${a.role}`}>
+          <Field key={a.role} label={t(a.label)} hint={t(a.hint)} htmlFor={`pk-${a.role}`}>
             <Input
               id={`pk-${a.role}`}
               value={values[a.role] ?? ''}

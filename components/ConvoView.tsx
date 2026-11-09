@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, MapPin, Pencil, Plus } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import { Button, EmptyState } from './ui';
 import { ConvoThumb, SidangCard, formatDate } from './Cards';
 import { ConvoModal } from './ConvoModal';
@@ -15,14 +16,15 @@ export function ConvoView({ eventId }: { eventId: string }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [creatingSidang, setCreatingSidang] = useState(false);
+  const { t } = useT();
   const event = events.find((e) => e.id === eventId);
   const list = sessions.filter((s) => s.event_id === eventId).sort((a, b) => a.sidang_number - b.sidang_number);
 
   if (!event)
     return (
       <div className="max-w-3xl mx-auto px-4 pt-10">
-        <EmptyState title="Event not found" action={<Link href="/" className="text-brass underline">Back to home</Link>}>
-          It may have been deleted.
+        <EmptyState title={t('Event not found')} action={<Link href="/" className="text-brass underline">{t('Back to home')}</Link>}>
+          {t('It may have been deleted.')}
         </EmptyState>
       </div>
     );
@@ -30,7 +32,7 @@ export function ConvoView({ eventId }: { eventId: string }) {
   return (
     <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pb-10">
       <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink pt-4">
-        <ChevronLeft className="w-4 h-4" /> Home
+        <ChevronLeft className="w-4 h-4" /> {t('Home')}
       </Link>
 
       {/* Banner */}
@@ -51,7 +53,7 @@ export function ConvoView({ eventId }: { eventId: string }) {
           </div>
           {isManager && (
             <Button size="sm" onClick={() => setEditing(true)}>
-              <Pencil className="w-4 h-4" /> Edit
+              <Pencil className="w-4 h-4" /> {t('Edit')}
             </Button>
           )}
         </div>
@@ -62,7 +64,7 @@ export function ConvoView({ eventId }: { eventId: string }) {
           <h2 className="font-display text-2xl font-bold flex-1">Sidang</h2>
           {isManager && (
             <Button variant="primary" onClick={() => setCreatingSidang(true)}>
-              <Plus className="w-4 h-4" /> New Sidang
+              <Plus className="w-4 h-4" /> {t('New Sidang')}
             </Button>
           )}
         </div>
@@ -73,8 +75,8 @@ export function ConvoView({ eventId }: { eventId: string }) {
             ))}
           </div>
         ) : (
-          <EmptyState title="No Sidang yet">
-            {isManager ? 'Create one with “New Sidang”. Bahagian 1–4 are added automatically.' : 'Check back soon.'}
+          <EmptyState title={t('No Sidang yet')}>
+            {isManager ? t('Create one with “New Sidang”. Bahagian 1–4 are added automatically.') : t('Check back soon.')}
           </EmptyState>
         )}
       </section>

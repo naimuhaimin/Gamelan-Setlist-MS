@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarDays, Check, ChevronLeft, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
 import { formatIntro } from '@/lib/format';
 import { useShell } from './AppShell';
@@ -25,6 +26,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { t } = useT();
 
   const session = sessions.find((s) => s.id === sessionId);
   const event = events.find((e) => e.id === session?.event_id);
@@ -38,16 +40,16 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   if (!session)
     return (
       <div className="max-w-3xl mx-auto px-4 pt-10">
-        <EmptyState title="Sidang not found" action={<Link href="/" className="text-brass underline">Back to home</Link>}>
-          It may have been deleted.
+        <EmptyState title={t('Sidang not found')} action={<Link href="/" className="text-brass underline">{t('Back to home')}</Link>}>
+          {t('It may have been deleted.')}
         </EmptyState>
       </div>
     );
 
   const views: Array<{ id: View; label: string; icon: React.ReactNode }> = [
-    { id: 'live', label: 'Live', icon: <MonitorPlay className="w-4 h-4" /> },
-    { id: 'list', label: 'List', icon: <List className="w-4 h-4" /> },
-    ...(isManager ? [{ id: 'edit' as View, label: 'Edit', icon: <SlidersHorizontal className="w-4 h-4" /> }] : []),
+    { id: 'live', label: t('Live'), icon: <MonitorPlay className="w-4 h-4" /> },
+    { id: 'list', label: t('List'), icon: <List className="w-4 h-4" /> },
+    ...(isManager ? [{ id: 'edit' as View, label: t('Edit'), icon: <SlidersHorizontal className="w-4 h-4" /> }] : []),
   ];
 
   return (
@@ -57,7 +59,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
           href={event ? `/konvo/${encodeURIComponent(event.id)}` : '/'}
           className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink pt-4"
         >
-          <ChevronLeft className="w-4 h-4" /> {event?.name ?? 'Home'}
+          <ChevronLeft className="w-4 h-4" /> {event?.name ?? t('Home')}
         </Link>
 
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -66,26 +68,26 @@ export function SidangView({ sessionId }: { sessionId: string }) {
               <h1 className="font-display text-3xl sm:text-4xl font-bold">{session.name}</h1>
               {isLive && (
                 <Badge tone="live">
-                  <LiveDot /> Live
+                  <LiveDot /> {t('Live')}
                 </Badge>
               )}
             </div>
             <p className="text-sm text-muted flex items-center gap-1.5 mt-1">
-              <CalendarDays className="w-3.5 h-3.5" /> {formatDate(session.date) || 'No date'}
+              <CalendarDays className="w-3.5 h-3.5" /> {formatDate(session.date) || t('No date')}
             </p>
           </div>
-          <Button onClick={() => openShare({ url: sidangUrl(session.id), title: `Share ${session.name}` })}>
-            <Share2 className="w-4 h-4" /> Share
+          <Button onClick={() => openShare({ url: sidangUrl(session.id), title: t('Share {name}', { name: session.name }) })}>
+            <Share2 className="w-4 h-4" /> {t('Share')}
           </Button>
           {isManager && (
-            <IconButton label="Sidang settings" variant="secondary" onClick={() => setSettingsOpen(true)}>
+            <IconButton label={t('Sidang settings')} variant="secondary" onClick={() => setSettingsOpen(true)}>
               <Settings2 className="w-5 h-5" />
             </IconButton>
           )}
         </div>
 
         {/* View switch */}
-        <div className="mt-4 inline-flex p-1 rounded-xl bg-surface border border-line" role="tablist" aria-label="View">
+        <div className="mt-4 inline-flex p-1 rounded-xl bg-surface border border-line" role="tablist" aria-label={t('View')}>
           {views.map((v) => (
             <button
               key={v.id}
@@ -139,27 +141,28 @@ export function SidangView({ sessionId }: { sessionId: string }) {
 
 function NotLive({ sessionId, onList }: { sessionId: string; onList: () => void }) {
   const { parts, resolveQueue, liveSession, canSwitchLive, goLive } = useStage();
+  const { t } = useT();
   const myParts = parts.filter((p) => p.session_id === sessionId).sort((a, b) => a.part_number - b.part_number);
   return (
     <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
       <Card>
         <EmptyState
           icon={<Radio className="w-10 h-10" />}
-          title="This Sidang isn’t live right now"
+          title={t('This Sidang isn’t live right now')}
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button onClick={onList}>
-                <List className="w-4 h-4" /> See the full list
+                <List className="w-4 h-4" /> {t('See the full list')}
               </Button>
               {liveSession && (
                 <Link href="/live" className="h-10 px-4 rounded-xl bg-raised border border-line inline-flex items-center gap-2 text-sm font-medium">
-                  <LiveDot /> See what’s live
+                  <LiveDot /> {t('See what’s live')}
                 </Link>
               )}
             </div>
           }
         >
-          {canSwitchLive ? 'Put one of its Bahagian live:' : 'This page will switch to the live stage when it starts.'}
+          {canSwitchLive ? t('Put one of its Bahagian live:') : t('This page will switch to the live stage when it starts.')}
         </EmptyState>
         {canSwitchLive && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 pb-5 -mt-4">
@@ -167,7 +170,7 @@ function NotLive({ sessionId, onList }: { sessionId: string; onList: () => void 
               const n = resolveQueue(p.id).length;
               return (
                 <Button key={p.id} variant="primary" disabled={!n} onClick={() => goLive(p.id)}>
-                  Go live: {p.name.replace('Bahagian', 'B')}
+                  {t('Go live: {part}', { part: p.name.replace('Bahagian', 'B') })}
                 </Button>
               );
             })}
@@ -234,16 +237,17 @@ function PartSection({
   liveRef: React.MutableRefObject<HTMLLIElement | null>;
 }) {
   const { isCued, roomState } = useStage();
+  const { t } = useT();
   return (
     <Card className={cx('overflow-hidden', isLivePart && !finished && 'border-songket/50')}>
       <div className={cx('flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-line', isLivePart && !finished && 'border-t-[3px] border-t-songket')}>
         <h2 className="font-display text-xl font-bold flex-1">{part.name}</h2>
         {isLivePart && (
           <Badge tone={finished ? 'ok' : 'live'}>
-            {!finished && <LiveDot />} {finished ? 'Finished' : roomState.is_paused ? 'On hold' : 'Live'}
+            {!finished && <LiveDot />} {finished ? t('Finished') : roomState.is_paused ? t('On hold') : t('Live')}
           </Badge>
         )}
-        <span className="text-xs text-muted tabular">{items.filter((r) => !r.isBreak).length} songs</span>
+        <span className="text-xs text-muted tabular">{plural(items.filter((r) => !r.isBreak).length, '{n} song', '{n} songs')}</span>
       </div>
       {items.length ? (
         <ol className="divide-y divide-line">
@@ -269,8 +273,8 @@ function PartSection({
                   {r.isBreak ? (
                     <div className="flex items-center gap-2 text-stop-light font-semibold">
                       <BreakIcon className="w-4 h-4" /> {r.song.title}
-                      {r.breakMinutes ? <span className="text-xs text-muted font-normal tabular">· {r.breakMinutes} min</span> : null}
-                      {now && <Badge tone="live">Now</Badge>}
+                      {r.breakMinutes ? <span className="text-xs text-muted font-normal tabular">· {t('{n} min', { n: r.breakMinutes })}</span> : null}
+                      {now && <Badge tone="live">{t('Now')}</Badge>}
                     </div>
                   ) : (
                     <>
@@ -278,14 +282,14 @@ function PartSection({
                         <span className={cx('font-display font-bold', now ? 'text-xl' : 'text-base')}>{r.song.title}</span>
                         {now && (
                           <Badge tone="live">
-                            <LiveDot /> Now playing
+                            <LiveDot /> {t('Now playing')}
                           </Badge>
                         )}
-                        {mine && <Badge tone="brass">Your cue</Badge>}
-                        {r.hasOverride && <Badge tone="override">Adjusted</Badge>}
+                        {mine && <Badge tone="brass">{t('Your cue')}</Badge>}
+                        {r.hasOverride && <Badge tone="override">{t('Adjusted')}</Badge>}
                       </div>
                       <div className="text-sm text-muted tabular mt-0.5">
-                        {formatIntro(r.introBarCount, r.introUnit)} intro · {r.loopCount}× · {r.introInstruments.join(', ') || '—'}
+                        {t('{intro} intro', { intro: formatIntro(r.introBarCount, r.introUnit) })} · {r.loopCount}× · {r.introInstruments.join(', ') || '—'}
                       </div>
                       {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1.5" />}
                     </>
@@ -296,7 +300,7 @@ function PartSection({
           })}
         </ol>
       ) : (
-        <p className="px-5 py-6 text-sm text-muted">No songs yet.</p>
+        <p className="px-5 py-6 text-sm text-muted">{t('No songs yet.')}</p>
       )}
     </Card>
   );

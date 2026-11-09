@@ -7,6 +7,7 @@ import { useLockScreen, type LockScreenInfo } from '@/lib/useLockScreen';
 import { useChime } from '@/lib/useChime';
 import { useTheme } from '@/lib/useTheme';
 import { formatIntro } from '@/lib/format';
+import { tr, useT } from '@/lib/i18n';
 import { TopBar, BottomNav } from './TopBar';
 import { InstrumentPicker, LoginModal, ShareModal } from './AccountDialogs';
 import { AccessModal, InstrumentsModal } from './AdminDialogs';
@@ -67,74 +68,79 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     resolveQueue,
   } = useStage();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const { t, lang } = useT();
   const [shareTarget, setShareTarget] = useState<{ url: string; title: string } | undefined>(undefined);
 
   // ---- Lock screen: the NEXT item is the headline, the current one the small line ----
-  const lockInfo = useMemo<LockScreenInfo | null>(() => {
+  const lockInfo = useMemo<LockScreenInfo>(() => {
+    const blank: Pick<LockScreenInfo, 'stats' | 'highlight'> = { stats: [], highlight: false };
+    const waiting: LockScreenInfo = {
+      ...blank,
+      title: tr('Waiting for the stage'),
+      line1: tr('Nothing is live yet'),
+      line2: 'Anjung Live',
+      top: 'ANJUNG LIVE',
+      kicker: tr('WAITING'),
+      heading: tr('Nothing is live yet'),
+      detail: '',
+      onHold: false,
+    };
     // ended with no intermission: the lock screen shows "nothing live"
-    if (!liveSession || !livePart || (isFinished && !liveInterlude)) return null;
+    if (!liveSession || !livePart || (isFinished && !liveInterlude)) return waiting;
     const location = `${liveSession.name} · ${livePart.name}`;
     const onHold = roomState.is_paused;
-    const blank: Pick<LockScreenInfo, 'stats' | 'highlight'> = { stats: [], highlight: false };
     if (isFinished && liveInterlude && nextPart) {
       const first = resolveQueue(nextPart.id)[0];
       const ready = interludeDone >= liveInterlude.songs;
       const progress = ready
-        ? `${liveInterlude.label} done · get ready`
-        : `${liveInterlude.label} · song ${interludeDone + 1} of ${liveInterlude.songs}`;
+        ? tr('{label} done · get ready', { label: liveInterlude.label })
+        : tr('{label} · song {n} of {total}', { label: liveInterlude.label, n: interludeDone + 1, total: liveInterlude.songs });
       return {
         ...blank,
-        title: first ? `Next: ${first.song.title}` : `Next: ${nextPart.name}`,
-        line1: `☕ Intermission · ${progress}`,
-        line2: `${liveSession.name} · then ${nextPart.name}`,
-        top: `INTERMISSION · ${liveSession.name}`.toUpperCase(),
-        kicker: ready ? 'GET READY' : 'INTERMISSION',
+        title: tr('Next: {title}', { title: first ? first.song.title : nextPart.name }),
+        line1: `☕ ${tr('Intermission')} · ${progress}`,
+        line2: tr('{sidang} · then {part}', { sidang: liveSession.name, part: nextPart.name }),
+        top: `${tr('INTERMISSION')} · ${liveSession.name}`.toUpperCase(),
+        kicker: ready ? tr('GET READY') : tr('INTERMISSION'),
         heading: first ? first.song.title : nextPart.name,
-        detail: `${nextPart.name} opens with this · ${progress}`,
+        detail: tr('{part} opens with this · {progress}', { part: nextPart.name, progress }),
         highlight: ready,
         onHold: false,
       };
     }
-    if (isFinished)
-      return {
-        ...blank,
-        title: `${livePart.name} finished`,
-        line1: nextPart ? `No song playing · Up next: ${nextPart.name}` : 'No song playing · last Bahagian done',
-        line2: location,
-        top: location.toUpperCase(),
-        kicker: 'FINISHED',
-        heading: nextPart ? `Up next: ${nextPart.name}` : `${liveSession.name} done`,
-        detail: 'No song is playing',
-        onHold: false,
-      };
     if (!activeItem)
       return {
         ...blank,
-        title: `${livePart.name}: no songs yet`,
-        line1: 'Waiting for the Maestro',
+        title: tr('{part}: no songs yet', { part: livePart.name }),
+        line1: tr('Waiting for the Maestro'),
         line2: location,
         top: location.toUpperCase(),
-        kicker: 'WAITING',
-        heading: `${livePart.name} has no songs yet`,
+        kicker: tr('WAITING'),
+        heading: tr('{part} has no songs yet', { part: livePart.name }),
         detail: '',
         onHold,
       };
 
     const loopText = `${roomState.current_loop_iteration || 1}/${activeItem.loopCount}`;
-    const nowLine = activeItem.isBreak ? `Now: ${activeItem.song.title}` : `Now: ${activeItem.song.title} · Loop ${loopText}`;
-    const nowTop = activeItem.isBreak ? `NOW · ${activeItem.song.title.toUpperCase()}` : `NOW · ${activeItem.song.title} · loop ${loopText}`;
+    const nowLine = activeItem.isBreak
+      ? tr('Now: {title}', { title: activeItem.song.title })
+      : tr('Now: {title} · Loop {loop}', { title: activeItem.song.title, loop: loopText });
+    const nowTop = activeItem.isBreak
+      ? `${tr('NOW')} · ${activeItem.song.title.toUpperCase()}`
+      : `${tr('NOW')} · ${activeItem.song.title} · ${tr('loop')} ${loopText}`;
     const next = liveQueue[activeIndex + 1];
     const after = liveQueue[activeIndex + 2];
+    const holdTag = onHold ? `⏸ ${tr('ON HOLD')}` : null;
 
     if (!next)
       return {
         ...blank,
-        title: nextPart ? `Last item · then ${nextPart.name}` : 'Last item',
-        line1: [onHold ? '⏸ ON HOLD' : null, nowLine].filter(Boolean).join(' · '),
+        title: nextPart ? tr('Last item · then {part}', { part: nextPart.name }) : tr('Last item'),
+        line1: [holdTag, nowLine].filter(Boolean).join(' · '),
         line2: location,
         top: nowTop,
-        kicker: 'LAST ITEM',
-        heading: nextPart ? `Then ${nextPart.name}` : `End of ${livePart.name}`,
+        kicker: tr('LAST ITEM'),
+        heading: nextPart ? tr('Then {part}', { part: nextPart.name }) : tr('End of {part}', { part: livePart.name }),
         detail: location,
         onHold,
       };
@@ -142,13 +148,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (next.isBreak)
       return {
         ...blank,
-        title: `Next: ${next.song.title}`,
-        line1: [onHold ? '⏸ ON HOLD' : null, next.breakMinutes ? `${next.breakMinutes} min break` : 'Break', nowLine].filter(Boolean).join(' · '),
-        line2: `${location} · ${after ? `Then: ${after.song.title}` : 'Then: end'}`,
+        title: tr('Next: {title}', { title: next.song.title }),
+        line1: [holdTag, next.breakMinutes ? tr('{n} min break', { n: next.breakMinutes }) : tr('Break'), nowLine].filter(Boolean).join(' · '),
+        line2: `${location} · ${after ? tr('Then: {title}', { title: after.song.title }) : tr('Then: end')}`,
         top: nowTop,
-        kicker: 'NEXT · BREAK',
+        kicker: tr('NEXT · BREAK'),
         heading: next.song.title,
-        detail: next.breakMinutes ? `About ${next.breakMinutes} minutes` : 'Rest until the signal',
+        detail: next.breakMinutes ? tr('About {n} minutes', { n: next.breakMinutes }) : tr('Rest until the signal'),
         onHold,
       };
 
@@ -156,23 +162,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const intro = formatIntro(next.introBarCount, next.introUnit);
     const rhythm = next.song.rhythms.join(' → ');
     return {
-      title: `Next: ${next.song.title}`,
-      line1: [onHold ? '⏸ ON HOLD' : cuedNext ? '★ YOUR CUE NEXT' : null, `Intro ${intro}`, next.introInstruments.join(', ') || null, rhythm || null, nowLine]
+      title: tr('Next: {title}', { title: next.song.title }),
+      line1: [holdTag ?? (cuedNext ? `★ ${tr('YOUR CUE NEXT')}` : null), tr('Intro {intro}', { intro }), next.introInstruments.join(', ') || null, rhythm || null, nowLine]
         .filter(Boolean)
         .join(' · '),
-      line2: `${location} · ${after ? `Then: ${after.song.title}` : 'Then: last item'}`,
+      line2: `${location} · ${after ? tr('Then: {title}', { title: after.song.title }) : tr('Then: last item')}`,
       top: nowTop,
-      kicker: cuedNext ? 'YOUR CUE NEXT' : 'NEXT',
+      kicker: cuedNext ? tr('YOUR CUE NEXT') : tr('NEXT'),
       heading: next.song.title,
       detail: [next.introInstruments.join(', '), rhythm].filter(Boolean).join(' · '),
       stats: [
-        { label: 'Intro', value: intro },
-        { label: 'Loops', value: `${next.loopCount}×` },
+        { label: tr('Intro'), value: intro },
+        { label: tr('Loops'), value: `${next.loopCount}×` },
       ],
       highlight: cuedNext,
       onHold,
     };
-  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished, liveInterlude, interludeDone, resolveQueue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished, liveInterlude, interludeDone, resolveQueue, lang]);
   const lockScreen = useLockScreen(lockInfo);
 
   // On by default. Browsers only allow the silent audio after a tap, so whenever the
@@ -254,7 +261,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-dvh grid place-items-center">
         <div className="flex flex-col items-center gap-3 text-muted">
           <div className="w-8 h-8 rounded-full border-2 border-line border-t-brass animate-spin" />
-          <span className="text-sm">Connecting to the stage…</span>
+          <span className="text-sm">{t('Connecting to the stage…')}</span>
         </div>
       </div>
     );
@@ -265,10 +272,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-dvh grid place-items-center px-6">
         <div className="max-w-md text-center space-y-3">
           <WifiOff className="w-10 h-10 mx-auto text-faint" />
-          <h1 className="text-xl font-semibold">Can’t reach the database</h1>
+          <h1 className="text-xl font-semibold">{t('Can’t reach the database')}</h1>
           <p className="text-sm text-muted break-words">{loadError}</p>
           <Button variant="primary" onClick={() => reload()}>
-            <RefreshCw className="w-4 h-4" /> Try again
+            <RefreshCw className="w-4 h-4" /> {t('Try again')}
           </Button>
         </div>
       </div>
@@ -284,9 +291,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="bg-songket-soft border-b border-songket/40 text-songket-light text-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2">
               <WifiOff className="w-4 h-4 shrink-0" />
-              Connection lost. Reconnecting… the screen may be out of date.
+              {t('Connection lost. Reconnecting… the screen may be out of date.')}
               <button onClick={() => reload()} className="ml-auto underline underline-offset-2">
-                Refresh now
+                {t('Refresh now')}
               </button>
             </div>
           </div>
@@ -294,7 +301,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1">{children}</main>
 
-        <footer className="text-center text-[11px] text-faint pt-4 pb-24 md:pb-4">Anjung Live · by Naim M.</footer>
+        <footer className="text-center text-[11px] text-faint pt-4 pb-24 md:pb-4">Anjung Live · {t('by Naim M.')}</footer>
 
         <BottomNav />
       </div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ListMusic, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { plural, useT } from '@/lib/i18n';
 import type { Song } from '@/types';
 import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, Stepper, UnitSwitch, VoteCounts, cx } from './ui';
 import { formatIntro, introUnitWord } from '@/lib/format';
@@ -14,6 +15,7 @@ export function LibraryView() {
   const [filter, setFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<Song | 'new' | null>(null);
   const [toDelete, setToDelete] = useState<Song | null>(null);
+  const { t, lang } = useT();
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -30,14 +32,14 @@ export function LibraryView() {
     <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16">
       <div className="pt-4 sm:pt-6 flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[180px]">
-          <h1 className="font-display text-3xl font-bold">Song library</h1>
+          <h1 className="font-display text-3xl font-bold">{t('Song library')}</h1>
           <p className="text-sm text-muted tabular">
-            {songs.length} songs{isManager ? '' : ' · view only'}
+            {plural(songs.length, '{n} song', '{n} songs')}{isManager ? '' : ` · ${t('view only')}`}
           </p>
         </div>
         {isManager && (
           <Button variant="primary" onClick={() => setEditing('new')}>
-            <Plus className="w-4 h-4" /> Add song
+            <Plus className="w-4 h-4" /> {t('Add song')}
           </Button>
         )}
       </div>
@@ -45,16 +47,16 @@ export function LibraryView() {
       <div className="mt-4 space-y-3">
         <div className="relative">
           <Search className="w-4 h-4 text-faint absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search songs or rhythms" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search songs or rhythms')} className="pl-9" />
         </div>
         {instruments.length > 0 && (
           <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
             <Chip selected={!filter} onClick={() => setFilter(null)} className="shrink-0">
-              All
+              {t('All')}
             </Chip>
             {instruments.map((i) => (
               <Chip key={i} selected={filter === i} onClick={() => setFilter(filter === i ? null : i)} className="shrink-0">
-                {i} intro
+                {lang === 'ms' ? `Intro ${i}` : `${i} intro`}
               </Chip>
             ))}
           </div>
@@ -71,26 +73,26 @@ export function LibraryView() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium truncate">{s.title}</span>
-                      {mine && <Badge tone="brass">Your cue</Badge>}
+                      {mine && <Badge tone="brass">{t('Your cue')}</Badge>}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted tabular">
                       <span>
-                        <b className="text-ink font-semibold">{s.intro_bar_count}</b> {introUnitWord(s.intro_bar_count, s.intro_unit)} intro
+                        {lang === 'ms' ? 'Intro ' : ''}<b className="text-ink font-semibold">{s.intro_bar_count}</b> {introUnitWord(s.intro_bar_count, s.intro_unit)}{lang === 'ms' ? '' : ' intro'}
                       </span>
                       <span>
-                        <b className="text-ink font-semibold">{s.loop_count}</b>× loop
+                        <b className="text-ink font-semibold">{s.loop_count}</b>× {t('loop')}
                       </span>
-                      <span className="truncate">{s.intro_instruments.join(', ') || 'no intro instrument'}</span>
+                      <span className="truncate">{s.intro_instruments.join(', ') || t('no intro instrument')}</span>
                     </div>
                     {s.rhythms.length > 0 && <Rhythms rhythms={s.rhythms} className="mt-1.5" />}
                     <VoteCounts {...songTally(s.id)} className="mt-1.5" />
                   </div>
                   {isManager && (
                     <div className="flex items-center gap-0.5 shrink-0">
-                      <IconButton label={`Edit ${s.title}`} size="sm" onClick={() => setEditing(s)}>
+                      <IconButton label={t('Edit {name}', { name: s.title })} size="sm" onClick={() => setEditing(s)}>
                         <Pencil className="w-4 h-4" />
                       </IconButton>
-                      <IconButton label={`Delete ${s.title}`} size="sm" onClick={() => setToDelete(s)} className="hover:text-danger">
+                      <IconButton label={t('Delete {name}', { name: s.title })} size="sm" onClick={() => setToDelete(s)} className="hover:text-danger">
                         <Trash2 className="w-4 h-4" />
                       </IconButton>
                     </div>
@@ -102,16 +104,16 @@ export function LibraryView() {
         ) : (
           <EmptyState
             icon={<ListMusic className="w-10 h-10" />}
-            title={songs.length ? 'No songs match' : 'The library is empty'}
+            title={songs.length ? t('No songs match') : t('The library is empty')}
             action={
               !songs.length && isManager ? (
                 <Button variant="primary" onClick={() => setEditing('new')}>
-                  <Plus className="w-4 h-4" /> Add the first song
+                  <Plus className="w-4 h-4" /> {t('Add the first song')}
                 </Button>
               ) : undefined
             }
           >
-            {songs.length ? 'Try another search or instrument.' : null}
+            {songs.length ? t('Try another search or instrument.') : null}
           </EmptyState>
         )}
       </Card>
@@ -119,18 +121,18 @@ export function LibraryView() {
       <SongFormModal song={editing} onClose={() => setEditing(null)} />
       <ConfirmDialog
         open={!!toDelete}
-        title={`Delete “${toDelete?.title}”?`}
-        confirmLabel="Delete song"
+        title={t('Delete “{title}”?', { title: toDelete?.title })}
+        confirmLabel={t('Delete song')}
         onCancel={() => setToDelete(null)}
         onConfirm={() => {
           if (toDelete) removeSong(toDelete.id);
           setToDelete(null);
         }}
       >
-        <p>The song is removed from the library permanently.</p>
+        <p>{t('The song is removed from the library permanently.')}</p>
         {toDelete && usage(toDelete.id) > 0 && (
           <p className="text-danger">
-            It is used {usage(toDelete.id)} {usage(toDelete.id) === 1 ? 'time' : 'times'} in setlists. Those spots will be removed too.
+            {t('It is used {n} times in setlists. Those spots will be removed too.', { n: usage(toDelete.id) })}
           </p>
         )}
       </ConfirmDialog>
@@ -152,6 +154,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
   const [rhythmDraft, setRhythmDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     if (!song) return;
@@ -192,17 +195,17 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const t = title.trim();
-    if (!t) return setError('Enter a song title.');
-    if (!insts.length) return setError('Pick at least one intro instrument.');
-    if (songs.some((s) => s.title.toLowerCase() === t.toLowerCase() && (isNew || s.id !== (song as Song).id)))
-      return setError(`“${t}” is already in the library.`);
+    const name = title.trim();
+    if (!name) return setError(t('Enter a song title.'));
+    if (!insts.length) return setError(t('Pick at least one intro instrument.'));
+    if (songs.some((s) => s.title.toLowerCase() === name.toLowerCase() && (isNew || s.id !== (song as Song).id)))
+      return setError(t('“{title}” is already in the library.', { title: name }));
     setSaving(true);
     try {
       const pending = rhythmDraft.trim();
       const finalRhythms =
         pending && !rhythms.some((x) => x.toLowerCase() === pending.toLowerCase()) ? [...rhythms, pending] : rhythms;
-      const data = { title: t, intro_bar_count: bars, intro_unit: unit, intro_instruments: insts, loop_count: loops, rhythms: finalRhythms };
+      const data = { title: name, intro_bar_count: bars, intro_unit: unit, intro_instruments: insts, loop_count: loops, rhythms: finalRhythms };
       if (isNew) await addSong(data);
       else await editSong({ ...(song as Song), ...data });
       onClose();
@@ -236,30 +239,30 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
     <Modal
       open
       onClose={onClose}
-      title={isNew ? 'Add song' : 'Edit song'}
+      title={isNew ? t('Add song') : t('Edit song')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button variant="primary" type="submit" form="song-form" disabled={saving}>
-            {saving ? 'Saving…' : isNew ? 'Add song' : 'Save changes'}
+            {saving ? t('Saving…') : isNew ? t('Add song') : t('Save changes')}
           </Button>
         </>
       }
     >
       <form id="song-form" onSubmit={submit} className="space-y-5">
-        <Field label="Title" htmlFor="song-title">
-          <Input id="song-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 54 Joget Pahang" />
+        <Field label={t('Title')} htmlFor="song-title">
+          <Input id="song-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('e.g. 54 Joget Pahang')} />
         </Field>
-        <Field label="Intro length" hint={`Played before the whole ensemble comes in: ${formatIntro(bars, unit)}.`}>
+        <Field label={t('Intro length')} hint={t('Played before the whole ensemble comes in: {intro}.', { intro: formatIntro(bars, unit) })}>
           <div className="flex flex-wrap items-center gap-3">
             <Stepper value={bars} onChange={setBars} min={0} max={64} />
             <UnitSwitch value={unit} onChange={setUnit} />
           </div>
           {quick([1, 2, 4, 6, 8], bars, setBars, '')}
         </Field>
-        <Field label="Intro instruments" hint="Musicians on these instruments get a “Your cue” alert.">
+        <Field label={t('Intro instruments')} hint={t('Musicians on these instruments get a “Your cue” alert.')}>
           {instruments.length ? (
             <div className="flex flex-wrap gap-2">
               {instruments.map((i) => (
@@ -273,14 +276,14 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
               ))}
             </div>
           ) : (
-            <p className="text-sm text-danger">No instruments yet. An Admin must add them first.</p>
+            <p className="text-sm text-danger">{t('No instruments yet. An Admin must add them first.')}</p>
           )}
         </Field>
-        <Field label="Loops" hint="How many times the song repeats.">
-          <Stepper value={loops} onChange={setLoops} min={1} max={99} suffix="times" />
+        <Field label={t('Loops')} hint={t('How many times the song repeats.')}>
+          <Stepper value={loops} onChange={setLoops} min={1} max={99} suffix={t('times')} />
           {quick([1, 2, 3, 4, 6], loops, setLoops, '×')}
         </Field>
-        <Field label="Rhythms" htmlFor="song-rhythm" hint="Add one or more, in the order they are played. Press Enter after each.">
+        <Field label={t('Rhythms')} htmlFor="song-rhythm" hint={t('Add one or more, in the order they are played. Press Enter after each.')}>
           {rhythms.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {rhythms.map((r, i) => (
@@ -288,7 +291,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
                   <span className="text-jade/80 tabular">{i + 1}.</span> {r}
                   <button
                     type="button"
-                    aria-label={`Remove ${r}`}
+                    aria-label={t('Remove {name}', { name: r })}
                     onClick={() => setRhythms((cur) => cur.filter((x) => x !== r))}
                     className="w-7 h-7 grid place-items-center rounded-full hover:bg-jade/30"
                   >
@@ -309,11 +312,11 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
                   addRhythm(rhythmDraft);
                 }
               }}
-              placeholder="e.g. Inang"
+              placeholder={t('e.g. Inang')}
               autoComplete="off"
             />
             <Button onClick={() => addRhythm(rhythmDraft)} disabled={!rhythmDraft.trim()}>
-              <Plus className="w-4 h-4" /> Add
+              <Plus className="w-4 h-4" /> {t('Add')}
             </Button>
           </div>
           {knownRhythms.filter((r) => !rhythms.some((x) => x.toLowerCase() === r.toLowerCase())).length > 0 && (

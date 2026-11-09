@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ListEnd, Search, SkipForward } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import { formatIntro } from '@/lib/format';
 import { Button, Input, Modal, cx } from './ui';
 
@@ -14,6 +15,7 @@ export function LiveAddSong({ open, onClose }: { open: boolean; onClose: () => v
   const { songs, livePart, liveQueue, activeItem, addLiveSong } = useStage();
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const { t } = useT();
 
   useEffect(() => {
     if (open) setQ('');
@@ -44,21 +46,21 @@ export function LiveAddSong({ open, onClose }: { open: boolean; onClose: () => v
     <Modal
       open={open}
       onClose={onClose}
-      title={`Add a song to ${livePart.name}`}
-      description={activeItem ? <>“Next” plays it right after <b className="text-ink">{activeItem.song.title}</b>.</> : 'It will be added to the setlist.'}
+      title={t('Add a song to {part}', { part: livePart.name })}
+      description={activeItem ? t('“Next” plays it right after {title}.', { title: activeItem.song.title }) : t('It will be added to the setlist.')}
     >
       <div className="relative">
         <Search className="w-4 h-4 text-faint absolute left-3 top-1/2 -translate-y-1/2" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${songs.length} songs or rhythms`} className="pl-9" aria-label="Search songs" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search {n} songs or rhythms', { n: songs.length })} className="pl-9" aria-label={t('Search songs')} />
       </div>
       <ul className="mt-3 -mx-2 max-h-[55dvh] overflow-y-auto scrollbar-thin">
-        {filtered.length === 0 && <li className="px-2 py-6 text-center text-sm text-muted">No song matches “{q}”.</li>}
+        {filtered.length === 0 && <li className="px-2 py-6 text-center text-sm text-muted">{t('No song matches “{q}”.', { q })}</li>}
         {filtered.map((s) => (
           <li key={s.id} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-raised/60">
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium">
                 {s.title}
-                {inQueue.has(s.id) && <span className="ml-2 text-xs text-faint font-normal">in setlist</span>}
+                {inQueue.has(s.id) && <span className="ml-2 text-xs text-faint font-normal">{t('in setlist')}</span>}
               </span>
               <span className="block text-xs text-muted tabular truncate">
                 {formatIntro(s.intro_bar_count, s.intro_unit)} · {s.loop_count}× · {s.intro_instruments.join(', ') || '—'}
@@ -72,9 +74,9 @@ export function LiveAddSong({ open, onClose }: { open: boolean; onClose: () => v
                 disabled={!!busy}
                 onClick={() => add(s.id, 'next')}
                 className={cx('shrink-0', busy === s.id + 'next' && 'opacity-60')}
-                aria-label={`Play ${s.title} next`}
+                aria-label={t('Play {title} next', { title: s.title })}
               >
-                <SkipForward className="w-3.5 h-3.5" /> Next
+                <SkipForward className="w-3.5 h-3.5" /> {t('Next')}
               </Button>
             )}
             <Button
@@ -82,9 +84,9 @@ export function LiveAddSong({ open, onClose }: { open: boolean; onClose: () => v
               disabled={!!busy}
               onClick={() => add(s.id, 'end')}
               className="shrink-0"
-              aria-label={`Add ${s.title} to the end`}
+              aria-label={t('Add {title} to the end', { title: s.title })}
             >
-              <ListEnd className="w-3.5 h-3.5" /> End
+              <ListEnd className="w-3.5 h-3.5" /> {t('End')}
             </Button>
           </li>
         ))}

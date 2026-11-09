@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStage } from '@/lib/stageContext';
+import { plural, useT } from '@/lib/i18n';
 import { LiveDot, Modal, cx } from './ui';
 
 /** Quick "what is live" switcher for Controller, Maestro and Admin. */
@@ -9,6 +10,7 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
   const { sessions, parts, events, roomState, resolveQueue, goLive, isFinished } = useStage();
   const eventName = (id: string | null) => events.find((e) => e.id === id)?.name;
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const { t } = useT();
 
   useEffect(() => {
     if (open) setSessionId(roomState.session_id ?? sessions[0]?.id);
@@ -20,7 +22,7 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Change what’s live" description="Every screen switches immediately." size="sm">
+    <Modal open={open} onClose={onClose} title={t('Change what’s live')} description={t('Every screen switches immediately.')} size="sm">
       {sessions.length ? (
         <div className="space-y-4">
           <div>
@@ -37,7 +39,7 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
                 <option key={s.id} value={s.id}>
                   {eventName(s.event_id) ? `${eventName(s.event_id)} · ` : ''}
                   {s.name}
-                  {s.id === roomState.session_id ? ' — live' : ''}
+                  {s.id === roomState.session_id ? ` — ${t('live')}` : ''}
                 </option>
               ))}
             </select>
@@ -66,16 +68,16 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
                     {live && <LiveDot className="ml-auto" />}
                   </div>
                   <div className="text-xs text-muted tabular mt-0.5">
-                    {live ? 'Live now' : count ? `${count} ${count === 1 ? 'song' : 'songs'} · tap to go live` : 'No songs'}
+                    {live ? t('Live now') : count ? `${plural(count, '{n} song', '{n} songs')} · ${t('tap to go live')}` : t('No songs')}
                   </div>
                 </button>
               );
             })}
           </div>
-          <p className="text-xs text-muted">Going live starts the Bahagian from its first song.</p>
+          <p className="text-xs text-muted">{t('Going live starts the Bahagian from its first song.')}</p>
         </div>
       ) : (
-        <p className="text-sm text-muted">There are no Sidang yet. A Maestro creates them in the Setlist tab.</p>
+        <p className="text-sm text-muted">{t('There are no Sidang yet. A Maestro creates them on the event page.')}</p>
       )}
     </Modal>
   );

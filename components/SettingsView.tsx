@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
-import { BellRing, ChevronRight, KeyRound, LogOut, Moon, Music2, QrCode, Settings2, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react';
+import { BellRing, ChevronRight, KeyRound, Languages, LogOut, Moon, Music2, QrCode, Settings2, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import logoMark from '@/assets/logo-mark.png';
 import { useShell } from './AppShell';
 import { Card, Toggle, cx } from './ui';
 
-const ROLE_LABEL = { player: 'Musician', controller: 'Controller', maestro: 'Maestro', admin: 'Admin' } as const;
+export const ROLE_LABEL = { player: 'Musician', controller: 'Controller', maestro: 'Maestro', admin: 'Admin' } as const;
 const ROLE_TEXT = {
   player: 'View the stage and setlists. No sign-in needed.',
   controller: 'Change songs, loops and what’s live.',
@@ -44,7 +45,7 @@ function Row({
       <span className={cx('w-9 h-9 rounded-xl grid place-items-center shrink-0', danger ? 'bg-songket-soft text-songket-light' : 'bg-raised text-brass')}>
         {icon}
       </span>
-      <span className="flex-1 min-w-0">
+      <span className="flex-1 min-w-[9.5rem]">
         <span className={cx('block font-medium', danger && 'text-songket-light')}>{title}</span>
         {text && <span className="block text-sm text-muted">{text}</span>}
       </span>
@@ -56,70 +57,119 @@ function Row({
       {body}
     </button>
   ) : (
-    <div className="flex items-center gap-3 px-4 py-3.5">{body}</div>
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 [&>[role=radiogroup]]:ml-auto">{body}</div>
+  );
+}
+
+/** Two-option segmented switch used for theme and language. */
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<{ id: T; text: string; icon?: React.ReactNode }>;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="inline-flex p-1 rounded-xl bg-bg border border-line shrink-0">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          role="radio"
+          aria-checked={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={cx(
+            'h-8 px-3 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 transition-colors',
+            value === o.id ? 'bg-brass text-brass-ink' : 'text-muted hover:text-ink'
+          )}
+        >
+          {o.icon}
+          {o.text}
+        </button>
+      ))}
+    </div>
   );
 }
 
 export function SettingsView() {
   const { role, logout, selectedInstrument, connection, notify } = useStage();
   const { lockScreen, lockPref, setLockPref, chime, theme, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
+  const { t, lang, setLang } = useT();
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pt-6 pb-10 space-y-6">
-      <h1 className="font-display text-3xl font-bold">Settings</h1>
+      <h1 className="font-display text-3xl font-bold">{t('Settings')}</h1>
 
-      <Section title="You">
+      <Section title={t('You')}>
         <Row
           icon={role === 'admin' ? <ShieldCheck className="w-5 h-5" /> : role === 'player' ? <UserRound className="w-5 h-5" /> : <KeyRound className="w-5 h-5" />}
-          title={`Role: ${ROLE_LABEL[role]}`}
-          text={ROLE_TEXT[role]}
+          title={t('Role: {role}', { role: t(ROLE_LABEL[role]) })}
+          text={t(ROLE_TEXT[role])}
           onClick={openLogin}
         />
-        <Row icon={<Music2 className="w-5 h-5" />} title="My instrument" text={selectedInstrument ?? 'Not chosen (just watching)'} onClick={openInstrumentPicker} />
-        {role !== 'player' && <Row icon={<LogOut className="w-5 h-5" />} title="Back to Musician" text="Sign out of your role on this device." onClick={logout} danger />}
+        <Row
+          icon={<Music2 className="w-5 h-5" />}
+          title={t('My instrument')}
+          text={selectedInstrument ?? t('Not chosen (just watching)')}
+          onClick={openInstrumentPicker}
+        />
+        {role !== 'player' && (
+          <Row icon={<LogOut className="w-5 h-5" />} title={t('Back to Musician')} text={t('Sign out of your role on this device.')} onClick={logout} danger />
+        )}
       </Section>
 
-      <Section title="Appearance">
+      <Section title={t('Appearance')}>
+        <Row
+          icon={<Languages className="w-5 h-5" />}
+          title={t('Language')}
+          text={lang === 'ms' ? 'Bahasa Melayu' : 'English'}
+          right={
+            <Segmented
+              label={t('Language')}
+              value={lang}
+              onChange={setLang}
+              options={[
+                { id: 'en', text: 'English' },
+                { id: 'ms', text: 'Melayu' },
+              ]}
+            />
+          }
+        />
         <Row
           icon={theme.theme === 'light' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          title="Theme"
-          text={theme.theme === 'light' ? 'Light: ivory paper, good in bright halls.' : 'Dark (default): best for the stage.'}
+          title={t('Theme')}
+          text={theme.theme === 'light' ? t('Light: ivory paper, good in bright halls.') : t('Dark (default): best for the stage.')}
           right={
-            <div role="radiogroup" aria-label="Theme" className="inline-flex p-1 rounded-xl bg-bg border border-line shrink-0">
-              {(['dark', 'light'] as const).map((t) => (
-                <button
-                  key={t}
-                  role="radio"
-                  aria-checked={theme.theme === t}
-                  onClick={() => theme.setTheme(t)}
-                  className={cx(
-                    'h-8 px-3 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 capitalize transition-colors',
-                    theme.theme === t ? 'bg-brass text-brass-ink' : 'text-muted hover:text-ink'
-                  )}
-                >
-                  {t === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-                  {t}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              label={t('Theme')}
+              value={theme.theme}
+              onChange={theme.setTheme}
+              options={[
+                { id: 'dark', text: t('Dark'), icon: <Moon className="w-3.5 h-3.5" /> },
+                { id: 'light', text: t('Light'), icon: <Sun className="w-3.5 h-3.5" /> },
+              ]}
+            />
           }
         />
       </Section>
 
-      <Section title="On this phone">
+      <Section title={t('On this phone')}>
         {chime.supported && (
           <Row
             icon={<BellRing className="w-5 h-5" />}
-            title="Sound on song change"
-            text="A chime when the song changes; an urgent one when it’s your cue. Turn on again after reopening the app."
+            title={t('Sound on song change')}
+            text={t('A chime when the song changes; an urgent one when it’s your cue. Turn on again after reopening the app.')}
             right={
               <Toggle
                 checked={chime.enabled}
-                label="Sound on song change"
+                label={t('Sound on song change')}
                 onChange={async (v) => {
                   if (!v) return chime.disable();
                   const ok = await chime.enable();
-                  if (!ok) notify('Your browser blocked sound. Tap again.', 'error');
+                  if (!ok) notify(t('Your browser blocked sound. Tap again.'), 'error');
                 }}
               />
             }
@@ -128,23 +178,23 @@ export function SettingsView() {
         {lockScreen.supported && (
           <Row
             icon={<Smartphone className="w-5 h-5" />}
-            title="Show on lock screen"
+            title={t('Show on lock screen')}
             text={
               lockPref
                 ? lockScreen.active
-                  ? 'On: the next song, intro and loop show on your locked phone. Keep this tab open.'
-                  : 'On: starts at your next tap. Keep this tab open.'
-                : 'Off. Turn on to see the next song on your locked phone.'
+                  ? t('On: the next song, intro and loop show on your locked phone. Keep this tab open.')
+                  : t('On: starts at your next tap. Keep this tab open.')
+                : t('Off. Turn on to see the next song on your locked phone.')
             }
             right={
               <Toggle
                 checked={lockPref}
-                label="Show on lock screen"
+                label={t('Show on lock screen')}
                 onChange={async (v) => {
                   setLockPref(v);
                   if (!v) return lockScreen.stop();
                   const ok = await lockScreen.start();
-                  if (!ok) notify('Your browser blocked it. Tap anywhere to start it.', 'error');
+                  if (!ok) notify(t('Your browser blocked it. Tap anywhere to start it.'), 'error');
                 }}
               />
             }
@@ -152,14 +202,14 @@ export function SettingsView() {
         )}
       </Section>
 
-      <Section title="Share">
-        <Row icon={<QrCode className="w-5 h-5" />} title="Open on other devices" text="QR code and link to this app." onClick={() => openShare()} />
+      <Section title={t('Share')}>
+        <Row icon={<QrCode className="w-5 h-5" />} title={t('Open on other devices')} text={t('QR code and link to this app.')} onClick={() => openShare()} />
       </Section>
 
       {role === 'admin' && (
-        <Section title="Admin">
-          <Row icon={<Settings2 className="w-5 h-5" />} title="Instruments" text="Add, rename, reorder or remove." onClick={openInstruments} />
-          <Row icon={<ShieldCheck className="w-5 h-5" />} title="Admin passkey" text="Change who can sign in as Admin." onClick={openAccess} />
+        <Section title={t('Admin')}>
+          <Row icon={<Settings2 className="w-5 h-5" />} title={t('Instruments')} text={t('Add, rename, reorder or remove.')} onClick={openInstruments} />
+          <Row icon={<ShieldCheck className="w-5 h-5" />} title={t('Admin passkey')} text={t('Change who can sign in as Admin.')} onClick={openAccess} />
         </Section>
       )}
 
@@ -172,9 +222,9 @@ export function SettingsView() {
         </div>
         <p className="text-sm text-muted">Gamelan Anjung Seni · Pusat Kebudayaan</p>
         <p className="text-xs text-faint">
-          by Naim M. ·{' '}
+          {t('by Naim M.')} ·{' '}
           <span className={connection === 'live' ? 'text-jade-light' : 'text-songket-light'}>
-            {connection === 'live' ? 'Live sync on' : connection === 'connecting' ? 'Connecting…' : 'Offline'}
+            {connection === 'live' ? t('Live sync on') : connection === 'connecting' ? t('Connecting…') : t('Offline')}
           </span>
         </p>
       </section>

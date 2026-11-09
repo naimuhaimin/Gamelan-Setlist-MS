@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import type { ConvoEvent } from '@/types';
 import { Button, ConfirmDialog, Field, Input, Modal } from './ui';
 
@@ -45,6 +46,7 @@ export function ConvoModal({
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { t } = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -86,25 +88,25 @@ export function ConvoModal({
       <Modal
         open={open && !confirmDelete}
         onClose={onClose}
-        title={isEdit ? 'Edit event' : 'New event'}
+        title={isEdit ? t('Edit event') : t('New event')}
         footer={
           <>
             {isEdit && (
               <Button variant="danger" className="mr-auto" onClick={() => setConfirmDelete(true)}>
-                Delete
+                {t('Delete')}
               </Button>
             )}
             <Button variant="ghost" onClick={onClose}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button variant="primary" type="submit" form="convo-form" disabled={saving || !name.trim()}>
-              {saving ? 'Saving…' : isEdit ? 'Save' : 'Create event'}
+              {saving ? t('Saving…') : isEdit ? t('Save') : t('Create event')}
             </Button>
           </>
         }
       >
         <form id="convo-form" onSubmit={submit} className="space-y-4">
-          <Field label="Photo" hint="Shown as the event’s thumbnail.">
+          <Field label={t('Photo')} hint={t('Shown as the event’s thumbnail.')}>
             <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-line bg-raised">
               {preview ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -117,14 +119,14 @@ export function ConvoModal({
                 >
                   <span className="flex flex-col items-center gap-2">
                     <ImagePlus className="w-8 h-8" />
-                    <span className="text-sm">Add a photo</span>
+                    <span className="text-sm">{t('Add a photo')}</span>
                   </span>
                 </button>
               )}
             </div>
             <div className="flex gap-2 mt-2">
               <Button size="sm" onClick={() => fileRef.current?.click()}>
-                <ImagePlus className="w-4 h-4" /> {preview ? 'Change photo' : 'Choose photo'}
+                <ImagePlus className="w-4 h-4" /> {preview ? t('Change photo') : t('Choose photo')}
               </Button>
               {preview && (
                 <Button
@@ -136,21 +138,21 @@ export function ConvoModal({
                     setRemoveThumb(true);
                   }}
                 >
-                  <Trash2 className="w-4 h-4" /> Remove
+                  <Trash2 className="w-4 h-4" /> {t('Remove')}
                 </Button>
               )}
             </div>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
           </Field>
-          <Field label="Name" htmlFor="convo-name">
-            <Input id="convo-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Konvokesyen UiTM ke-102" required />
+          <Field label={t('Name')} htmlFor="convo-name">
+            <Input id="convo-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('e.g. Konvokesyen UiTM ke-102')} required />
           </Field>
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Start date" htmlFor="convo-date">
+            <Field label={t('Start date')} htmlFor="convo-date">
               <Input id="convo-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <Field label="Venue" htmlFor="convo-venue">
-              <Input id="convo-venue" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="e.g. Dewan Agong Tuanku Canselor" />
+            <Field label={t('Venue')} htmlFor="convo-venue">
+              <Input id="convo-venue" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder={t('e.g. Dewan Agong Tuanku Canselor')} />
             </Field>
           </div>
         </form>
@@ -158,8 +160,8 @@ export function ConvoModal({
 
       <ConfirmDialog
         open={confirmDelete}
-        title={`Delete ${event?.name}?`}
-        confirmLabel="Delete event"
+        title={t('Delete {name}?', { name: event?.name })}
+        confirmLabel={t('Delete event')}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={async () => {
           setConfirmDelete(false);
@@ -168,10 +170,7 @@ export function ConvoModal({
           onDeleted?.();
         }}
       >
-        <p>
-          This also deletes its <b className="text-ink">{sidangCount}</b> Sidang and their setlists. Songs stay in the library. This
-          cannot be undone.
-        </p>
+        <p>{t('This also deletes its {n} Sidang and their setlists. Songs stay in the library. This cannot be undone.', { n: sidangCount })}</p>
       </ConfirmDialog>
     </>
   );

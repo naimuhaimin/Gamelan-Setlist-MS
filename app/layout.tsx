@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Great_Vibes, Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { StageProvider } from '@/lib/stageContext';
+import { LanguageProvider } from '@/lib/i18n';
 import { AppShell } from '@/components/AppShell';
 import { themeBootScript } from '@/lib/useTheme';
 
@@ -25,14 +26,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ms" className={`${inter.variable} ${display.variable} ${script.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${display.variable} ${script.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body>
-        <StageProvider>
-          <AppShell>{children}</AppShell>
-        </StageProvider>
+        <LanguageProvider>
+          <StageProvider>
+            <AppShell>{children}</AppShell>
+          </StageProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

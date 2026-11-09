@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
 import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
@@ -55,6 +56,7 @@ export function StageView() {
     isFinished,
     liveInterlude,
   } = useStage();
+  const { t } = useT();
 
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -115,25 +117,25 @@ export function StageView() {
             <div className="w-16 h-16 rounded-full bg-raised text-muted grid place-items-center ring-1 ring-line">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-muted">Live view stopped</div>
-            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} has ended</h1>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-muted">{t('Live view stopped')}</div>
+            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{t('{part} has ended', { part: livePart.name })}</h1>
             <p className="text-lg text-muted">
-              {liveSession.name} · nothing is playing.{' '}
-              {nextPart ? (canSwitchLive ? '' : `Wait for ${nextPart.name} to go live.`) : 'That was the last Bahagian.'}
+              {t('{sidang} · nothing is playing.', { sidang: liveSession.name })}{' '}
+              {nextPart ? (canSwitchLive ? '' : t('Wait for {part} to go live.', { part: nextPart.name })) : t('That was the last Bahagian.')}
             </p>
             {canSwitchLive && (
               <div className="mt-3 flex flex-wrap justify-center gap-2">
                 {nextPart && (
                   <Button size="lg" variant="primary" onClick={() => goLive(nextPart.id)}>
-                    Go live: {nextPart.name} <ChevronRight className="w-5 h-5" />
+                    {t('Go live: {part}', { part: nextPart.name })} <ChevronRight className="w-5 h-5" />
                   </Button>
                 )}
                 <Button size="lg" onClick={openPicker}>
-                  <Layers className="w-4 h-4" /> Choose another
+                  <Layers className="w-4 h-4" /> {t('Choose another')}
                 </Button>
                 {canControl && (
                   <Button size="lg" variant="ghost" onClick={goPrev}>
-                    <ChevronLeft className="w-4 h-4" /> Back to last song
+                    <ChevronLeft className="w-4 h-4" /> {t('Back to last song')}
                   </Button>
                 )}
               </div>
@@ -152,18 +154,18 @@ export function StageView() {
         <Card className="mt-6">
           <EmptyState
             icon={<Radio className="w-10 h-10" />}
-            title="Nothing is live yet"
+            title={t('Nothing is live yet')}
             action={
               canSwitchLive && (
                 <Button variant="primary" onClick={openPicker}>
-                  <Layers className="w-4 h-4" /> Choose Sidang & Bahagian
+                  <Layers className="w-4 h-4" /> {t('Choose Sidang & Bahagian')}
                 </Button>
               )
             }
           >
             {canSwitchLive
-              ? 'Pick which Sidang and Bahagian to put on every screen.'
-              : 'Keep this screen open. It will update by itself when the performance starts.'}
+              ? t('Pick which Sidang and Bahagian to put on every screen.')
+              : t('Keep this screen open. It will update by itself when the performance starts.')}
           </EmptyState>
         </Card>
         {picker}
@@ -185,38 +187,38 @@ export function StageView() {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-4 sm:pt-6">
         {isFinished ? (
           <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-jade-soft text-jade-light border border-jade/45 text-sm font-bold">
-            <CheckCircle2 className="w-4 h-4" /> FINISHED
+            <CheckCircle2 className="w-4 h-4" /> {t('FINISHED')}
           </span>
         ) : roomState.is_paused ? (
           <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-brass text-brass-ink text-sm font-bold animate-pulse">
-            <Pause className="w-4 h-4" /> ON HOLD
+            <Pause className="w-4 h-4" /> {t('ON HOLD')}
           </span>
         ) : (
           <span className="inline-flex items-center gap-2 text-sm font-semibold text-songket-light">
-            <LiveDot /> LIVE
+            <LiveDot /> {t('LIVE')}
           </span>
         )}
         <span className="text-sm sm:text-base font-medium text-ink">{location}</span>
         {liveQueue.length > 0 && (
           <span className="text-sm text-muted tabular">
-            {isFinished ? `All ${liveQueue.length} items done` : `${activeIndex + 1} of ${liveQueue.length}`}
+            {isFinished ? t('All {n} items done', { n: liveQueue.length }) : t('{n} of {total}', { n: activeIndex + 1, total: liveQueue.length })}
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
           {canControl && activeItem && !isFinished && (
-            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} aria-label="Add a song to this Bahagian">
-              <ListPlus className="w-3.5 h-3.5" /> Add song
+            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} aria-label={t('Add a song to this Bahagian')}>
+              <ListPlus className="w-3.5 h-3.5" /> {t('Add song')}
             </Button>
           )}
           {canControl && activeItem && !isFinished && (
             <Button size="sm" variant={roomState.is_paused ? 'primary' : 'secondary'} onClick={togglePause}>
               {roomState.is_paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-              {roomState.is_paused ? 'Resume' : 'Hold'}
+              {roomState.is_paused ? t('Resume') : t('Hold')}
             </Button>
           )}
           {canSwitchLive && (
             <Button size="sm" variant="secondary" onClick={openPicker}>
-              <Layers className="w-3.5 h-3.5" /> Change
+              <Layers className="w-3.5 h-3.5" /> {t('Change')}
             </Button>
           )}
         </div>
@@ -228,31 +230,31 @@ export function StageView() {
             <div className="w-16 h-16 rounded-full bg-jade-soft text-jade-light ring-1 ring-jade/45 grid place-items-center">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <div className="text-sm font-bold uppercase tracking-[0.18em] text-jade-light">Finished</div>
-            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} is done</h1>
-            <p className="text-lg text-muted">No song is playing right now.</p>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-jade-light">{t('Finished')}</div>
+            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{t('{part} is done', { part: livePart.name })}</h1>
+            <p className="text-lg text-muted">{t('No song is playing right now.')}</p>
             {nextPart ? (
               <p className="text-base">
-                Up next: <b className="text-ink">{nextPart.name}</b>
-                {canSwitchLive ? '' : ' — wait for the signal'}
+                {t('Up next')}: <b className="text-ink">{nextPart.name}</b>
+                {canSwitchLive ? '' : ` — ${t('wait for the signal')}`}
               </p>
             ) : (
-              <p className="text-base text-muted">That was the last Bahagian of {liveSession.name}.</p>
+              <p className="text-base text-muted">{t('That was the last Bahagian of {sidang}.', { sidang: liveSession.name })}</p>
             )}
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {nextPart && canSwitchLive && (
                 <Button size="lg" variant="primary" onClick={() => goLive(nextPart.id)}>
-                  Go live: {nextPart.name} <ChevronRight className="w-5 h-5" />
+                  {t('Go live: {part}', { part: nextPart.name })} <ChevronRight className="w-5 h-5" />
                 </Button>
               )}
               {canSwitchLive && (
                 <Button size="lg" onClick={openPicker}>
-                  <Layers className="w-4 h-4" /> Choose another
+                  <Layers className="w-4 h-4" /> {t('Choose another')}
                 </Button>
               )}
               {canControl && (
                 <Button size="lg" variant="ghost" onClick={goPrev}>
-                  <ChevronLeft className="w-4 h-4" /> Back to last song
+                  <ChevronLeft className="w-4 h-4" /> {t('Back to last song')}
                 </Button>
               )}
             </div>
@@ -261,18 +263,18 @@ export function StageView() {
       ) : !activeItem ? (
         <Card className="mt-4">
           <EmptyState
-            title={`${livePart.name} has no songs yet`}
+            title={t('{part} has no songs yet', { part: livePart.name })}
             action={
               canControl ? (
                 <Button variant="primary" onClick={() => setAddOpen(true)}>
-                  <ListPlus className="w-4 h-4" /> Add songs
+                  <ListPlus className="w-4 h-4" /> {t('Add songs')}
                 </Button>
               ) : canSwitchLive ? (
-                <Button variant="primary" onClick={openPicker}>Change Bahagian</Button>
+                <Button variant="primary" onClick={openPicker}>{t('Change Bahagian')}</Button>
               ) : undefined
             }
           >
-            {canControl ? 'Add songs straight from the library.' : 'The Maestro has not added songs to this Bahagian.'}
+            {canControl ? t('Add songs straight from the library.') : t('The Maestro has not added songs to this Bahagian.')}
           </EmptyState>
         </Card>
       ) : (
@@ -292,9 +294,9 @@ export function StageView() {
                   <div className="w-20 h-20 rounded-full bg-brass text-brass-ink grid place-items-center animate-cue-pulse">
                     <Pause className="w-10 h-10" fill="currentColor" />
                   </div>
-                  <div className="font-display text-4xl sm:text-6xl font-extrabold tracking-wide text-brass">ON HOLD</div>
-                  <div className="text-lg sm:text-xl font-semibold">Wait for the signal</div>
-                  <div className="text-sm text-muted">Paused at: {activeItem.song.title}</div>
+                  <div className="font-display text-4xl sm:text-6xl font-extrabold tracking-wide text-brass">{t('ON HOLD')}</div>
+                  <div className="text-lg sm:text-xl font-semibold">{t('Wait for the signal')}</div>
+                  <div className="text-sm text-muted">{t('Paused at: {title}', { title: activeItem.song.title })}</div>
                 </div>
               </div>
             )}
@@ -304,17 +306,17 @@ export function StageView() {
             <>
             {cued && (
               <div className="rounded-2xl bg-brass text-brass-ink px-5 py-4 animate-cue-pulse">
-                <div className="text-xs font-bold uppercase tracking-[0.18em]">Your cue</div>
+                <div className="text-xs font-bold uppercase tracking-[0.18em]">{t('Your cue')}</div>
                 <div className="text-xl sm:text-2xl font-bold leading-tight mt-0.5">
-                  {selectedInstrument} starts the intro · {formatIntro(activeItem.introBarCount, activeItem.introUnit)}
+                  {t('{instrument} starts the intro · {intro}', { instrument: selectedInstrument, intro: formatIntro(activeItem.introBarCount, activeItem.introUnit) })}
                 </div>
               </div>
             )}
 
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-sm text-muted font-medium">{roomState.is_paused ? 'On hold' : 'Now playing'}</span>
-                {activeItem.hasOverride && <Badge tone="override">Adjusted for this ceremony</Badge>}
+                <span className="text-sm text-muted font-medium">{roomState.is_paused ? t('On hold') : t('Now playing')}</span>
+                {activeItem.hasOverride && <Badge tone="override">{t('Adjusted for this ceremony')}</Badge>}
               </div>
               <h1 className="font-display text-4xl sm:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.08] [text-wrap:balance] break-words">
                 {activeItem.song.title}
@@ -322,7 +324,7 @@ export function StageView() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <Stat label="Intro" tone="jade">
+              <Stat label={t('Intro')} tone="jade">
                 <span className="text-5xl sm:text-6xl font-bold tabular">{activeItem.introBarCount}</span>
                 <span
                   className={cx(
@@ -335,7 +337,7 @@ export function StageView() {
                   {introUnitWord(activeItem.introBarCount, activeItem.introUnit)}
                 </span>
               </Stat>
-              <Stat label="Loop" tone="gold">
+              <Stat label={t('Loop')} tone="gold">
                 <span className="text-5xl sm:text-6xl font-bold tabular text-brass">{loop}</span>
                 <span className="text-2xl sm:text-3xl text-muted ml-1.5 tabular">/ {activeItem.loopCount}</span>
                 <LoopPips current={loop} total={activeItem.loopCount} />
@@ -344,13 +346,13 @@ export function StageView() {
 
             {activeItem.song.rhythms.length > 0 && (
               <div>
-                <div className="text-sm text-muted font-medium mb-2">Rhythm</div>
+                <div className="text-sm text-muted font-medium mb-2">{t('Rhythm')}</div>
                 <Rhythms rhythms={activeItem.song.rhythms} size="lg" />
               </div>
             )}
 
             <div>
-              <div className="text-sm text-muted font-medium mb-2">Intro instruments</div>
+              <div className="text-sm text-muted font-medium mb-2">{t('Intro instruments')}</div>
               <div className="flex flex-wrap gap-2">
                 {activeItem.introInstruments.length ? (
                   activeItem.introInstruments.map((inst) => (
@@ -365,14 +367,14 @@ export function StageView() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-muted">None set</span>
+                  <span className="text-muted">{t('None set')}</span>
                 )}
               </div>
             </div>
 
             {votesEnabled && (
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <span className="text-sm text-muted font-medium">Rate this song</span>
+                <span className="text-sm text-muted font-medium">{t('Rate this song')}</span>
                 <VoteButtons
                   {...tally(activeItem.queueItem.id)}
                   onVote={(v) => vote(activeItem.queueItem.id, v)}
@@ -386,7 +388,7 @@ export function StageView() {
 
             {canControl && (
               <div className="hidden lg:flex items-center gap-2 text-xs text-faint">
-                Shortcuts: ← → change song · ↑ ↓ change loop · presenter clicker works too
+                {t('Shortcuts: ← → change song · ↑ ↓ change loop · presenter clicker works too')}
               </div>
             )}
           </Card>
@@ -399,10 +401,10 @@ export function StageView() {
             <>
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <div className="text-sm text-muted font-medium flex-1">Up next</div>
+                <div className="text-sm text-muted font-medium flex-1">{t('Up next')}</div>
                 {canControl && upcoming.length > 1 && (
                   <Button size="sm" variant="ghost" onClick={() => setReordering(true)} className="-my-1.5">
-                    <ArrowUpDown className="w-4 h-4" /> Reorder
+                    <ArrowUpDown className="w-4 h-4" /> {t('Reorder')}
                   </Button>
                 )}
               </div>
@@ -414,20 +416,20 @@ export function StageView() {
                 </NextCard>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-ink font-medium">This is the last item of {livePart.name}.</p>
+                  <p className="text-ink font-medium">{t('This is the last item of {part}.', { part: livePart.name })}</p>
                   {nextPart && canSwitchLive && (
                     <Button variant="primary" className="w-full" onClick={() => goLive(nextPart.id)}>
-                      Go live: {nextPart.name} <ChevronRight className="w-4 h-4" />
+                      {t('Go live: {part}', { part: nextPart.name })} <ChevronRight className="w-4 h-4" />
                     </Button>
                   )}
-                  {nextPart && !canSwitchLive && <p className="text-sm text-muted">Next up: {nextPart.name}</p>}
+                  {nextPart && !canSwitchLive && <p className="text-sm text-muted">{t('Next up: {part}', { part: nextPart.name })}</p>}
                 </div>
               )}
             </Card>
 
             {later.length > 0 && (
               <Card className="p-2">
-                <div className="px-3 pt-2 pb-1 text-sm text-muted font-medium">Later</div>
+                <div className="px-3 pt-2 pb-1 text-sm text-muted font-medium">{t('Later')}</div>
                 <ol>
                   {later.map((r) => {
                     const pos = liveQueue.indexOf(r) + 1;
@@ -438,7 +440,7 @@ export function StageView() {
                         <span className="flex-1 min-w-0 inline-flex items-center gap-2 text-stop-light font-medium">
                           <BreakIcon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{r.song.title}</span>
-                          {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
+                          {r.breakMinutes ? <span className="text-xs text-muted tabular">· {t('{n} min', { n: r.breakMinutes })}</span> : null}
                         </span>
                       </>
                     ) : (
@@ -451,7 +453,7 @@ export function StageView() {
                           </span>
                           {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
                         </span>
-                        {mine && <Badge tone="brass">Cue</Badge>}
+                        {mine && <Badge tone="brass">{t('Cue')}</Badge>}
                       </>
                     );
                     return (
@@ -460,10 +462,10 @@ export function StageView() {
                           <button
                             onClick={() => jumpTo(r.queueItem.id)}
                             className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-raised group"
-                            title="Jump to this song"
+                            title={t('Jump to this song')}
                           >
                             {body}
-                            <span className="text-xs text-faint group-hover:text-brass">Jump</span>
+                            <span className="text-xs text-faint group-hover:text-brass">{t('Jump')}</span>
                           </button>
                         ) : (
                           <div className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5">{body}</div>
@@ -501,7 +503,7 @@ export function StageView() {
             <Lock className="w-4 h-4 shrink-0" />
             <span className="flex-1">{controlBlockedReason}</span>
             <Button size="sm" onClick={openPicker}>
-              Change
+              {t('Change')}
             </Button>
           </div>
         </div>
@@ -535,6 +537,7 @@ function Stat({ label, children, tone }: { label: string; children: React.ReactN
 
 function LoopPips({ current, total }: { current: number; total: number }) {
   const extra = current - total;
+  const { t } = useT();
   if (total > 16) {
     return (
       <div className="w-full mt-3 h-2 rounded-full bg-line overflow-hidden">
@@ -543,7 +546,7 @@ function LoopPips({ current, total }: { current: number; total: number }) {
     );
   }
   return (
-    <div className="w-full mt-3 flex flex-wrap items-center gap-1.5" aria-label={`Loop ${current} of ${total}`}>
+    <div className="w-full mt-3 flex flex-wrap items-center gap-1.5" aria-label={t('Loop {n} of {total}', { n: current, total })}>
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
@@ -553,38 +556,39 @@ function LoopPips({ current, total }: { current: number; total: number }) {
           )}
         />
       ))}
-      {extra > 0 && <span className="text-xs font-semibold text-danger ml-1">+{extra} extra</span>}
-      {extra === 0 && <span className="text-xs font-semibold text-brass ml-1">Final loop</span>}
+      {extra > 0 && <span className="text-xs font-semibold text-danger ml-1">{t('+{n} extra', { n: extra })}</span>}
+      {extra === 0 && <span className="text-xs font-semibold text-brass ml-1">{t('Final loop')}</span>}
     </div>
   );
 }
 
 function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boolean; children?: React.ReactNode }) {
+  const { t, lang } = useT();
   if (item.isBreak)
     return (
       <div className="rounded-xl p-4 border border-stop/50 bg-stop-soft">
         <div className="text-xs font-bold uppercase tracking-wider text-stop-light mb-1 inline-flex items-center gap-1.5">
-          <BreakIcon className="w-3.5 h-3.5" /> Break next
+          <BreakIcon className="w-3.5 h-3.5" /> {t('Break next')}
         </div>
         <div className="font-display text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
-        {item.breakMinutes ? <div className="mt-1 text-sm text-muted tabular">About {item.breakMinutes} minutes</div> : null}
+        {item.breakMinutes ? <div className="mt-1 text-sm text-muted tabular">{t('About {n} minutes', { n: item.breakMinutes })}</div> : null}
       </div>
     );
   return (
     <div className={cx('rounded-xl p-4 border', cued ? 'border-brass/60 bg-brass-soft' : 'border-line bg-raised/60')}>
-      {cued && <div className="text-xs font-bold uppercase tracking-wider text-brass mb-1">Your cue next</div>}
+      {cued && <div className="text-xs font-bold uppercase tracking-wider text-brass mb-1">{t('Your cue next')}</div>}
       <div className="font-display text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted tabular">
         <span>
-          <b className="text-ink">{item.introBarCount}</b> {introUnitWord(item.introBarCount, item.introUnit)} intro
+          {lang === 'ms' ? 'Intro ' : ''}<b className="text-ink">{item.introBarCount}</b> {introUnitWord(item.introBarCount, item.introUnit)}{lang === 'ms' ? '' : ' intro'}
         </span>
         <span>
-          <b className="text-ink">{item.loopCount}</b>× loop
+          <b className="text-ink">{item.loopCount}</b>× {t('loop')}
         </span>
       </div>
-      <div className="mt-1 text-sm text-muted">{item.introInstruments.join(', ') || 'No intro instruments'}</div>
+      <div className="mt-1 text-sm text-muted">{item.introInstruments.join(', ') || t('No intro instruments')}</div>
       {item.song.rhythms.length > 0 && <Rhythms rhythms={item.song.rhythms} className="mt-2" />}
-      {item.hasOverride && <Badge tone="override" className="mt-2">Adjusted</Badge>}
+      {item.hasOverride && <Badge tone="override" className="mt-2">{t('Adjusted')}</Badge>}
       {children && <div className="mt-3">{children}</div>}
     </div>
   );
@@ -607,28 +611,29 @@ function ControlBar({
   onNext: () => void;
   onLoop: (d: number) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="fixed inset-x-0 z-30 border-t border-line bg-bg/95 backdrop-blur-md pb-3 bottom-[calc(4.1rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 pt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.5fr)] gap-2 sm:gap-3 items-stretch">
-        <Button size="xl" variant="secondary" onClick={onPrev} disabled={!canPrev} className="px-2" aria-label="Previous song">
+        <Button size="xl" variant="secondary" onClick={onPrev} disabled={!canPrev} className="px-2" aria-label={t('Previous song')}>
           <ChevronLeft className="w-6 h-6" />
-          <span className="hidden sm:inline">Prev</span>
+          <span className="hidden sm:inline">{t('Prev')}</span>
         </Button>
 
         {isBreak ? (
           <div className="flex items-center gap-2 rounded-2xl border border-stop/45 bg-stop-soft px-4 text-stop-light font-semibold">
-            <BreakIcon className="w-5 h-5" /> Break
+            <BreakIcon className="w-5 h-5" /> {t('Break')}
           </div>
         ) : (
         <div className="flex items-center gap-0.5 sm:gap-1 rounded-2xl border border-brass/30 bg-brass/[0.06] px-1 sm:px-1.5">
-          <IconButton label="Loop −1" onClick={() => onLoop(-1)} disabled={loop <= 1} className="w-11 h-11 sm:w-12 sm:h-12 text-ink">
+          <IconButton label={t('Loop −1')} onClick={() => onLoop(-1)} disabled={loop <= 1} className="w-11 h-11 sm:w-12 sm:h-12 text-ink">
             <Minus className="w-5 h-5" />
           </IconButton>
           <div className="w-10 sm:w-14 flex flex-col items-center leading-none" aria-live="polite">
-            <span className="text-[10px] uppercase tracking-wider text-muted">Loop</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted">{t('Loop')}</span>
             <span className="text-2xl font-bold text-brass tabular">{loop}</span>
           </div>
-          <IconButton label="Loop +1" onClick={() => onLoop(1)} className="w-11 h-11 sm:w-12 sm:h-12 bg-brass text-brass-ink hover:bg-brass-strong">
+          <IconButton label={t('Loop +1')} onClick={() => onLoop(1)} className="w-11 h-11 sm:w-12 sm:h-12 bg-brass text-brass-ink hover:bg-brass-strong">
             <Plus className="w-5 h-5" />
           </IconButton>
         </div>
@@ -638,10 +643,10 @@ function ControlBar({
           size="xl"
           variant="primary"
           onClick={onNext}
-          aria-label={isLast ? 'Finish this Bahagian' : 'Next item'}
+          aria-label={isLast ? t('Finish this Bahagian') : t('Next item')}
           className={cx('px-3 sm:px-6', isLast && 'bg-jade hover:bg-jade-light text-brass-ink')}
         >
-          <span>{isLast ? 'Finish' : 'Next'}</span>
+          <span>{isLast ? t('Finish') : t('Next')}</span>
           {isLast ? <CheckCircle2 className="w-6 h-6" /> : <SkipForward className="w-6 h-6" />}
         </Button>
       </div>
@@ -650,21 +655,22 @@ function ControlBar({
 }
 
 function BreakBody({ item, next }: { item: ResolvedQueueItem; next: ResolvedQueueItem | undefined }) {
+  const { t } = useT();
   return (
     <div className="flex flex-col items-center text-center gap-3 py-6 sm:py-10">
       <div className="w-20 h-20 rounded-full bg-stop-soft text-stop-light ring-1 ring-stop/50 grid place-items-center">
         <BreakIcon className="w-10 h-10" />
       </div>
-      <div className="text-sm font-bold uppercase tracking-[0.2em] text-stop-light">Break</div>
+      <div className="text-sm font-bold uppercase tracking-[0.2em] text-stop-light">{t('Break')}</div>
       <h1 className="font-display text-4xl sm:text-6xl font-bold tracking-tight [text-wrap:balance]">{item.song.title}</h1>
       {item.breakMinutes ? (
-        <p className="text-lg text-muted tabular">About {item.breakMinutes} minutes</p>
+        <p className="text-lg text-muted tabular">{t('About {n} minutes', { n: item.breakMinutes })}</p>
       ) : (
-        <p className="text-lg text-muted">Rest until the signal</p>
+        <p className="text-lg text-muted">{t('Rest until the signal')}</p>
       )}
       {next && !next.isBreak && (
         <p className="text-base">
-          After the break: <b className="text-ink">{next.song.title}</b>
+          {t('After the break')}: <b className="text-ink">{next.song.title}</b>
         </p>
       )}
     </div>

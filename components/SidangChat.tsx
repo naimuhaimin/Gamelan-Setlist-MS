@@ -3,14 +3,16 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, Trash2 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import { useChat } from '@/lib/useChat';
 import type { ChatMessage } from '@/types';
 import { Button, IconButton, Input, Modal, cx } from './ui';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Admin', maestro: 'Maestro', controller: 'Controller' };
 
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
-const dayOf = (iso: string) => new Date(iso).toLocaleDateString('ms-MY', { day: 'numeric', month: 'short' });
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const dayOf = (iso: string, lang: string) =>
+  new Date(iso).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-GB', { day: 'numeric', month: 'short' });
 
 /**
  * Floating chat button for one Sidang, with an unread count. Opens the Sidang's live chat as a sheet.
@@ -19,6 +21,7 @@ const dayOf = (iso: string) => new Date(iso).toLocaleDateString('ms-MY', { day: 
 export function ChatLauncher({ sessionId, sessionName, raised }: { sessionId: string; sessionName: string; raised?: boolean }) {
   const chat = useChat(sessionId);
   const [open, setOpen] = useState(false);
+  const { t } = useT();
 
   // While open, everything that arrives counts as read
   useEffect(() => {
@@ -32,7 +35,7 @@ export function ChatLauncher({ sessionId, sessionName, raised }: { sessionId: st
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label={`Open live chat${chat.unread ? `, ${chat.unread} unread` : ''}`}
+        aria-label={chat.unread ? t('Open live chat, {n} unread', { n: chat.unread }) : t('Open live chat')}
         className={cx(
           'fixed right-4 z-30 h-14 pl-4 pr-5 rounded-full shadow-2xl inline-flex items-center gap-2 font-semibold',
           'bg-brass text-brass-ink hover:bg-brass-strong transition-[bottom]',
@@ -42,7 +45,7 @@ export function ChatLauncher({ sessionId, sessionName, raised }: { sessionId: st
         )}
       >
         <MessageCircle className="w-6 h-6" />
-        <span className="hidden sm:inline">Chat</span>
+        <span className="hidden sm:inline">{t('Chat')}</span>
         {chat.unread > 0 && (
           <span className="min-w-6 h-6 px-1.5 rounded-full bg-songket text-white text-xs font-bold grid place-items-center tabular">
             {chat.unread > 9 ? '9+' : chat.unread}
@@ -70,6 +73,7 @@ function ChatSheet({
   const [nameDraft, setNameDraft] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const { t, lang } = useT();
 
   // Keep the newest message in view
   useLayoutEffect(() => {
@@ -88,7 +92,7 @@ function ChatSheet({
       await chat.send(text, { instrument: selectedInstrument, role });
     } catch (err) {
       setDraft(text);
-      notify(`Message not sent: ${(err as Error).message}`, 'error');
+      notify(t('Message not sent: {error}', { error: (err as Error).message }), 'error');
     } finally {
       setSending(false);
     }
@@ -100,8 +104,8 @@ function ChatSheet({
     <Modal
       open={open}
       onClose={onClose}
-      title="Live chat"
-      description={`${sessionName} · everyone with the app can read this`}
+      title={t('Live chat')}
+      description={t('{sidang} · everyone with the app can read this', { sidang: sessionName })}
       footer={
         needsName ? (
           <form
@@ -114,13 +118,13 @@ function ChatSheet({
             <Input
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
-              placeholder="Your name, e.g. Aiman"
+              placeholder={t('Your name, e.g. Aiman')}
               maxLength={40}
-              aria-label="Your name"
+              aria-label={t('Your name')}
               className="flex-1"
             />
             <Button type="submit" variant="primary" disabled={!nameDraft.trim()}>
-              Join chat
+              {t('Join chat')}
             </Button>
           </form>
         ) : (
@@ -128,13 +132,13 @@ function ChatSheet({
             <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={`Message as ${chat.name}…`}
+              placeholder={t('Message as {name}…', { name: chat.name })}
               maxLength={500}
-              aria-label="Message"
+              aria-label={t('Message')}
               className="flex-1"
               enterKeyHint="send"
             />
-            <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim() || sending} className="w-11 h-11 shrink-0">
+            <IconButton label={t('Send')} type="submit" variant="primary" disabled={!draft.trim() || sending} className="w-11 h-11 shrink-0">
               <Send className="w-5 h-5" />
             </IconButton>
           </form>
@@ -143,12 +147,12 @@ function ChatSheet({
     >
       <div ref={listRef} className="h-[55dvh] sm:h-[60vh] overflow-y-auto scrollbar-thin -mx-5 px-5 flex flex-col gap-2 py-1">
         {chat.available === null ? (
-          <p className="m-auto text-sm text-muted">Loading…</p>
+          <p className="m-auto text-sm text-muted">{t('Loading…')}</p>
         ) : chat.messages.length === 0 ? (
           <div className="m-auto text-center text-muted">
             <MessageCircle className="w-10 h-10 mx-auto text-faint" />
-            <p className="mt-2 font-medium text-ink">No messages yet</p>
-            <p className="text-sm">Say hello to the ensemble.</p>
+            <p className="mt-2 font-medium text-ink">{t('No messages yet')}</p>
+            <p className="text-sm">{t('Say hello to the ensemble.')}</p>
           </div>
         ) : (
           chat.messages.map((m, i) => (
@@ -156,20 +160,20 @@ function ChatSheet({
               key={m.id}
               m={m}
               mine={m.device_id === chat.myDeviceId}
-              showDay={i === 0 || dayOf(chat.messages[i - 1].created_at) !== dayOf(m.created_at)}
+              showDay={i === 0 || dayOf(chat.messages[i - 1].created_at, lang) !== dayOf(m.created_at, lang)}
               grouped={i > 0 && chat.messages[i - 1].device_id === m.device_id && chat.messages[i - 1].author === m.author}
               canDelete={isManager || m.device_id === chat.myDeviceId}
-              onDelete={() => chat.remove(m.id).catch((err) => notify(`Not deleted: ${(err as Error).message}`, 'error'))}
+              onDelete={() => chat.remove(m.id).catch((err) => notify(t('Not deleted: {error}', { error: (err as Error).message }), 'error'))}
             />
           ))
         )}
       </div>
       {!needsName && (
         <p className="text-xs text-faint mt-2">
-          Chatting as <b className="text-muted">{chat.name}</b>
+          {t('Chatting as')} <b className="text-muted">{chat.name}</b>
           {selectedInstrument ? ` · ${selectedInstrument}` : ''} ·{' '}
           <button className="underline hover:text-ink" onClick={() => chat.setName('')}>
-            change name
+            {t('change name')}
           </button>
         </p>
       )}
@@ -193,15 +197,16 @@ function Bubble({
   onDelete: () => void;
 }) {
   const roleLabel = ROLE_LABEL[m.role];
+  const { t, lang } = useT();
   return (
     <>
-      {showDay && <div className="self-center text-xs text-faint py-1">{dayOf(m.created_at)}</div>}
+      {showDay && <div className="self-center text-xs text-faint py-1">{dayOf(m.created_at, lang)}</div>}
       <div className={cx('group flex flex-col max-w-[85%] min-w-0', mine ? 'self-end items-end' : 'self-start items-start', grouped && !showDay && '-mt-1')}>
         {(!grouped || showDay) && (
           <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted px-1 mb-0.5">
-            <span className="font-semibold text-ink">{mine ? 'You' : m.author}</span>
+            <span className="font-semibold text-ink">{mine ? t('You') : m.author}</span>
             {m.instrument && <span>· {m.instrument}</span>}
-            {roleLabel && <span className="px-1.5 rounded bg-songket-soft text-songket-light font-semibold">{roleLabel}</span>}
+            {roleLabel && <span className="px-1.5 rounded bg-songket-soft text-songket-light font-semibold">{t(roleLabel)}</span>}
           </div>
         )}
         <div className="flex items-end gap-1 max-w-full">
@@ -223,10 +228,11 @@ function Bubble({
 }
 
 function DeleteBtn({ onDelete }: { onDelete: () => void }) {
+  const { t } = useT();
   return (
     <button
       onClick={onDelete}
-      aria-label="Delete message"
+      aria-label={t('Delete message')}
       className="w-7 h-7 shrink-0 grid place-items-center rounded-full text-faint hover:text-danger opacity-60 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
     >
       <Trash2 className="w-3.5 h-3.5" />

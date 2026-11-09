@@ -3,6 +3,7 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { AlertTriangle, CheckCircle2, Info, Minus, Plus, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { tr, useT } from '@/lib/i18n';
 
 export const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ');
 
@@ -192,7 +193,7 @@ export const VoteButtons = ({
       <button
         type="button"
         aria-pressed={active}
-        aria-label={`${v === 1 ? 'Thumbs up' : 'Thumbs down'} for ${label} (${count})`}
+        aria-label={tr(v === 1 ? 'Thumbs up for {title} ({n})' : 'Thumbs down for {title} ({n})', { title: label, n: count })}
         onClick={(e) => {
           e.stopPropagation();
           onVote(v);
@@ -235,7 +236,7 @@ export const VoteCounts = ({ up, down, className }: { up: number; down: number; 
 
 /** Bars / Beats segmented switch for the intro length. */
 export const UnitSwitch = ({ value, onChange }: { value: 'bars' | 'beats'; onChange: (v: 'bars' | 'beats') => void }) => (
-  <div role="radiogroup" aria-label="Intro counted in" className="inline-flex p-1 rounded-xl bg-bg border border-line">
+  <div role="radiogroup" aria-label={tr('Intro counted in')} className="inline-flex p-1 rounded-xl bg-bg border border-line">
     {(['bars', 'beats'] as const).map((u) => (
       <button
         key={u}
@@ -248,7 +249,7 @@ export const UnitSwitch = ({ value, onChange }: { value: 'bars' | 'beats'; onCha
           value === u ? 'bg-brass text-brass-ink' : 'text-muted hover:text-ink'
         )}
       >
-        {u}
+        {tr(u === 'bars' ? 'Bars' : 'Beats')}
       </button>
     ))}
   </div>
@@ -331,7 +332,7 @@ export const Stepper = ({
   const clamp = (n: number) => Math.min(max, Math.max(min, n));
   return (
     <div className="flex items-center gap-2">
-      <IconButton label="Decrease" variant="secondary" onClick={() => onChange(clamp(value - 1))} disabled={value <= min}>
+      <IconButton label={tr('Decrease')} variant="secondary" onClick={() => onChange(clamp(value - 1))} disabled={value <= min}>
         <Minus className="w-4 h-4" />
       </IconButton>
       <input
@@ -344,7 +345,7 @@ export const Stepper = ({
         onChange={(e) => onChange(clamp(parseInt(e.target.value, 10) || min))}
         className="w-16 h-10 rounded-xl bg-bg border border-line text-center text-lg font-semibold tabular focus:outline-none focus:border-brass/70"
       />
-      <IconButton label="Increase" variant="secondary" onClick={() => onChange(clamp(value + 1))} disabled={value >= max}>
+      <IconButton label={tr('Increase')} variant="secondary" onClick={() => onChange(clamp(value + 1))} disabled={value >= max}>
         <Plus className="w-4 h-4" />
       </IconButton>
       {suffix && <span className="text-sm text-muted">{suffix}</span>}
@@ -450,7 +451,7 @@ export const Modal = ({
             </h2>
             {description && <div className="text-sm text-muted mt-0.5">{description}</div>}
           </div>
-          <IconButton label="Close" onClick={onClose} className="-mr-2 -mt-1">
+          <IconButton label={tr('Close')} onClick={onClose} className="-mr-2 -mt-1">
             <X className="w-5 h-5" />
           </IconButton>
         </div>
@@ -488,7 +489,7 @@ export const ConfirmDialog = ({
     footer={
       <>
         <Button variant="ghost" onClick={onCancel}>
-          Cancel
+          {tr('Cancel')}
         </Button>
         <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
           {confirmLabel}
@@ -506,6 +507,7 @@ export const ConfirmDialog = ({
 
 export const Toaster = () => {
   const { toasts, dismissToast } = useStage();
+  useT();
   return (
     <div
       aria-live="polite"
@@ -529,7 +531,7 @@ export const Toaster = () => {
             <Info className="w-4 h-4 mt-0.5 shrink-0 text-muted" />
           )}
           <span className="flex-1">{t.message}</span>
-          <button onClick={() => dismissToast(t.id)} className="text-faint hover:text-ink" aria-label="Dismiss">
+          <button onClick={() => dismissToast(t.id)} className="text-faint hover:text-ink" aria-label={tr('Dismiss')}>
             <X className="w-4 h-4" />
           </button>
         </div>

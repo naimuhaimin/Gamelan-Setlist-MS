@@ -3,6 +3,7 @@
 import React from 'react';
 import { ArrowDown, ArrowUp, Check } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import { formatIntro } from '@/lib/format';
 import { BreakIcon, Button, Card, IconButton, cx } from './ui';
 
@@ -13,16 +14,17 @@ import { BreakIcon, Button, Card, IconButton, cx } from './ui';
 export function LiveReorder({ onDone }: { onDone: () => void }) {
   const { liveQueue, activeIndex, moveLiveItem, isCued } = useStage();
   const upcoming = liveQueue.slice(activeIndex + 1);
+  const { t } = useT();
 
   return (
     <Card className="p-2 border-brass/50">
       <div className="flex items-center gap-2 px-3 pt-2 pb-2">
         <div className="flex-1 min-w-0">
-          <div className="font-semibold">Reorder what’s next</div>
-          <div className="text-xs text-muted">Changes show on every phone straight away.</div>
+          <div className="font-semibold">{t('Reorder what’s next')}</div>
+          <div className="text-xs text-muted">{t('Changes show on every phone straight away.')}</div>
         </div>
         <Button size="sm" variant="primary" onClick={onDone}>
-          <Check className="w-4 h-4" /> Done
+          <Check className="w-4 h-4" /> {t('Done')}
         </Button>
       </div>
       <ol className="flex flex-col gap-1">
@@ -48,17 +50,17 @@ export function LiveReorder({ onDone }: { onDone: () => void }) {
                   <>
                     <span className="block truncate font-medium">
                       {r.song.title}
-                      {isCued(r.introInstruments) && <span className="ml-1.5 text-xs text-brass">· your cue</span>}
+                      {isCued(r.introInstruments) && <span className="ml-1.5 text-xs text-brass">· {t('your cue')}</span>}
                     </span>
                     <span className="block text-xs text-muted tabular truncate">
                       {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || '—'}
                     </span>
                   </>
                 )}
-                {i === 0 && <span className="block text-[11px] font-semibold uppercase tracking-wider text-brass mt-0.5">Up next</span>}
+                {i === 0 && <span className="block text-[11px] font-semibold uppercase tracking-wider text-brass mt-0.5">{t('Up next')}</span>}
               </span>
               <IconButton
-                label={`Move ${r.song.title} up`}
+                label={t('Move {title} up', { title: r.song.title })}
                 onClick={() => moveLiveItem(r.queueItem.id, -1)}
                 disabled={i === 0}
                 className="w-11 h-11 shrink-0"
@@ -66,7 +68,7 @@ export function LiveReorder({ onDone }: { onDone: () => void }) {
                 <ArrowUp className="w-5 h-5" />
               </IconButton>
               <IconButton
-                label={`Move ${r.song.title} down`}
+                label={t('Move {title} down', { title: r.song.title })}
                 onClick={() => moveLiveItem(r.queueItem.id, 1)}
                 disabled={i === upcoming.length - 1}
                 className="w-11 h-11 shrink-0"

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { Check, Copy, KeyRound, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import type { RoleType } from '@/types';
 import { Button, Chip, Field, Input, Modal, cx } from './ui';
 
@@ -19,6 +20,7 @@ const ROLES: Array<{ id: Exclude<RoleType, 'player'>; title: string; text: strin
 
 export function LoginModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { login, role } = useStage();
+  const { t } = useT();
   const [selected, setSelected] = useState<Exclude<RoleType, 'player'>>('controller');
   const [passkey, setPasskey] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
     const res = login(selected, passkey);
     if (res.ok) onClose();
     else {
-      setError(res.message ?? 'That passkey is not correct.');
+      setError(t(res.message ?? 'That passkey is not correct.'));
       setPasskey('');
       inputRef.current?.focus();
     }
@@ -47,22 +49,22 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
     <Modal
       open={open}
       onClose={onClose}
-      title="Switch role"
-      description="Musicians don’t need this. Controller and Maestro need no passkey."
+      title={t('Switch role')}
+      description={t('Musicians don’t need this. Controller and Maestro need no passkey.')}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button variant="primary" type="submit" form="login-form" disabled={selected === 'admin' && !passkey.trim()}>
-            Continue as {ROLES.find((r) => r.id === selected)?.title}
+            {t('Continue as {role}', { role: t(ROLES.find((r) => r.id === selected)?.title ?? '') })}
           </Button>
         </>
       }
     >
       <form id="login-form" onSubmit={submit} className="space-y-4">
-        <div className="space-y-2" role="radiogroup" aria-label="Role">
+        <div className="space-y-2" role="radiogroup" aria-label={t('Role')}>
           {ROLES.map((r) => (
             <button
               key={r.id}
@@ -81,8 +83,8 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             >
               <span className={selected === r.id ? 'text-brass' : 'text-muted'}>{r.icon}</span>
               <span className="flex-1">
-                <span className="block font-medium">{r.title}</span>
-                <span className="block text-xs text-muted">{r.text}</span>
+                <span className="block font-medium">{t(r.title)}</span>
+                <span className="block text-xs text-muted">{t(r.text)}</span>
               </span>
               <span
                 className={cx(
@@ -94,7 +96,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
           ))}
         </div>
         {selected === 'admin' && (
-          <Field label="Admin passkey" htmlFor="passkey">
+          <Field label={t('Admin passkey')} htmlFor="passkey">
           <Input
             ref={inputRef}
             id="passkey"
@@ -120,6 +122,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
 
 export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { instruments, selectedInstrument, selectInstrument } = useStage();
+  const { t } = useT();
   const choose = (i: string | null) => {
     selectInstrument(i);
     onClose();
@@ -128,8 +131,8 @@ export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: ()
     <Modal
       open={open}
       onClose={() => choose(selectedInstrument)}
-      title="Which instrument do you play?"
-      description="You’ll get a clear alert whenever your instrument starts the intro."
+      title={t('Which instrument do you play?')}
+      description={t('You’ll get a clear alert whenever your instrument starts the intro.')}
       size="sm"
     >
       <div className="grid grid-cols-2 gap-2">
@@ -147,7 +150,7 @@ export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: ()
         ))}
       </div>
       <Button variant="ghost" className="w-full mt-3" onClick={() => choose(null)}>
-        I’m just watching
+        {t('I’m just watching')}
       </Button>
     </Modal>
   );
@@ -169,6 +172,7 @@ export function ShareModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [url, setUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     if (open) setUrl(target?.url ?? window.location.origin);
@@ -194,25 +198,25 @@ export function ShareModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={target?.title ?? 'Open on other devices'} description="Scan with a phone or tablet camera." size="sm">
+    <Modal open={open} onClose={onClose} title={target?.title ?? t('Open on other devices')} description={t('Scan with a phone or tablet camera.')} size="sm">
       <div className="flex flex-col items-center gap-4">
         <div className="p-3 bg-white rounded-2xl">
           <canvas ref={canvasRef} className="block w-[220px] h-[220px]" />
         </div>
         <div className="w-full flex items-center gap-2">
           <Input readOnly value={url} className="font-mono text-sm" onFocus={(e) => e.currentTarget.select()} />
-          <Button onClick={copy} aria-label="Copy link">
+          <Button onClick={copy} aria-label={t('Copy link')}>
             {copied ? <Check className="w-4 h-4 text-ok" /> : <Copy className="w-4 h-4" />}
           </Button>
         </div>
         <ul className="w-full text-sm text-muted space-y-1.5">
-          <li>• Musicians just open the link and pick their instrument.</li>
-          <li>• Controllers and the Maestro switch role from the account menu (no passkey).</li>
-          <li>• Every device updates live. Keep screens open during the ceremony.</li>
+          <li>• {t('Musicians just open the link and pick their instrument.')}</li>
+          <li>• {t('Controllers and the Maestro switch role in Settings (no passkey).')}</li>
+          <li>• {t('Every device updates live. Keep screens open during the performance.')}</li>
         </ul>
         <div className="w-full">
           <Chip selected={false} onClick={() => window.open(url, '_blank')} className="w-full">
-            Open in a new tab
+            {t('Open in a new tab')}
           </Chip>
         </div>
       </div>

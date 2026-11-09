@@ -1,5 +1,7 @@
 'use client';
 
+import { tr } from './i18n';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { setPlaybackAudioSession } from './useChime';
 
@@ -103,7 +105,7 @@ function drawArtwork(info: LockScreenInfo): string | null {
 
   ctx.fillStyle = info.highlight ? '#1c1207' : info.onHold ? '#c99a52' : '#ddb46e';
   ctx.font = font(800, 34);
-  ctx.fillText(info.onHold ? 'ON HOLD' : info.kicker, 32, 112, size - 64);
+  ctx.fillText(info.onHold ? tr('ON HOLD') : info.kicker, 32, 112, size - 64);
 
   ctx.fillStyle = ink;
   ctx.font = font(800, 58);
@@ -196,12 +198,12 @@ export function useLockScreen(info: LockScreenInfo | null) {
   useEffect(() => {
     if (!active || !lockScreenSupported()) return;
     const data: LockScreenInfo = info ?? {
-      title: 'Waiting for the stage',
-      line1: 'Nothing is live yet',
+      title: tr('Waiting for the stage'),
+      line1: tr('Nothing is live yet'),
       line2: 'Anjung Live',
       top: 'ANJUNG LIVE',
-      kicker: 'WAITING',
-      heading: 'Nothing is live yet',
+      kicker: tr('WAITING'),
+      heading: tr('Nothing is live yet'),
       detail: '',
       stats: [],
       highlight: false,

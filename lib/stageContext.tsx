@@ -18,6 +18,7 @@ import type {
 } from '@/types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import * as api from '@/lib/supabaseService';
+import { tr, useT } from '@/lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -225,6 +226,7 @@ export function resolveItem(q: QueueItem, song: Song): ResolvedQueueItem {
 
 export function StageProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
+  const { lang } = useT(); // re-derive translated messages when the language changes
   const [loadError, setLoadError] = useState<string | null>(null);
   const [events, setEvents] = useState<ConvoEvent[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -439,7 +441,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       return next === 0 ? rest : [...rest, { queue_item_id: queueItemId, device_id: me, vote: next }];
     });
     api.setVote(queueItemId, me, next).catch((err) => {
-      notify(`Vote not saved: ${(err as Error).message}`, 'error');
+      notify(tr('Vote not saved: {error}', { error: (err as Error).message }), 'error');
       api.fetchVotes().then((v) => v && setVotes(v)).catch(() => undefined);
     });
   };
@@ -488,11 +490,12 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const { canControl, controlBlockedReason } = useMemo(() => {
     if (isManager) return { canControl: true, controlBlockedReason: null };
     if (role !== 'controller') return { canControl: false, controlBlockedReason: null };
-    if (!livePart) return { canControl: false, controlBlockedReason: 'Nothing is live yet. Choose a Sidang and Bahagian.' };
+    if (!livePart) return { canControl: false, controlBlockedReason: tr('Nothing is live yet. Choose a Sidang and Bahagian.') };
     if (!livePart.controller_enabled)
-      return { canControl: false, controlBlockedReason: `The Maestro has locked controls for ${livePart.name}.` };
+      return { canControl: false, controlBlockedReason: tr('The Maestro has locked controls for {part}.', { part: livePart.name }) };
     return { canControl: true, controlBlockedReason: null };
-  }, [isManager, role, livePart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isManager, role, livePart, lang]);
 
   const persistAuth = (r: RoleType, key: string) =>
     safeStorage(() => localStorage.setItem(AUTH_KEY, JSON.stringify({ role: r, passkey: key })), undefined);
@@ -562,7 +565,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         await remote();
         if (opts.success) notify(opts.success);
       } catch (err) {
-        notify(`Not saved: ${(err as Error).message}`, 'error');
+        notify(tr('Not saved: {error}', { error: (err as Error).message }), 'error');
         reload();
         if (opts.rethrow) throw err;
       }
@@ -609,7 +612,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const editInterlude = async (partId: string, label: string, songs: number) => {
     const updates = { interlude_label: label.trim() || null, interlude_songs: Math.max(0, Math.round(songs)) };
     setParts((prev) => prev.map((p) => (p.id === partId ? { ...p, ...updates } : p)));
-    await commit(() => api.updatePart(partId, updates), { success: 'Intermission saved', rethrow: true });
+    await commit(() => api.updatePart(partId, updates), { success: tr('Intermission saved'), rethrow: true });
   };
 
   const goToIndex = (i: number) => {
@@ -619,7 +622,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const finishPart = () => {
     if (!canControl) return;
     if (!finishSupported) {
-      notify('Finishing a Bahagian needs the is_finished column in the database.', 'error');
+      notify(tr('Finishing a Bahagian needs the is_finished column in the database.'), 'error');
       return;
     }
     setRoom({ is_finished: true, is_paused: false, ...resetInterlude });
@@ -709,7 +712,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         await api.insertQueueItem(item);
         if (at < ordered.length) await api.reorderQueue(ids);
       },
-      { success: where === 'next' && currentId ? `“${title}” plays next` : `“${title}” added to the end`, rethrow: true }
+      { success: where === 'next' && currentId ? tr('“{title}” plays next', { title }) : tr('“{title}” added to the end', { title }), rethrow: true }
     );
   };
 
@@ -739,13 +742,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       override_loop_count: null,
     };
     setQueueItems((prev) => [...prev, item]);
-    await commit(() => api.insertQueueItem(item), { success: 'Break added' });
+    await commit(() => api.insertQueueItem(item), { success: tr('Break added') });
   };
 
   const editBreak = async (id: string, label: string, minutes: number | null) => {
     const l = label.trim() || 'Break';
     setQueueItems((prev) => prev.map((q) => (q.id === id ? { ...q, break_label: l, break_minutes: minutes } : q)));
-    await commit(() => api.updateBreak(id, l, minutes), { success: 'Break updated', rethrow: true });
+    await commit(() => api.updateBreak(id, l, minutes), { success: tr('Break updated'), rethrow: true });
   };
 
   const removeFromQueue = async (id: string) => {
@@ -765,7 +768,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   const saveOverride = async (id: string, overrides: Overrides) => {
     setQueueItems((prev) => prev.map((q) => (q.id === id ? { ...q, ...overrides } : q)));
-    await commit(() => api.saveOverride(id, overrides), { success: 'Override saved', rethrow: true });
+    await commit(() => api.saveOverride(id, overrides), { success: tr('Adjustment saved'), rethrow: true });
   };
 
   // ---- Sidang & Bahagian -------------------------------------------------------
@@ -789,7 +792,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       controller_passkey: '',
       controller_enabled: true,
     }));
-    await commit(() => api.insertSession(session, newParts), { success: `${session.name} created`, rethrow: true });
+    await commit(() => api.insertSession(session, newParts), { success: tr('{name} created', { name: session.name }), rethrow: true });
     setSessions((prev) => [...prev, session].sort((a, b) => a.sidang_number - b.sidang_number));
     setParts((prev) => [...prev, ...newParts]);
     return session;
@@ -797,7 +800,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   const editSession: StageContextType['editSession'] = async (id, updates) => {
     setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
-    await commit(() => api.updateSession(id, updates), { success: 'Sidang updated', rethrow: true });
+    await commit(() => api.updateSession(id, updates), { success: tr('Sidang updated'), rethrow: true });
   };
 
   const removeSession = async (id: string) => {
@@ -810,46 +813,46 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         await api.updateRoomState({ session_id: null, part_id: null, current_queue_item_id: null, current_loop_iteration: 1 });
       }
       await api.deleteSession(id);
-    }, { success: 'Sidang deleted' });
+    }, { success: tr('Sidang deleted') });
   };
 
   const editPart: StageContextType['editPart'] = async (id, updates) => {
     setParts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
-    await commit(() => api.updatePart(id, updates), { success: 'Bahagian settings saved' });
+    await commit(() => api.updatePart(id, updates), { success: tr('Bahagian settings saved') });
   };
 
   // ---- Library -----------------------------------------------------------------
   const addSong: StageContextType['addSong'] = async (input) => {
     const song: Song = { ...input, id: api.newId('song'), created_at: new Date().toISOString() };
-    await commit(() => api.insertSong(song), { success: `“${song.title}” added`, rethrow: true });
+    await commit(() => api.insertSong(song), { success: tr('“{title}” added', { title: song.title }), rethrow: true });
     setSongs((prev) => api.sortSongs([...prev, song]));
   };
 
   const editSong = async (song: Song) => {
     setSongs((prev) => api.sortSongs(prev.map((s) => (s.id === song.id ? song : s))));
-    await commit(() => api.updateSong(song), { success: 'Song updated', rethrow: true });
+    await commit(() => api.updateSong(song), { success: tr('Song updated'), rethrow: true });
   };
 
   const removeSong = async (id: string) => {
     setSongs((prev) => prev.filter((s) => s.id !== id));
     setQueueItems((prev) => prev.filter((q) => q.song_id !== id));
-    await commit(() => api.deleteSong(id), { success: 'Song deleted' });
+    await commit(() => api.deleteSong(id), { success: tr('Song deleted') });
   };
 
   // ---- Instruments ---------------------------------------------------------------
   const addInstrument = async (name: string) => {
     const trimmed = name.trim();
-    if (!trimmed) throw new Error('Enter an instrument name.');
-    if (instruments.some((i) => eq(i, trimmed))) throw new Error(`“${trimmed}” already exists.`);
-    await commit(() => api.insertInstrument(trimmed, instruments.length + 1), { success: `${trimmed} added`, rethrow: true });
+    if (!trimmed) throw new Error(tr('Enter an instrument name.'));
+    if (instruments.some((i) => eq(i, trimmed))) throw new Error(tr('“{name}” already exists.', { name: trimmed }));
+    await commit(() => api.insertInstrument(trimmed, instruments.length + 1), { success: tr('{name} added', { name: trimmed }), rethrow: true });
     setInstruments((prev) => [...prev, trimmed]);
   };
 
   const renameInstrument = async (oldName: string, newName: string) => {
     const trimmed = newName.trim();
-    if (!trimmed) throw new Error('Enter an instrument name.');
+    if (!trimmed) throw new Error(tr('Enter an instrument name.'));
     if (trimmed === oldName) return;
-    if (instruments.some((i) => i !== oldName && eq(i, trimmed))) throw new Error(`“${trimmed}” already exists.`);
+    if (instruments.some((i) => i !== oldName && eq(i, trimmed))) throw new Error(tr('“{name}” already exists.', { name: trimmed }));
     const swap = (list: string[]) => list.map((i) => (i === oldName ? trimmed : i));
     setInstruments(swap);
     setSongs((prev) => prev.map((s) => ({ ...s, intro_instruments: swap(s.intro_instruments) })));
@@ -857,7 +860,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       prev.map((q) => (q.override_intro_instruments ? { ...q, override_intro_instruments: swap(q.override_intro_instruments) } : q))
     );
     if (selectedInstrument === oldName) selectInstrument(trimmed);
-    await commit(() => api.renameInstrument(oldName, trimmed), { success: 'Instrument renamed', rethrow: true });
+    await commit(() => api.renameInstrument(oldName, trimmed), { success: tr('Instrument renamed'), rethrow: true });
   };
 
   const removeInstrument = async (name: string) => {
@@ -867,7 +870,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     setQueueItems((prev) =>
       prev.map((q) => (q.override_intro_instruments ? { ...q, override_intro_instruments: drop(q.override_intro_instruments) } : q))
     );
-    await commit(() => api.deleteInstrument(name), { success: `${name} removed` });
+    await commit(() => api.deleteInstrument(name), { success: tr('{name} removed', { name }) });
   };
 
   const moveInstrument = async (from: number, to: number) => {
@@ -892,7 +895,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         if (thumbnail) ev.thumbnail_url = await api.uploadThumbnail(thumbnail, thumbnail.name);
         await api.insertEvent(ev);
       },
-      { success: `${ev.name} created`, rethrow: true }
+      { success: tr('{name} created', { name: ev.name }), rethrow: true }
     );
     setEvents((prev) => [...prev, ev]);
     return ev;
@@ -906,7 +909,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         if (thumbnail) updates.thumbnail_url = await api.uploadThumbnail(thumbnail, thumbnail.name);
         await api.updateEvent(id, updates);
       },
-      { success: 'Konvo updated', rethrow: true }
+      { success: tr('Event updated'), rethrow: true }
     );
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
   };
@@ -920,7 +923,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         }
         await api.deleteEvent(id);
       },
-      { success: 'Konvo deleted' }
+      { success: tr('Event deleted') }
     );
     setEvents((prev) => prev.filter((e) => e.id !== id));
     setSessions((prev) => prev.filter((s) => s.event_id !== id));
@@ -948,7 +951,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const setRolePasskey = async (r: RoleType, passkey: string) => {
     const key = passkey.trim();
     setRoles((prev) => [...prev.filter((x) => x.role_name !== r), { role_name: r, passkey: key }]);
-    await commit(() => api.updateRolePasskey(r, key), { success: 'Passkey updated', rethrow: true });
+    await commit(() => api.updateRolePasskey(r, key), { success: tr('Passkey updated'), rethrow: true });
     if (r === role) {
       setAuthPasskey(key);
       persistAuth(r, key);

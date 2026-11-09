@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { DEFAULT_INTERLUDE_LABEL, useStage } from '@/lib/stageContext';
+import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
 import { Badge, BreakIcon, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, Input, LiveDot, Modal, Rhythms, Stepper, Toggle, VoteCounts, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
@@ -38,6 +39,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
   const [overrideItem, setOverrideItem] = useState<ResolvedQueueItem | null>(null);
   const [breakItem, setBreakItem] = useState<ResolvedQueueItem | 'new' | null>(null);
   const [toRemove, setToRemove] = useState<ResolvedQueueItem | null>(null);
+  const { t } = useT();
 
   useEffect(() => {
     if (sessionParts.length && !sessionParts.some((p) => p.part_number === partNumber)) setPartNumber(sessionParts[0].part_number);
@@ -62,7 +64,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
               key={p.id}
               role="tab"
               aria-selected={selected}
-              aria-label={`Bahagian ${p.part_number}, ${count} ${count === 1 ? 'song' : 'songs'}${live ? ', live' : ''}`}
+              aria-label={`Bahagian ${p.part_number}, ${plural(count, '{n} song', '{n} songs')}${live ? `, ${t('live')}` : ''}`}
               onClick={() => setPartNumber(p.part_number)}
               className={cx(
                 'rounded-xl border px-3 py-2.5 text-left transition-colors',
@@ -76,9 +78,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                 </span>
                 {live && <LiveDot className="ml-auto" />}
               </div>
-              <div className="text-xs text-muted tabular">
-                {count} {count === 1 ? 'song' : 'songs'}
-              </div>
+              <div className="text-xs text-muted tabular">{plural(count, '{n} song', '{n} songs')}</div>
             </button>
           );
         })}
@@ -91,19 +91,19 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
             <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-4 border-b border-line">
               <div className="min-w-0">
                 <h2 className="font-display text-xl font-bold">{part.name}</h2>
-                <p className="text-sm text-muted">Set the order. Adjust a song for this ceremony with ⚙. Add breaks anywhere.</p>
+                <p className="text-sm text-muted">{t('Set the order. Adjust a song for this ceremony with ⚙. Add breaks anywhere.')}</p>
               </div>
               <div className="w-full sm:w-auto sm:ml-auto grid grid-cols-2 sm:flex items-center gap-2">
                 <Button onClick={() => setBreakItem('new')}>
-                  <BreakIcon className="w-4 h-4" /> Add break
+                  <BreakIcon className="w-4 h-4" /> {t('Add break')}
                 </Button>
                 {isLive ? (
                   <Button variant="secondary" onClick={onShowStage}>
-                    <LiveDot /> Live now
+                    <LiveDot /> {t('Live now')}
                   </Button>
                 ) : (
                   <Button variant="primary" onClick={() => goLive(part.id)} disabled={!queue.length}>
-                    <Radio className="w-4 h-4" /> Go live
+                    <Radio className="w-4 h-4" /> {t('Go live')}
                   </Button>
                 )}
               </div>
@@ -126,18 +126,18 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                         <div className="flex items-center gap-2 min-w-0 text-stop-light font-medium">
                           <BreakIcon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{r.song.title}</span>
-                          {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
-                          {r.queueItem.id === liveCurrentId && <Badge tone="live">Now</Badge>}
+                          {r.breakMinutes ? <span className="text-xs text-muted tabular">· {t('{n} min', { n: r.breakMinutes })}</span> : null}
+                          {r.queueItem.id === liveCurrentId && <Badge tone="live">{t('Now')}</Badge>}
                         </div>
                       ) : (
                         <>
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="font-medium truncate">{r.song.title}</span>
-                            {r.queueItem.id === liveCurrentId && <Badge tone="live">Playing</Badge>}
-                            {r.hasOverride && <Badge tone="override">Adjusted</Badge>}
+                            {r.queueItem.id === liveCurrentId && <Badge tone="live">{t('Playing')}</Badge>}
+                            {r.hasOverride && <Badge tone="override">{t('Adjusted')}</Badge>}
                           </div>
                           <div className="text-xs text-muted truncate tabular">
-                            {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || 'no intro instrument'}
+                            {formatIntro(r.introBarCount, r.introUnit)} · {r.loopCount}× · {r.introInstruments.join(', ') || t('no intro instrument')}
                           </div>
                           {r.song.rhythms.length > 0 && <Rhythms rhythms={r.song.rhythms} className="mt-1" />}
                           <VoteCounts {...tally(r.queueItem.id)} className="mt-1" />
@@ -145,19 +145,19 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                       )}
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0 w-full sm:w-auto justify-end -mr-1 sm:mr-0 pl-10 sm:pl-0">
-                      <IconButton label="Move up" size="sm" onClick={() => moveQueueItem(part.id, i, i - 1)} disabled={i === 0}>
+                      <IconButton label={t('Move up')} size="sm" onClick={() => moveQueueItem(part.id, i, i - 1)} disabled={i === 0}>
                         <ArrowUp className="w-4 h-4" />
                       </IconButton>
-                      <IconButton label="Move down" size="sm" onClick={() => moveQueueItem(part.id, i, i + 1)} disabled={i === queue.length - 1}>
+                      <IconButton label={t('Move down')} size="sm" onClick={() => moveQueueItem(part.id, i, i + 1)} disabled={i === queue.length - 1}>
                         <ArrowDown className="w-4 h-4" />
                       </IconButton>
                       {r.isBreak ? (
-                        <IconButton label="Edit break" size="sm" onClick={() => setBreakItem(r)}>
+                        <IconButton label={t('Edit break')} size="sm" onClick={() => setBreakItem(r)}>
                           <Pencil className="w-4 h-4" />
                         </IconButton>
                       ) : (
                         <IconButton
-                          label="Adjust for this ceremony"
+                          label={t('Adjust for this ceremony')}
                           size="sm"
                           onClick={() => setOverrideItem(r)}
                           className={r.hasOverride ? 'text-songket-light' : undefined}
@@ -165,7 +165,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                           <SlidersHorizontal className="w-4 h-4" />
                         </IconButton>
                       )}
-                      <IconButton label="Remove from setlist" size="sm" onClick={() => setToRemove(r)} className="hover:text-danger">
+                      <IconButton label={t('Remove from setlist')} size="sm" onClick={() => setToRemove(r)} className="hover:text-danger">
                         <Trash2 className="w-4 h-4" />
                       </IconButton>
                     </div>
@@ -173,7 +173,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                 ))}
               </ol>
             ) : (
-              <EmptyState title="No songs in this Bahagian">Add songs from the library.</EmptyState>
+              <EmptyState title={t('No songs in this Bahagian')}>{t('Add songs from the library.')}</EmptyState>
             )}
           </Card>
 
@@ -206,8 +206,8 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
       )}
       <ConfirmDialog
         open={!!toRemove}
-        title={toRemove?.isBreak ? 'Remove break?' : 'Remove from setlist?'}
-        confirmLabel="Remove"
+        title={toRemove?.isBreak ? t('Remove break?') : t('Remove from setlist?')}
+        confirmLabel={t('Remove')}
         onCancel={() => setToRemove(null)}
         onConfirm={() => {
           if (toRemove) removeFromQueue(toRemove.queueItem.id);
@@ -216,8 +216,8 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
       >
         <p>
           {toRemove?.isBreak
-            ? `“${toRemove.song.title}” will be removed from ${part?.name}.`
-            : `“${toRemove?.song.title}” will be removed from ${part?.name}. The song stays in the library.`}
+            ? t('“{title}” will be removed from {part}.', { title: toRemove.song.title, part: part?.name })
+            : t('“{title}” will be removed from {part}. The song stays in the library.', { title: toRemove?.song.title, part: part?.name })}
         </p>
       </ConfirmDialog>
     </div>
@@ -234,6 +234,7 @@ function BreakModal({
   onAdd: (label: string, minutes: number | null) => Promise<void>;
 }) {
   const { editBreak } = useStage();
+  const { t } = useT();
   const [label, setLabel] = useState('Break');
   const [timed, setTimed] = useState(false);
   const [minutes, setMinutes] = useState(10);
@@ -242,7 +243,7 @@ function BreakModal({
   useEffect(() => {
     if (!item) return;
     if (item === 'new') {
-      setLabel('Break');
+      setLabel(t('Break'));
       setTimed(false);
       setMinutes(10);
     } else {
@@ -273,32 +274,32 @@ function BreakModal({
     <Modal
       open
       onClose={onClose}
-      title={isNew ? 'Add a break' : 'Edit break'}
-      description={isNew ? 'It goes to the end of this Bahagian. Move it into place with the arrows.' : undefined}
+      title={isNew ? t('Add a break') : t('Edit break')}
+      description={isNew ? t('It goes to the end of this Bahagian. Move it into place with the arrows.') : undefined}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button variant="primary" type="submit" form="break-form" disabled={saving}>
-            {saving ? 'Saving…' : isNew ? 'Add break' : 'Save'}
+            {saving ? t('Saving…') : isNew ? t('Add break') : t('Save')}
           </Button>
         </>
       }
     >
       <form id="break-form" onSubmit={save} className="space-y-4">
-        <Field label="Label" htmlFor="break-label" hint="e.g. “Break”, “Ucapan Canselor”, “Penyampaian Ijazah”">
+        <Field label={t('Label')} htmlFor="break-label" hint={t('e.g. “Break”, “Ucapan Canselor”, “Penyampaian Ijazah”')}>
           <Input id="break-label" value={label} onChange={(e) => setLabel(e.target.value)} />
         </Field>
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <div className="font-medium text-sm">Show a length</div>
-            <div className="text-xs text-muted">Optional, for musicians’ info only.</div>
+            <div className="font-medium text-sm">{t('Show a length')}</div>
+            <div className="text-xs text-muted">{t('Optional, for musicians’ info only.')}</div>
           </div>
-          <Toggle checked={timed} onChange={setTimed} label="Show a length" />
+          <Toggle checked={timed} onChange={setTimed} label={t('Show a length')} />
         </div>
-        {timed && <Stepper value={minutes} onChange={setMinutes} min={1} max={240} suffix="minutes" />}
+        {timed && <Stepper value={minutes} onChange={setMinutes} min={1} max={240} suffix={t('minutes')} />}
       </form>
     </Modal>
   );
@@ -324,6 +325,7 @@ function AddSongs({
   onAdd: (songId: string) => void;
 }) {
   const [q, setQ] = useState('');
+  const { t } = useT();
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return s
@@ -334,10 +336,10 @@ function AddSongs({
   return (
     <Card>
       <div className="px-4 pt-4 pb-3 border-b border-line">
-        <h3 className="font-semibold mb-2.5">Add songs</h3>
+        <h3 className="font-semibold mb-2.5">{t('Add songs')}</h3>
         <div className="relative">
           <Search className="w-4 h-4 text-faint absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${songs.length} songs`} className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search {n} songs', { n: songs.length })} className="pl-9" />
         </div>
       </div>
       <ul className="max-h-[380px] overflow-y-auto scrollbar-thin p-1.5">
@@ -359,7 +361,7 @@ function AddSongs({
                 {n > 0 && (
                   <span className="text-xs text-ok inline-flex items-center gap-0.5 shrink-0">
                     <Check className="w-3.5 h-3.5" />
-                    {n > 1 ? `×${n}` : 'Added'}
+                    {n > 1 ? `×${n}` : t('Added')}
                   </span>
                 )}
                 <span className="w-8 h-8 rounded-lg grid place-items-center bg-raised text-muted group-hover:bg-brass group-hover:text-brass-ink shrink-0">
@@ -369,7 +371,7 @@ function AddSongs({
             </li>
           );
         })}
-        {!filtered.length && <li className="px-3 py-6 text-sm text-muted text-center">No songs match “{q}”.</li>}
+        {!filtered.length && <li className="px-3 py-6 text-sm text-muted text-center">{t('No song matches “{q}”.', { q })}</li>}
       </ul>
     </Card>
   );
@@ -384,18 +386,19 @@ function ControllerCard({
   enabled: boolean;
   onToggle: (v: boolean) => void;
 }) {
+  const { t } = useT();
   return (
     <Card className="p-4">
       <div className="flex items-start gap-3">
         <div className="flex-1">
-          <h3 className="font-semibold">Controller access</h3>
+          <h3 className="font-semibold">{t('Controller access')}</h3>
           <p className="text-sm text-muted">
             {enabled
-              ? `Anyone in Controller mode can change songs and loops during ${partName}.`
-              : `Locked: only Maestro and Admin can control ${partName}.`}
+              ? t('Anyone in Controller mode can change songs and loops during {part}.', { part: partName })
+              : t('Locked: only Maestro and Admin can control {part}.', { part: partName })}
           </p>
         </div>
-        <Toggle checked={enabled} onChange={onToggle} label="Allow controller" />
+        <Toggle checked={enabled} onChange={onToggle} label={t('Allow controller')} />
       </div>
     </Card>
   );
@@ -408,18 +411,19 @@ function IntermissionCard({ part, nextName }: { part: Part; nextName: string }) 
   const [label, setLabel] = useState(current?.label ?? DEFAULT_INTERLUDE_LABEL);
   const [songs, setSongs] = useState(current?.songs ?? 0);
   const [saving, setSaving] = useState(false);
+  const { t } = useT();
   const dirty = label.trim() !== (current?.label ?? DEFAULT_INTERLUDE_LABEL) || songs !== (current?.songs ?? 0);
 
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2">
         <Coffee className="w-5 h-5 text-brass" />
-        <h3 className="font-semibold flex-1">Intermission after {part.name}</h3>
+        <h3 className="font-semibold flex-1">{t('Intermission after {part}', { part: part.name })}</h3>
       </div>
       <p className="text-sm text-muted mt-1">
         {current
-          ? `${current.label} plays ${current.songs} ${current.songs === 1 ? 'song' : 'songs'} before ${nextName}.`
-          : `No intermission: ${nextName} follows straight away.`}
+          ? t('{label} plays {songs} before {part}.', { label: current.label, songs: plural(current.songs, '{n} song', '{n} songs'), part: nextName })
+          : t('No intermission: {part} follows straight away.', { part: nextName })}
       </p>
       {interludeEditable ? (
         <form
@@ -436,20 +440,20 @@ function IntermissionCard({ part, nextName }: { part: Part; nextName: string }) 
             }
           }}
         >
-          <Field label="Performed by" htmlFor={`int-label-${part.id}`}>
+          <Field label={t('Performed by')} htmlFor={`int-label-${part.id}`}>
             <Input id={`int-label-${part.id}`} value={label} onChange={(e) => setLabel(e.target.value)} placeholder={DEFAULT_INTERLUDE_LABEL} />
           </Field>
-          <Field label="Songs" hint="0 = no intermission">
-            <Stepper value={songs} onChange={setSongs} min={0} max={10} suffix={songs === 1 ? 'song' : 'songs'} />
+          <Field label={t('Songs')} hint={t('0 = no intermission')}>
+            <Stepper value={songs} onChange={setSongs} min={0} max={10} suffix={t(songs === 1 ? 'song' : 'songs')} />
           </Field>
           <div className="flex justify-end">
             <Button type="submit" variant="primary" size="sm" disabled={!dirty || saving}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t('Saving…') : t('Save')}
             </Button>
           </div>
         </form>
       ) : (
-        <p className="text-xs text-faint mt-2">To change it, run the latest supabase-schema.sql (section 8) in Supabase.</p>
+        <p className="text-xs text-faint mt-2">{t('To change it, run the latest supabase-schema.sql (section 8) in Supabase.')}</p>
       )}
     </Card>
   );

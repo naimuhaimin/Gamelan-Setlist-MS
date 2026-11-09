@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, Home, KeyRound, ListMusic, MonitorPlay, Settings, ShieldCheck, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import { useT } from '@/lib/i18n';
 import logoMark from '@/assets/logo-mark.png';
 import { useShell } from './AppShell';
 import { cx } from './ui';
@@ -36,6 +37,7 @@ function LiveDotSmall() {
 export function TopBar() {
   const { role, selectedInstrument, connection, stageLive } = useStage();
   const { openInstrumentPicker } = useShell();
+  const { t } = useT();
   const isActive = useActive();
   const isLive = stageLive;
 
@@ -43,7 +45,7 @@ export function TopBar() {
     <header className="sticky top-0 z-40 bg-bg/90 backdrop-blur-md border-b border-line">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 min-w-0" aria-label="Anjung Live home">
+        <Link href="/" className="flex items-center gap-2.5 min-w-0" aria-label={t('Anjung Live home')}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoMark.src} alt="" width={36} height={36} className="w-9 h-9 rounded-xl shrink-0 ring-1 ring-line object-cover" />
           <div className="min-w-0 hidden min-[380px]:block">
@@ -68,7 +70,7 @@ export function TopBar() {
               )}
             >
               <Icon className="w-4 h-4" />
-              {label}
+              {t(label)}
               {href === '/live' && isLive && <LiveDotSmall />}
             </Link>
           ))}
@@ -81,15 +83,15 @@ export function TopBar() {
               'h-10 px-3 rounded-xl border text-sm font-medium inline-flex items-center gap-2 max-w-[42vw] transition-colors',
               selectedInstrument ? 'border-brass/50 bg-brass-soft text-brass' : 'border-line bg-surface text-muted hover:text-ink'
             )}
-            title="Choose your instrument"
+            title={t('Choose your instrument')}
           >
-            <span className="truncate">{selectedInstrument ?? 'Instrument'}</span>
+            <span className="truncate">{selectedInstrument ?? t('Instrument')}</span>
             <ChevronDown className="w-4 h-4 shrink-0 opacity-70" />
           </button>
 
           <Link
             href="/settings"
-            aria-label={`Settings · ${ROLE_LABEL[role]}`}
+            aria-label={`${t('Settings')} · ${t(ROLE_LABEL[role])}`}
             className="h-10 pl-2.5 pr-3 rounded-xl border border-line bg-surface hover:border-line-strong inline-flex items-center gap-2 text-sm font-medium"
           >
             <span className="relative">
@@ -107,7 +109,7 @@ export function TopBar() {
                 )}
               />
             </span>
-            <span className="hidden sm:inline">{ROLE_LABEL[role]}</span>
+            <span className="hidden sm:inline">{t(ROLE_LABEL[role])}</span>
           </Link>
         </div>
       </div>
@@ -118,6 +120,7 @@ export function TopBar() {
 /** App-style bottom tabs on phones. */
 export function BottomNav() {
   const { stageLive } = useStage();
+  const { t } = useT();
   const isActive = useActive();
   const isLive = stageLive;
   return (
@@ -140,7 +143,7 @@ export function BottomNav() {
                   </span>
                 )}
               </span>
-              {label}
+              {t(label)}
             </Link>
           );
         })}

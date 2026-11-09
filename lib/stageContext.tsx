@@ -99,6 +99,10 @@ interface StageContextType {
   addToQueue: (partId: string, songId: string) => Promise<void>;
   /** Emergency add during a live Bahagian (controller too): right after the current item, or at the end. */
   addLiveSong: (songId: string, where: 'next' | 'end') => Promise<void>;
+  /** Replace whole Bahagian setlists at once (Paste setlist). Maestro/Admin. */
+  replaceSetlists: (
+    entries: Array<{ partId: string; items: Array<{ kind: 'song'; songId: string } | { kind: 'break'; label: string }> }>
+  ) => Promise<void>;
   /** Move an upcoming item of the live Bahagian up (-1) or down (+1); never before the current item. Controller too. */
   moveLiveItem: (queueItemId: string, delta: -1 | 1) => Promise<void>;
   removeFromQueue: (queueItemId: string) => Promise<void>;
@@ -716,6 +720,41 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const replaceSetlists: StageContextType['replaceSetlists'] = async (entries) => {
+    if (!isManager) return;
+    const built = entries.map(({ partId, items }) => ({
+      partId,
+      rows: items.map(
+        (it, i): QueueItem => ({
+          id: api.newId('q'),
+          part_id: partId,
+          song_id: it.kind === 'song' ? it.songId : null,
+          kind: it.kind,
+          break_label: it.kind === 'break' ? it.label : null,
+          break_minutes: null,
+          sort_order: i + 1,
+          override_intro_bar_count: null,
+          override_intro_unit: null,
+          override_intro_instruments: null,
+          override_loop_count: null,
+        })
+      ),
+    }));
+    const touched = new Set(built.map((b) => b.partId));
+    setQueueItems((prev) => [...prev.filter((q) => !touched.has(q.part_id)), ...built.flatMap((b) => b.rows)]);
+    const live = built.find((b) => b.partId === roomState.part_id);
+    await commit(
+      async () => {
+        for (const b of built) await api.replacePartQueue(b.partId, b.rows);
+        // The live Bahagian was rewritten: start it again from its first item
+        if (live && !roomState.is_finished) {
+          await api.updateRoomState({ current_queue_item_id: live.rows[0]?.id ?? null, current_loop_iteration: 1, updated_by_role: role.toUpperCase() });
+        }
+      },
+      { success: tr('Setlist saved'), rethrow: true }
+    );
+  };
+
   const moveLiveItem = async (queueItemId: string, delta: -1 | 1) => {
     if (!canControl || !livePart) return;
     const ordered = queueItems.filter((q) => q.part_id === livePart.id).sort((a, b) => a.sort_order - b.sort_order);
@@ -1009,6 +1048,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     editInterlude,
     addToQueue,
     addLiveSong,
+    replaceSetlists,
     moveLiveItem,
     removeFromQueue,
     moveQueueItem,

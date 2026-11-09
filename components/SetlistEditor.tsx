@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ClipboardList, ClipboardPaste, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { DEFAULT_INTERLUDE_LABEL, useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
 import { Badge, BreakIcon, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, Input, LiveDot, Modal, Rhythms, Stepper, Toggle, VoteCounts, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
+import { CopySetlistModal, PasteSetlistModal } from './SetlistText';
 import { formatIntro } from '@/lib/format';
 import type { IntroUnit } from '@/types';
 
@@ -39,6 +40,8 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
   const [overrideItem, setOverrideItem] = useState<ResolvedQueueItem | null>(null);
   const [breakItem, setBreakItem] = useState<ResolvedQueueItem | 'new' | null>(null);
   const [toRemove, setToRemove] = useState<ResolvedQueueItem | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const { t } = useT();
 
   useEffect(() => {
@@ -53,6 +56,18 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
 
   return (
     <div>
+      {/* Whole-Sidang setlist as the usual text message, both ways */}
+      <div className="mb-3 grid grid-cols-2 sm:flex gap-2">
+        <Button onClick={() => setPasteOpen(true)}>
+          <ClipboardPaste className="w-4 h-4" /> {t('Paste setlist')}
+        </Button>
+        <Button onClick={() => setCopyOpen(true)}>
+          <ClipboardList className="w-4 h-4" /> {t('Copy as text')}
+        </Button>
+      </div>
+      <PasteSetlistModal open={pasteOpen} onClose={() => setPasteOpen(false)} sessionId={sessionId} />
+      <CopySetlistModal open={copyOpen} onClose={() => setCopyOpen(false)} sessionId={sessionId} />
+
       {/* Bahagian tabs */}
       <div className="grid grid-cols-4 gap-2" role="tablist" aria-label="Bahagian">
         {sessionParts.map((p) => {

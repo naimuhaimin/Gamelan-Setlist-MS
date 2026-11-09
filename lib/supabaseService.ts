@@ -168,6 +168,13 @@ export async function insertQueueItem(item: QueueItem) {
   const row = kind === 'break' ? { ...rest, kind, break_label, break_minutes } : rest;
   check(await db().from('queue_items').insert(row), item.kind === 'break' ? 'Add break' : 'Add to setlist');
 }
+/** Replace a Bahagian's whole setlist (used by "Paste setlist"). Rows must all have the same keys. */
+export async function replacePartQueue(partId: string, items: QueueItem[]) {
+  check(await db().from('queue_items').delete().eq('part_id', partId), 'Clear Bahagian');
+  if (!items.length) return;
+  const rows = items.map(({ created_at, ...rest }) => rest);
+  check(await db().from('queue_items').insert(rows), 'Save setlist');
+}
 export async function updateBreak(id: string, label: string, minutes: number | null) {
   check(await db().from('queue_items').update({ break_label: label, break_minutes: minutes }).eq('id', id), 'Update break');
 }

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CalendarDays, Check, ChevronLeft, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, ClipboardList, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
@@ -16,6 +16,7 @@ import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythm
 import { formatDate, sidangUrl } from './Cards';
 import { IntermissionRow } from './Intermission';
 import { ChatLauncher } from './SidangChat';
+import { CopySetlistModal } from './SetlistText';
 
 type View = 'live' | 'list' | 'edit';
 
@@ -26,6 +27,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [textOpen, setTextOpen] = useState(false);
   const { t } = useT();
 
   const session = sessions.find((s) => s.id === sessionId);
@@ -79,6 +81,9 @@ export function SidangView({ sessionId }: { sessionId: string }) {
           <Button onClick={() => openShare({ url: sidangUrl(session.id), title: t('Share {name}', { name: session.name }) })}>
             <Share2 className="w-4 h-4" /> {t('Share')}
           </Button>
+          <Button onClick={() => setTextOpen(true)} aria-label={t('Setlist as text')} title={t('Setlist as text')}>
+            <ClipboardList className="w-4 h-4" /> <span className="hidden sm:inline">{t('Copy text')}</span>
+          </Button>
           {isManager && (
             <IconButton label={t('Sidang settings')} variant="secondary" onClick={() => setSettingsOpen(true)}>
               <Settings2 className="w-5 h-5" />
@@ -117,6 +122,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         )}
       </div>
 
+      <CopySetlistModal open={textOpen} onClose={() => setTextOpen(false)} sessionId={session.id} />
       <ChatLauncher
         sessionId={session.id}
         sessionName={session.name}

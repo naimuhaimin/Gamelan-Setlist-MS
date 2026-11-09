@@ -252,7 +252,7 @@ export function StageView() {
           {/* NOW */}
           <Card
             className={cx(
-              'relative overflow-hidden lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6',
+              'relative overflow-hidden min-w-0 lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6',
               roomState.is_paused
                 ? 'border-brass/70 [&>*:not(.hold-overlay)]:opacity-25'
                 : cx('border-t-[3px]', activeItem.isBreak ? 'border-t-jade' : 'border-t-brass', cued && 'border-brass/60')
@@ -364,7 +364,7 @@ export function StageView() {
           </Card>
 
           {/* NEXT */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="min-w-0 lg:col-span-4 flex flex-col gap-4">
             <Card className="p-5">
               <div className="text-sm text-muted font-medium mb-3">Up next</div>
               {next ? (

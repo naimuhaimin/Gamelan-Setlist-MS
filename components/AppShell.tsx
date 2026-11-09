@@ -17,12 +17,17 @@ import { Button, Toaster } from './ui';
  * (lock-screen display, song-change chime) that must keep running on every page.
  */
 
+const LOCK_PREF_KEY = 'anjung_lockscreen';
+
 type Dialog = 'login' | 'instrument' | 'share' | 'instruments' | 'access' | null;
 
 interface ShellContextType {
   lockScreen: ReturnType<typeof useLockScreen>;
   chime: ReturnType<typeof useChime>;
   theme: ReturnType<typeof useTheme>;
+  /** Lock-screen display preference (on by default); it starts on the next tap when on. */
+  lockPref: boolean;
+  setLockPref: (on: boolean) => void;
   openLogin: () => void;
   openInstrumentPicker: () => void;
   openShare: (target?: { url: string; title: string }) => void;
@@ -147,6 +152,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished]);
   const lockScreen = useLockScreen(lockInfo);
 
+  // On by default. Browsers only allow the silent audio after a tap, so whenever the
+  // preference is on and it isn't running (first load, or another app took the audio),
+  // the next tap anywhere starts it.
+  const [lockPref, setLockPrefState] = useState(true);
+  useEffect(() => {
+    try {
+      setLockPrefState(localStorage.getItem(LOCK_PREF_KEY) !== 'off');
+    } catch {
+      // storage blocked: keep default
+    }
+  }, []);
+  const setLockPref = useCallback((on: boolean) => {
+    setLockPrefState(on);
+    try {
+      localStorage.setItem(LOCK_PREF_KEY, on ? 'on' : 'off');
+    } catch {
+      // ignore
+    }
+  }, []);
+  const startLock = lockScreen.start;
+  useEffect(() => {
+    if (!lockPref || lockScreen.active || !lockScreen.supported) return;
+    const go = () => {
+      startLock();
+    };
+    const opts = { capture: true } as const;
+    document.addEventListener('pointerdown', go, opts);
+    document.addEventListener('keydown', go, opts);
+    return () => {
+      document.removeEventListener('pointerdown', go, opts);
+      document.removeEventListener('keydown', go, opts);
+    };
+  }, [lockPref, lockScreen.active, lockScreen.supported, startLock]);
+
   // ---- Chime on song / Bahagian change (not on the controlling device) ----
   const chime = useChime();
   const songKey = `${livePart?.id ?? ''}|${activeItem?.queueItem.id ?? ''}|${isFinished ? 'end' : ''}`;
@@ -171,6 +210,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     lockScreen,
     chime,
     theme,
+    lockPref,
+    setLockPref,
     openLogin: () => setDialog('login'),
     openInstrumentPicker: () => setDialog('instrument'),
     openShare: (target) => {

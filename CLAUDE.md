@@ -43,7 +43,7 @@ Konvo (`events`) → Sidang (`sessions.event_id`) → Bahagian (`parts`) → ord
 - `components/Cards.tsx`: Konvo/Sidang/Live-now cards and helpers (`formatDate`, `sidangUrl`).
 - `components/ui.tsx`: primitives (Button, IconButton, Modal as a bottom sheet on phones, Field, Input, Stepper, Chip, Toggle, Badge, ConfirmDialog, Toaster). Reuse them.
 - `components/StageView.tsx`: the projection screen and the controller's bottom bar (keyboard and presenter-clicker shortcuts, screen wake lock).
-- `lib/useLockScreen.ts`: opt-in lock-screen display via the Media Session API (silent looping audio keeps it shown and the page alive; artwork drawn on a canvas). The info is built in `app/page.tsx` so it keeps updating on every tab. `start()` must run from a tap.
+- `lib/useLockScreen.ts`: opt-in lock-screen display via the Media Session API (silent looping audio keeps it shown and the page alive; artwork drawn on a canvas). The info is built in `app/page.tsx` so it keeps updating on every tab. `start()` must run from a tap. It's on by default: `AppShell` keeps a per-device preference (`anjung_lockscreen`) and starts it on the next pointerdown/keydown while the preference is on and it isn't running.
 - `lib/useChime.ts`: opt-in song-change chime synthesised with Web Audio (mixes with the lock-screen audio instead of replacing it). Triggered in `app/page.tsx` on live part/queue-item change; skipped on devices that `canControl`.
 - `components/SetlistEditor.tsx`, `OverrideModal.tsx`, `SidangModal.tsx`: Maestro tools.
 - `components/LibraryView.tsx`: library and song form. `AccountDialogs.tsx`: sign in, instrument picker, share. `AdminDialogs.tsx`: instruments, Admin passkey.

@@ -62,7 +62,7 @@ function Row({
 
 export function SettingsView() {
   const { role, logout, selectedInstrument, connection, notify } = useStage();
-  const { lockScreen, chime, theme, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
+  const { lockScreen, lockPref, setLockPref, chime, theme, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pt-6 pb-10 space-y-6">
@@ -129,15 +129,22 @@ export function SettingsView() {
           <Row
             icon={<Smartphone className="w-5 h-5" />}
             title="Show on lock screen"
-            text="The next song, intro and loop on your locked phone. Keep this tab open."
+            text={
+              lockPref
+                ? lockScreen.active
+                  ? 'On: the next song, intro and loop show on your locked phone. Keep this tab open.'
+                  : 'On: starts at your next tap. Keep this tab open.'
+                : 'Off. Turn on to see the next song on your locked phone.'
+            }
             right={
               <Toggle
-                checked={lockScreen.active}
+                checked={lockPref}
                 label="Show on lock screen"
                 onChange={async (v) => {
+                  setLockPref(v);
                   if (!v) return lockScreen.stop();
                   const ok = await lockScreen.start();
-                  notify(ok ? 'On: lock your phone to see the next song.' : 'Your browser blocked it. Tap again.', ok ? 'info' : 'error');
+                  if (!ok) notify('Your browser blocked it. Tap anywhere to start it.', 'error');
                 }}
               />
             }

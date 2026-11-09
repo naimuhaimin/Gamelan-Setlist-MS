@@ -86,13 +86,13 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
       {part && (
         <div className="mt-4 grid gap-4 lg:grid-cols-12 items-start">
           {/* Queue */}
-          <Card className="lg:col-span-7 xl:col-span-8">
+          <Card className="min-w-0 lg:col-span-7 xl:col-span-8">
             <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-4 border-b border-line">
               <div className="min-w-0">
                 <h2 className="font-display text-xl font-bold">{part.name}</h2>
                 <p className="text-sm text-muted">Set the order. Adjust a song for this ceremony with ⚙. Add breaks anywhere.</p>
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              <div className="w-full sm:w-auto sm:ml-auto grid grid-cols-2 sm:flex items-center gap-2">
                 <Button onClick={() => setBreakItem('new')}>
                   <BreakIcon className="w-4 h-4" /> Add break
                 </Button>
@@ -114,7 +114,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                   <li
                     key={r.queueItem.id}
                     className={cx(
-                      'flex items-center gap-3 px-3 sm:px-4 py-3',
+                      'flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-3 sm:px-4 py-3',
                       r.queueItem.id === liveCurrentId && 'bg-songket-soft',
                       r.isBreak && r.queueItem.id !== liveCurrentId && 'bg-jade/[0.05]'
                     )}
@@ -143,7 +143,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                         </>
                       )}
                     </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0 w-full sm:w-auto justify-end -mr-1 sm:mr-0 pl-10 sm:pl-0">
                       <IconButton label="Move up" size="sm" onClick={() => moveQueueItem(part.id, i, i - 1)} disabled={i === 0}>
                         <ArrowUp className="w-4 h-4" />
                       </IconButton>
@@ -177,7 +177,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
           </Card>
 
           {/* Side */}
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
+          <div className="min-w-0 lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
             <AddSongs
               key={part.id}
               songs={songs}

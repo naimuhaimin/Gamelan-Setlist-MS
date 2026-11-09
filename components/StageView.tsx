@@ -11,6 +11,7 @@ import {
   Pause,
   Play,
   Plus,
+  ListPlus,
   Radio,
   SkipForward,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ import type { ResolvedQueueItem } from '@/types';
 import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
 import { LivePicker } from './LivePicker';
 import { IntermissionStage } from './Intermission';
+import { LiveAddSong } from './LiveAddSong';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
 export function StageView() {
@@ -53,9 +55,14 @@ export function StageView() {
   } = useStage();
 
   const router = useRouter();
-  const onOpenSetlist = () => liveSession && router.push(`/sidang/${liveSession.id}?view=edit`);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const picker = <LivePicker open={pickerOpen} onClose={() => setPickerOpen(false)} />;
+  const [addOpen, setAddOpen] = useState(false);
+  const picker = (
+    <>
+      <LivePicker open={pickerOpen} onClose={() => setPickerOpen(false)} />
+      <LiveAddSong open={addOpen} onClose={() => setAddOpen(false)} />
+    </>
+  );
   const openPicker = () => setPickerOpen(true);
 
   useWakeLock(true);
@@ -194,6 +201,11 @@ export function StageView() {
         )}
         <div className="ml-auto flex items-center gap-2">
           {canControl && activeItem && !isFinished && (
+            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)} aria-label="Add a song to this Bahagian">
+              <ListPlus className="w-3.5 h-3.5" /> Add song
+            </Button>
+          )}
+          {canControl && activeItem && !isFinished && (
             <Button size="sm" variant={roomState.is_paused ? 'primary' : 'secondary'} onClick={togglePause}>
               {roomState.is_paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
               {roomState.is_paused ? 'Resume' : 'Hold'}
@@ -248,14 +260,16 @@ export function StageView() {
           <EmptyState
             title={`${livePart.name} has no songs yet`}
             action={
-              isManager ? (
-                <Button variant="primary" onClick={onOpenSetlist}>Add songs</Button>
+              canControl ? (
+                <Button variant="primary" onClick={() => setAddOpen(true)}>
+                  <ListPlus className="w-4 h-4" /> Add songs
+                </Button>
               ) : canSwitchLive ? (
                 <Button variant="primary" onClick={openPicker}>Change Bahagian</Button>
               ) : undefined
             }
           >
-            {isManager ? 'Add songs to this Bahagian on its Sidang page.' : 'The Maestro has not added songs to this Bahagian.'}
+            {canControl ? 'Add songs straight from the library.' : 'The Maestro has not added songs to this Bahagian.'}
           </EmptyState>
         </Card>
       ) : (

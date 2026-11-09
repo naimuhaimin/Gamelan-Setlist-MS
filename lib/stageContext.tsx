@@ -96,6 +96,8 @@ interface StageContextType {
 
   // Setlists
   addToQueue: (partId: string, songId: string) => Promise<void>;
+  /** Emergency add during a live Bahagian (controller too): right after the current item, or at the end. */
+  addLiveSong: (songId: string, where: 'next' | 'end') => Promise<void>;
   removeFromQueue: (queueItemId: string) => Promise<void>;
   moveQueueItem: (partId: string, fromIndex: number, toIndex: number) => Promise<void>;
   saveOverride: (queueItemId: string, overrides: Overrides) => Promise<void>;
@@ -674,6 +676,41 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     await commit(() => api.insertQueueItem(item));
   };
 
+  const addLiveSong = async (songId: string, where: 'next' | 'end') => {
+    if (!canControl || !livePart) return;
+    const partId = livePart.id;
+    const ordered = queueItems.filter((q) => q.part_id === partId).sort((a, b) => a.sort_order - b.sort_order);
+    const item: QueueItem = {
+      id: api.newId('q'),
+      part_id: partId,
+      song_id: songId,
+      kind: 'song',
+      break_label: null,
+      break_minutes: null,
+      sort_order: ordered.reduce((m, q) => Math.max(m, q.sort_order), 0) + 1,
+      override_intro_bar_count: null,
+      override_intro_unit: null,
+      override_intro_instruments: null,
+      override_loop_count: null,
+    };
+    const currentId = activeItem?.queueItem.id;
+    const at = where === 'next' && currentId ? ordered.findIndex((q) => q.id === currentId) + 1 : ordered.length;
+    const ids = [...ordered.map((q) => q.id)];
+    ids.splice(at, 0, item.id);
+    const title = songById.get(songId)?.title ?? 'Song';
+    setQueueItems((prev) => [
+      ...prev.map((q) => (q.part_id === partId ? { ...q, sort_order: ids.indexOf(q.id) + 1 } : q)),
+      { ...item, sort_order: at + 1 },
+    ]);
+    await commit(
+      async () => {
+        await api.insertQueueItem(item);
+        if (at < ordered.length) await api.reorderQueue(ids);
+      },
+      { success: where === 'next' && currentId ? `“${title}” plays next` : `“${title}” added to the end`, rethrow: true }
+    );
+  };
+
   const addBreak = async (partId: string, label: string, minutes: number | null) => {
     const existing = queueItems.filter((q) => q.part_id === partId);
     const item: QueueItem = {
@@ -956,6 +993,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     setInterludeDone,
     editInterlude,
     addToQueue,
+    addLiveSong,
     removeFromQueue,
     moveQueueItem,
     saveOverride,

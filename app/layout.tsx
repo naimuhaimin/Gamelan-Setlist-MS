@@ -12,7 +12,7 @@ const script = Great_Vibes({ subsets: ['latin'], variable: '--font-script', weig
 
 export const metadata: Metadata = {
   title: 'Anjung Live',
-  description: 'Live setlist, cue and loop sync for Gamelan Anjung Seni at Konvokesyen. By Naim M.',
+  description: 'Live setlist, cue and loop sync for Gamelan Anjung Seni at Konvokesyen and other events. By Naim M.',
   appleWebApp: { capable: true, title: 'Anjung Live', statusBarStyle: 'black-translucent' },
 };
 

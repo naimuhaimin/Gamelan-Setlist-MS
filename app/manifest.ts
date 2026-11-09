@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Anjung Live',
     short_name: 'Anjung Live',
-    description: 'Live setlist, cue and loop sync for Gamelan Anjung Seni at Konvokesyen. By Naim M.',
+    description: 'Live setlist, cue and loop sync for Gamelan Anjung Seni at Konvokesyen and other events. By Naim M.',
     start_url: '/',
     display: 'standalone',
     background_color: '#0d0b09',

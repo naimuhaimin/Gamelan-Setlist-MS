@@ -29,16 +29,16 @@ export function HomeView() {
 
       <LiveNowCard />
 
-      {/* Konvo */}
+      {/* Events (Konvokesyen and any other performance) */}
       <section className="mt-10">
         <div className="flex items-end gap-3 mb-4">
           <div className="flex-1">
-            <h2 className="font-display text-2xl font-bold">Konvokesyen</h2>
-            <p className="text-sm text-muted">Choose a Konvo to see its Sidang and setlists.</p>
+            <h2 className="font-display text-2xl font-bold">Events</h2>
+            <p className="text-sm text-muted">Choose an event to see its Sidang and setlists.</p>
           </div>
           {isManager && eventsEnabled && (
             <Button variant="primary" onClick={() => setCreating(true)}>
-              <Plus className="w-4 h-4" /> New Konvo
+              <Plus className="w-4 h-4" /> New event
             </Button>
           )}
         </div>
@@ -51,7 +51,7 @@ export function HomeView() {
               ))}
             </div>
           ) : (
-            <EmptyState title="No Konvo yet">{isManager ? 'Create the first one with “New Konvo”.' : 'Check back soon.'}</EmptyState>
+            <EmptyState title="No events yet">{isManager ? 'Create the first one with “New event”.' : 'Check back soon.'}</EmptyState>
           )
         ) : (
           // Database not migrated yet: show Sidang directly

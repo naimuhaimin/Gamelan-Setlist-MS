@@ -48,7 +48,7 @@ export function ConvoModal({
 
   useEffect(() => {
     if (!open) return;
-    setName(event?.name ?? `Konvokesyen ${new Date().getFullYear()}`);
+    setName(event?.name ?? '');
     setVenue(event?.venue ?? '');
     setDate(event?.start_date ?? '');
     setFile(null);
@@ -86,7 +86,7 @@ export function ConvoModal({
       <Modal
         open={open && !confirmDelete}
         onClose={onClose}
-        title={isEdit ? 'Edit Konvo' : 'New Konvo'}
+        title={isEdit ? 'Edit event' : 'New event'}
         footer={
           <>
             {isEdit && (
@@ -98,13 +98,13 @@ export function ConvoModal({
               Cancel
             </Button>
             <Button variant="primary" type="submit" form="convo-form" disabled={saving || !name.trim()}>
-              {saving ? 'Saving…' : isEdit ? 'Save' : 'Create Konvo'}
+              {saving ? 'Saving…' : isEdit ? 'Save' : 'Create event'}
             </Button>
           </>
         }
       >
         <form id="convo-form" onSubmit={submit} className="space-y-4">
-          <Field label="Photo" hint="Shown as the Konvo’s thumbnail.">
+          <Field label="Photo" hint="Shown as the event’s thumbnail.">
             <div className="relative aspect-[16/9] rounded-xl overflow-hidden border border-line bg-raised">
               {preview ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -159,7 +159,7 @@ export function ConvoModal({
       <ConfirmDialog
         open={confirmDelete}
         title={`Delete ${event?.name}?`}
-        confirmLabel="Delete Konvo"
+        confirmLabel="Delete event"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={async () => {
           setConfirmDelete(false);

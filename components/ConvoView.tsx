@@ -21,7 +21,7 @@ export function ConvoView({ eventId }: { eventId: string }) {
   if (!event)
     return (
       <div className="max-w-3xl mx-auto px-4 pt-10">
-        <EmptyState title="Konvo not found" action={<Link href="/" className="text-brass underline">Back to home</Link>}>
+        <EmptyState title="Event not found" action={<Link href="/" className="text-brass underline">Back to home</Link>}>
           It may have been deleted.
         </EmptyState>
       </div>

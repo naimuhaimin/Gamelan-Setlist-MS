@@ -881,7 +881,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const createEvent: StageContextType['createEvent'] = async ({ name, venue, startDate, thumbnail }) => {
     const ev: ConvoEvent = {
       id: api.newId('event'),
-      name: name.trim() || 'Konvokesyen',
+      name: name.trim() || 'Event',
       venue: venue.trim() || null,
       start_date: startDate || null,
       thumbnail_url: null,
@@ -899,7 +899,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const editEvent: StageContextType['editEvent'] = async (id, { name, venue, startDate, thumbnail, removeThumbnail }) => {
-    const updates: Partial<ConvoEvent> = { name: name.trim() || 'Konvokesyen', venue: venue.trim() || null, start_date: startDate || null };
+    const updates: Partial<ConvoEvent> = { name: name.trim() || 'Event', venue: venue.trim() || null, start_date: startDate || null };
     if (removeThumbnail) updates.thumbnail_url = null;
     await commit(
       async () => {

@@ -25,6 +25,10 @@
   --jade-light: 127 220 188;
   --jade-soft: rgba(47, 168, 132, 0.16);
   --danger: 242 121 124;
+  /* Crimson stop: breaks inside a Bahagian */
+  --stop: 226 54 72;
+  --stop-light: 255 140 150;
+  --stop-soft: rgba(226, 54, 72, 0.17);
 }
 
 /* Light: ivory paper like the logo's background; accents deepened for contrast on white. */
@@ -50,6 +54,9 @@
   --jade-light: 20 112 85;
   --jade-soft: rgba(26, 135, 103, 0.1);
   --danger: 179 38 30;
+  --stop: 196 22 48;
+  --stop-light: 170 16 40;
+  --stop-soft: rgba(196, 22, 48, 0.1);
 }
 
 @layer base {

@@ -34,10 +34,10 @@ function LiveDotSmall() {
 }
 
 export function TopBar() {
-  const { role, selectedInstrument, connection, liveSession, livePart, isFinished } = useStage();
+  const { role, selectedInstrument, connection, stageLive } = useStage();
   const { openInstrumentPicker } = useShell();
   const isActive = useActive();
-  const isLive = !!liveSession && !!livePart && !isFinished;
+  const isLive = stageLive;
 
   return (
     <header className="sticky top-0 z-40 bg-bg/90 backdrop-blur-md border-b border-line">
@@ -117,9 +117,9 @@ export function TopBar() {
 
 /** App-style bottom tabs on phones. */
 export function BottomNav() {
-  const { liveSession, livePart, isFinished } = useStage();
+  const { stageLive } = useStage();
   const isActive = useActive();
-  const isLive = !!liveSession && !!livePart && !isFinished;
+  const isLive = stageLive;
   return (
     <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 backdrop-blur-md safe-bottom" aria-label="Main">
       <div className="grid grid-cols-4 pt-1.5">

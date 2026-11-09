@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type {
   ConvoEvent,
   DatabaseSnapshot,
+  Interlude,
   QueueVote,
   VoteTally,
   Part,
@@ -83,6 +84,16 @@ interface StageContextType {
   isFinished: boolean; // live Bahagian has ended: no song is playing
   finishPart: () => void;
 
+  // Intermission between Bahagian (guest performers, e.g. Kumpulan Kombo Fakulti Muzik)
+  interludeFor: (part: Part) => Interlude | null; // null after the last Bahagian or when set to 0 songs
+  liveInterlude: Interlude | null; // the live Bahagian has ended and its intermission is on
+  stageLive: boolean; // something is on stage: a Bahagian playing or its intermission
+  interludeDone: number; // intermission songs performed so far
+  interludeTracking: boolean; // false until the interlude_done column exists
+  interludeEditable: boolean; // false until the parts.interlude_* columns exist
+  setInterludeDone: (n: number) => void;
+  editInterlude: (partId: string, label: string, songs: number) => Promise<void>;
+
   // Setlists
   addToQueue: (partId: string, songId: string) => Promise<void>;
   removeFromQueue: (queueItemId: string) => Promise<void>;
@@ -102,7 +113,10 @@ interface StageContextType {
   editBreak: (queueItemId: string, label: string, minutes: number | null) => Promise<void>;
   editSession: (sessionId: string, updates: Partial<Pick<Session, 'name' | 'date'>>) => Promise<void>;
   removeSession: (sessionId: string) => Promise<void>;
-  editPart: (partId: string, updates: Partial<Pick<Part, 'controller_enabled' | 'controller_passkey'>>) => Promise<void>;
+  editPart: (
+    partId: string,
+    updates: Partial<Pick<Part, 'controller_enabled' | 'controller_passkey' | 'interlude_label' | 'interlude_songs'>>
+  ) => Promise<void>;
 
   // Library
   addSong: (song: Omit<Song, 'id' | 'created_at'>) => Promise<void>;
@@ -147,6 +161,10 @@ const EMPTY_ROOM: RoomState = {
   updated_at: new Date(0).toISOString(),
   updated_by_role: 'SYSTEM',
 };
+
+/** Default intermission after Bahagian N (songs by the guest group); overridable per Bahagian. */
+export const DEFAULT_INTERLUDE_LABEL = 'Kumpulan Kombo Fakulti Muzik';
+const DEFAULT_INTERLUDE_SONGS: Record<number, number> = { 1: 1, 2: 2, 3: 1 };
 
 const eq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -563,6 +581,33 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const unfinish = finishSupported ? { is_finished: false } : {};
   const isFinished = !!roomState.is_finished && !!livePart;
 
+  // ---- Intermissions ----------------------------------------------------------
+  const interludeTracking = 'interlude_done' in roomState;
+  const resetInterlude = interludeTracking ? { interlude_done: 0 } : {};
+  const interludeEditable = parts.some((p) => 'interlude_songs' in p);
+  const interludeFor = useCallback(
+    (part: Part): Interlude | null => {
+      const hasNext = parts.some((p) => p.session_id === part.session_id && p.part_number > part.part_number);
+      if (!hasNext) return null;
+      const songs = part.interlude_songs ?? DEFAULT_INTERLUDE_SONGS[part.part_number] ?? 1;
+      if (songs <= 0) return null;
+      return { label: part.interlude_label?.trim() || DEFAULT_INTERLUDE_LABEL, songs };
+    },
+    [parts]
+  );
+  const liveInterlude = isFinished && livePart && nextPart ? interludeFor(livePart) : null;
+  const stageLive = !!liveSession && !!livePart && (!isFinished || !!liveInterlude);
+  const interludeDone = Math.min(roomState.interlude_done ?? 0, liveInterlude?.songs ?? 0);
+  const setInterludeDone = (n: number) => {
+    if (!canControl || !interludeTracking || !liveInterlude) return;
+    setRoom({ interlude_done: Math.max(0, Math.min(liveInterlude.songs, n)) });
+  };
+  const editInterlude = async (partId: string, label: string, songs: number) => {
+    const updates = { interlude_label: label.trim() || null, interlude_songs: Math.max(0, Math.round(songs)) };
+    setParts((prev) => prev.map((p) => (p.id === partId ? { ...p, ...updates } : p)));
+    await commit(() => api.updatePart(partId, updates), { success: 'Intermission saved', rethrow: true });
+  };
+
   const goToIndex = (i: number) => {
     if (!canControl || i < 0 || i >= liveQueue.length) return;
     setRoom({ current_queue_item_id: liveQueue[i].queueItem.id, current_loop_iteration: 1, ...unfinish });
@@ -573,7 +618,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       notify('Finishing a Bahagian needs the is_finished column in the database.', 'error');
       return;
     }
-    setRoom({ is_finished: true, is_paused: false });
+    setRoom({ is_finished: true, is_paused: false, ...resetInterlude });
   };
   // Next on the last song finishes the Bahagian; Prev while finished goes back to the last song
   const goNext = () => (activeIndex >= liveQueue.length - 1 ? finishPart() : goToIndex(activeIndex + 1));
@@ -605,6 +650,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       current_loop_iteration: 1,
       is_paused: false,
       ...unfinish,
+      ...resetInterlude,
     });
   };
 
@@ -720,7 +766,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
 
   const editPart: StageContextType['editPart'] = async (id, updates) => {
     setParts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
-    await commit(() => api.updatePart(id, updates), { success: 'Controller settings saved' });
+    await commit(() => api.updatePart(id, updates), { success: 'Bahagian settings saved' });
   };
 
   // ---- Library -----------------------------------------------------------------
@@ -901,6 +947,14 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     goLive,
     isFinished,
     finishPart,
+    interludeFor,
+    liveInterlude,
+    stageLive,
+    interludeDone,
+    interludeTracking,
+    interludeEditable,
+    setInterludeDone,
+    editInterlude,
     addToQueue,
     removeFromQueue,
     moveQueueItem,

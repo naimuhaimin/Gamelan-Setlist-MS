@@ -62,16 +62,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     isCued,
     canControl,
     isFinished,
+    liveInterlude,
+    interludeDone,
+    resolveQueue,
   } = useStage();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [shareTarget, setShareTarget] = useState<{ url: string; title: string } | undefined>(undefined);
 
   // ---- Lock screen: the NEXT item is the headline, the current one the small line ----
   const lockInfo = useMemo<LockScreenInfo | null>(() => {
-    if (!liveSession || !livePart || isFinished) return null; // ended: the lock screen shows "nothing live"
+    // ended with no intermission: the lock screen shows "nothing live"
+    if (!liveSession || !livePart || (isFinished && !liveInterlude)) return null;
     const location = `${liveSession.name} · ${livePart.name}`;
     const onHold = roomState.is_paused;
     const blank: Pick<LockScreenInfo, 'stats' | 'highlight'> = { stats: [], highlight: false };
+    if (isFinished && liveInterlude && nextPart) {
+      const first = resolveQueue(nextPart.id)[0];
+      const ready = interludeDone >= liveInterlude.songs;
+      const progress = ready
+        ? `${liveInterlude.label} done · get ready`
+        : `${liveInterlude.label} · song ${interludeDone + 1} of ${liveInterlude.songs}`;
+      return {
+        ...blank,
+        title: first ? `Next: ${first.song.title}` : `Next: ${nextPart.name}`,
+        line1: `☕ Intermission · ${progress}`,
+        line2: `${liveSession.name} · then ${nextPart.name}`,
+        top: `INTERMISSION · ${liveSession.name}`.toUpperCase(),
+        kicker: ready ? 'GET READY' : 'INTERMISSION',
+        heading: first ? first.song.title : nextPart.name,
+        detail: `${nextPart.name} opens with this · ${progress}`,
+        highlight: ready,
+        onHold: false,
+      };
+    }
     if (isFinished)
       return {
         ...blank,
@@ -149,7 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       highlight: cuedNext,
       onHold,
     };
-  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished]);
+  }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished, liveInterlude, interludeDone, resolveQueue]);
   const lockScreen = useLockScreen(lockInfo);
 
   // On by default. Browsers only allow the silent audio after a tap, so whenever the
@@ -188,14 +211,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // ---- Chime on song / Bahagian change (not on the controlling device) ----
   const chime = useChime();
-  const songKey = `${livePart?.id ?? ''}|${activeItem?.queueItem.id ?? ''}|${isFinished ? 'end' : ''}`;
+  // Intermission over (all guest songs done) also chimes, so musicians get ready
+  const interludeReady = !!liveInterlude && interludeDone >= liveInterlude.songs;
+  const songKey = `${livePart?.id ?? ''}|${activeItem?.queueItem.id ?? ''}|${isFinished ? 'end' : ''}|${interludeReady ? 'ready' : ''}`;
   const lastSongKey = useRef<string | null>(null);
   useEffect(() => {
     if (!loaded) return;
     const prev = lastSongKey.current;
     lastSongKey.current = songKey;
     if (prev === null || prev === songKey || !activeItem || canControl) return;
-    chime.play(!isFinished && !activeItem.isBreak && isCued(activeItem.introInstruments) ? 'cue' : 'change');
+    chime.play(
+      interludeReady || (!isFinished && !activeItem.isBreak && isCued(activeItem.introInstruments)) ? 'cue' : 'change'
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [songKey, loaded]);
 

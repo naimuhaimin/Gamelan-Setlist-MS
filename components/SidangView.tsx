@@ -13,11 +13,13 @@ import { SetlistEditor } from './SetlistEditor';
 import { SidangModal } from './SidangModal';
 import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } from './ui';
 import { formatDate, sidangUrl } from './Cards';
+import { IntermissionRow } from './Intermission';
+import { ChatLauncher } from './SidangChat';
 
 type View = 'live' | 'list' | 'edit';
 
 export function SidangView({ sessionId }: { sessionId: string }) {
-  const { sessions, events, liveSession, isManager, isFinished } = useStage();
+  const { sessions, events, liveSession, isManager, stageLive, canControl, role, isFinished } = useStage();
   const { openShare } = useShell();
   const router = useRouter();
   const pathname = usePathname();
@@ -26,7 +28,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
 
   const session = sessions.find((s) => s.id === sessionId);
   const event = events.find((e) => e.id === session?.event_id);
-  const isLive = liveSession?.id === sessionId && !isFinished;
+  const isLive = liveSession?.id === sessionId && stageLive;
 
   const requested = params.get('view') as View | null;
   const view: View =
@@ -113,6 +115,12 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         )}
       </div>
 
+      <ChatLauncher
+        sessionId={session.id}
+        sessionName={session.name}
+        raised={view === 'live' && isLive && !isFinished && (canControl || role === 'controller')}
+      />
+
       <SidangModal
         mode="edit"
         open={settingsOpen}
@@ -172,7 +180,7 @@ function NotLive({ sessionId, onList }: { sessionId: string; onList: () => void 
 
 /** Every Bahagian and its items in order, with the live item highlighted. */
 function SidangList({ sessionId }: { sessionId: string }) {
-  const { parts, resolveQueue, livePart, activeIndex, isFinished, roomState } = useStage();
+  const { parts, resolveQueue, livePart, activeIndex, isFinished, roomState, interludeFor } = useStage();
   const myParts = parts.filter((p) => p.session_id === sessionId).sort((a, b) => a.part_number - b.part_number);
   const liveRef = useRef<HTMLLIElement | null>(null);
   const liveItemId = roomState.current_queue_item_id;
@@ -188,9 +196,11 @@ function SidangList({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10 space-y-5">
-      {myParts.map((p) => (
+      {myParts.map((p) => {
+        const interlude = interludeFor(p);
+        return (
+        <React.Fragment key={p.id}>
         <PartSection
-          key={p.id}
           part={p}
           items={resolveQueue(p.id)}
           isLivePart={livePart?.id === p.id}
@@ -199,7 +209,10 @@ function SidangList({ sessionId }: { sessionId: string }) {
           liveItemId={liveItemId}
           liveRef={liveRef}
         />
-      ))}
+        {interlude && <IntermissionRow part={p} interlude={interlude} />}
+        </React.Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -246,7 +259,7 @@ function PartSection({
                   'flex items-start gap-3 px-4 sm:px-5 py-3 transition-colors',
                   now && 'bg-songket-soft ring-1 ring-inset ring-songket/60',
                   done && 'opacity-45',
-                  r.isBreak && !now && 'bg-jade/[0.05]'
+                  r.isBreak && !now && 'bg-stop/[0.06]'
                 )}
               >
                 <span className="w-7 pt-0.5 text-center text-sm font-semibold text-muted tabular shrink-0">
@@ -254,7 +267,7 @@ function PartSection({
                 </span>
                 <div className="min-w-0 flex-1">
                   {r.isBreak ? (
-                    <div className="flex items-center gap-2 text-jade-light font-semibold">
+                    <div className="flex items-center gap-2 text-stop-light font-semibold">
                       <BreakIcon className="w-4 h-4" /> {r.song.title}
                       {r.breakMinutes ? <span className="text-xs text-muted font-normal tabular">· {r.breakMinutes} min</span> : null}
                       {now && <Badge tone="live">Now</Badge>}

@@ -20,6 +20,7 @@ import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
 import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
 import { LivePicker } from './LivePicker';
+import { IntermissionStage } from './Intermission';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
 export function StageView() {
@@ -48,6 +49,7 @@ export function StageView() {
     tally,
     vote,
     isFinished,
+    liveInterlude,
   } = useStage();
 
   const router = useRouter();
@@ -84,6 +86,15 @@ export function StageView() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  // ---- Bahagian ended, intermission before the next one ---------------------
+  if (liveSession && livePart && isFinished && liveInterlude && nextPart) {
+    return (
+      <Shell>
+        <IntermissionStage />
+      </Shell>
+    );
+  }
 
   // ---- Bahagian ended: the live view stops ----------------------------------
   if (liveSession && livePart && isFinished) {
@@ -255,7 +266,7 @@ export function StageView() {
               'relative overflow-hidden min-w-0 lg:col-span-8 p-5 sm:p-8 flex flex-col gap-6',
               roomState.is_paused
                 ? 'border-brass/70 [&>*:not(.hold-overlay)]:opacity-25'
-                : cx('border-t-[3px]', activeItem.isBreak ? 'border-t-jade' : 'border-t-brass', cued && 'border-brass/60')
+                : cx('border-t-[3px]', activeItem.isBreak ? 'border-t-stop' : 'border-t-brass', cued && 'border-brass/60')
             )}
           >
             {roomState.is_paused && (
@@ -396,7 +407,7 @@ export function StageView() {
                     const body = r.isBreak ? (
                       <>
                         <span className="w-6 text-sm text-faint tabular shrink-0">{pos}</span>
-                        <span className="flex-1 min-w-0 inline-flex items-center gap-2 text-jade-light font-medium">
+                        <span className="flex-1 min-w-0 inline-flex items-center gap-2 text-stop-light font-medium">
                           <BreakIcon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{r.song.title}</span>
                           {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
@@ -521,8 +532,8 @@ function LoopPips({ current, total }: { current: number; total: number }) {
 function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boolean; children?: React.ReactNode }) {
   if (item.isBreak)
     return (
-      <div className="rounded-xl p-4 border border-jade/45 bg-jade-soft">
-        <div className="text-xs font-bold uppercase tracking-wider text-jade-light mb-1 inline-flex items-center gap-1.5">
+      <div className="rounded-xl p-4 border border-stop/50 bg-stop-soft">
+        <div className="text-xs font-bold uppercase tracking-wider text-stop-light mb-1 inline-flex items-center gap-1.5">
           <BreakIcon className="w-3.5 h-3.5" /> Break next
         </div>
         <div className="font-display text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
@@ -575,7 +586,7 @@ function ControlBar({
         </Button>
 
         {isBreak ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-jade/40 bg-jade-soft px-4 text-jade-light font-semibold">
+          <div className="flex items-center gap-2 rounded-2xl border border-stop/45 bg-stop-soft px-4 text-stop-light font-semibold">
             <BreakIcon className="w-5 h-5" /> Break
           </div>
         ) : (
@@ -611,10 +622,10 @@ function ControlBar({
 function BreakBody({ item, next }: { item: ResolvedQueueItem; next: ResolvedQueueItem | undefined }) {
   return (
     <div className="flex flex-col items-center text-center gap-3 py-6 sm:py-10">
-      <div className="w-20 h-20 rounded-full bg-jade-soft text-jade-light ring-1 ring-jade/45 grid place-items-center">
+      <div className="w-20 h-20 rounded-full bg-stop-soft text-stop-light ring-1 ring-stop/50 grid place-items-center">
         <BreakIcon className="w-10 h-10" />
       </div>
-      <div className="text-sm font-bold uppercase tracking-[0.2em] text-jade-light">Break</div>
+      <div className="text-sm font-bold uppercase tracking-[0.2em] text-stop-light">Break</div>
       <h1 className="font-display text-4xl sm:text-6xl font-bold tracking-tight [text-wrap:balance]">{item.song.title}</h1>
       {item.breakMinutes ? (
         <p className="text-lg text-muted tabular">About {item.breakMinutes} minutes</p>

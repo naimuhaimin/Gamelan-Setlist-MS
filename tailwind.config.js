@@ -33,6 +33,12 @@ module.exports = {
           light: 'rgb(var(--jade-light) / <alpha-value>)',
           soft: 'var(--jade-soft)',
         },
+        // Crimson stop: breaks inside a Bahagian
+        stop: {
+          DEFAULT: 'rgb(var(--stop) / <alpha-value>)',
+          light: 'rgb(var(--stop-light) / <alpha-value>)',
+          soft: 'var(--stop-soft)',
+        },
         live: 'rgb(var(--songket) / <alpha-value>)',
         ok: 'rgb(var(--jade) / <alpha-value>)',
         danger: 'rgb(var(--danger) / <alpha-value>)',

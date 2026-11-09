@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import type {
+  ChatMessage,
   ConvoEvent,
   DatabaseSnapshot,
   QueueVote,
@@ -193,7 +194,10 @@ export async function saveOverride(
 // Sidang & Bahagian
 // ---------------------------------------------------------------------------
 
-export async function updatePart(partId: string, updates: Partial<Pick<Part, 'controller_enabled' | 'controller_passkey'>>) {
+export async function updatePart(
+  partId: string,
+  updates: Partial<Pick<Part, 'controller_enabled' | 'controller_passkey' | 'interlude_label' | 'interlude_songs'>>
+) {
   check(await db().from('parts').update(updates).eq('id', partId), 'Update Bahagian');
 }
 export async function insertSession(session: Session, parts: Part[]) {
@@ -284,4 +288,22 @@ export async function updateRolePasskey(role: RoleType, passkey: string) {
     await db().from('roles').upsert({ role_name: role, passkey }, { onConflict: 'role_name' }),
     'Update passkey'
   );
+}
+
+// ---- Live chat (table may not exist until the migration has run) ----------------
+export async function fetchChat(sessionId: string): Promise<ChatMessage[] | null> {
+  const res = await db()
+    .from('chat_messages')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (res.error) return null;
+  return (res.data as ChatMessage[]).reverse();
+}
+export async function sendChat(msg: Omit<ChatMessage, 'created_at'>): Promise<ChatMessage> {
+  return check(await db().from('chat_messages').insert(msg).select().single(), 'Send message') as ChatMessage;
+}
+export async function deleteChat(id: string) {
+  check(await db().from('chat_messages').delete().eq('id', id), 'Delete message');
 }

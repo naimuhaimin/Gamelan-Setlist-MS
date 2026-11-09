@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { CalendarDays, ChevronRight, Pause, Share2 } from 'lucide-react';
+import { CalendarDays, ChevronRight, Coffee, Pause, Share2 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { ConvoEvent, Session } from '@/types';
 import logoMark from '@/assets/logo-mark.png';
@@ -33,17 +33,17 @@ export function ConvoThumb({ event, className }: { event: ConvoEvent; className?
 }
 
 export function ConvoCard({ event }: { event: ConvoEvent }) {
-  const { sessions, liveSession, isFinished } = useStage();
+  const { sessions, liveSession, stageLive } = useStage();
   const count = sessions.filter((s) => s.event_id === event.id).length;
-  const live = liveSession?.event_id === event.id && !isFinished;
+  const live = liveSession?.event_id === event.id && stageLive;
   return (
-    <Link href={`/konvo/${encodeURIComponent(event.id)}`} className="group block">
+    <Link href={`/konvo/${encodeURIComponent(event.id)}`} className="group block min-w-0">
       <Card className={cx('overflow-hidden transition-colors group-hover:border-line-strong', live && 'border-songket/60')}>
         <ConvoThumb event={event} className="aspect-[16/9]" />
         <div className="p-4 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-display text-lg font-bold truncate">{event.name}</h3>
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="font-display text-lg font-bold truncate min-w-0">{event.name}</h3>
               {live && (
                 <Badge tone="live">
                   <LiveDot /> Live
@@ -65,19 +65,19 @@ export function ConvoCard({ event }: { event: ConvoEvent }) {
 }
 
 export function SidangCard({ session }: { session: Session }) {
-  const { parts, resolveQueue, liveSession, livePart, roomState, isFinished } = useStage();
+  const { parts, resolveQueue, liveSession, livePart, roomState, isFinished, stageLive } = useStage();
   const { openShare } = useShell();
   const myParts = parts.filter((p) => p.session_id === session.id);
   const songCount = myParts.reduce((n, p) => n + resolveQueue(p.id).filter((r) => !r.isBreak).length, 0);
-  const live = liveSession?.id === session.id && !isFinished;
+  const live = liveSession?.id === session.id && stageLive;
   return (
-    <Card className={cx('flex items-stretch overflow-hidden', live && 'border-songket/60')}>
+    <Card className={cx('flex items-stretch overflow-hidden min-w-0', live && 'border-songket/60')}>
       <Link href={`/sidang/${encodeURIComponent(session.id)}`} className="flex-1 min-w-0 p-4 hover:bg-raised/50 transition-colors">
-        <div className="flex items-center gap-2">
-          <h3 className="font-display text-lg font-bold truncate">{session.name}</h3>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+          <h3 className="font-display text-lg font-bold truncate min-w-0 max-w-full">{session.name}</h3>
           {live && (
             <Badge tone="live">
-              <LiveDot /> {roomState.is_paused ? 'On hold' : 'Live'} · {livePart?.name}
+              <LiveDot /> {isFinished ? `Intermission after ${livePart?.name}` : `${roomState.is_paused ? 'On hold' : 'Live'} · ${livePart?.name}`}
             </Badge>
           )}
         </div>
@@ -101,7 +101,46 @@ export function SidangCard({ session }: { session: Session }) {
 
 /** "Live now" summary for the home page. */
 export function LiveNowCard() {
-  const { liveSession, livePart, liveEvent, activeItem, liveQueue, activeIndex, isFinished, roomState } = useStage();
+  const { liveSession, livePart, liveEvent, activeItem, liveQueue, activeIndex, isFinished, roomState, liveInterlude, nextPart, interludeDone, interludeTracking } =
+    useStage();
+  if (liveSession && livePart && liveInterlude && nextPart) {
+    const ready = interludeDone >= liveInterlude.songs;
+    return (
+      <Card className="overflow-hidden border-brass/50">
+        <div className="p-5 sm:p-6 border-t-[3px] border-t-brass">
+          <div className="flex items-center gap-2 text-sm font-semibold text-brass">
+            <Coffee className="w-4 h-4" /> INTERMISSION
+            {liveEvent && <span className="text-muted font-normal">· {liveEvent.name}</span>}
+          </div>
+          <div className="mt-1 text-muted">
+            {liveSession.name} · after {livePart.name}
+          </div>
+          <div className="mt-2 font-display text-3xl sm:text-4xl font-bold leading-tight break-words">{liveInterlude.label}</div>
+          <div className="mt-1 text-sm text-muted tabular">
+            {interludeTracking
+              ? ready
+                ? `All ${liveInterlude.songs} songs done · ${nextPart.name} is next`
+                : `Song ${interludeDone + 1} of ${liveInterlude.songs} · then ${nextPart.name}`
+              : `${liveInterlude.songs} ${liveInterlude.songs === 1 ? 'song' : 'songs'} · then ${nextPart.name}`}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/live"
+              className="h-11 px-5 rounded-xl bg-brass text-brass-ink font-semibold inline-flex items-center gap-2 hover:bg-brass-strong"
+            >
+              Open live view <ChevronRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href={`/sidang/${encodeURIComponent(liveSession.id)}?view=list`}
+              className="h-11 px-5 rounded-xl bg-raised border border-line font-medium inline-flex items-center gap-2 hover:border-line-strong"
+            >
+              Full Sidang list
+            </Link>
+          </div>
+        </div>
+      </Card>
+    );
+  }
   if (!liveSession || !livePart || isFinished)
     return (
       <Card className="p-5 flex items-center gap-4">
@@ -134,7 +173,7 @@ export function LiveNowCard() {
         <div className="mt-2 font-display text-3xl sm:text-4xl font-bold leading-tight">
           {activeItem ? (
             <span className="inline-flex items-center gap-3">
-              {activeItem.isBreak && <BreakIcon className="w-8 h-8 text-jade-light" />}
+              {activeItem.isBreak && <BreakIcon className="w-8 h-8 text-stop-light" />}
               {activeItem.song.title}
             </span>
           ) : (

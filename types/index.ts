@@ -61,6 +61,9 @@ export interface Part {
   name: string;
   controller_passkey: string;
   controller_enabled: boolean;
+  // Intermission AFTER this Bahagian (columns added by migration; null = app default)
+  interlude_label?: string | null;
+  interlude_songs?: number | null;
   created_at?: string;
 }
 
@@ -83,6 +86,7 @@ export interface RoomState {
   current_loop_iteration: number;
   is_paused: boolean;
   is_finished?: boolean; // the live Bahagian has ended (column added by migration)
+  interlude_done?: number; // intermission songs performed so far (column added by migration)
   updated_at: string;
   updated_by_role: string;
 }
@@ -130,4 +134,22 @@ export interface DatabaseSnapshot {
   roomState: RoomState | null;
   instruments: string[];
   roles: RoleRow[];
+}
+
+/** The intermission between one Bahagian and the next (guest performers). */
+export interface Interlude {
+  label: string;
+  songs: number;
+}
+
+/** One live-chat message in a Sidang. */
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  device_id: string;
+  author: string;
+  instrument: string | null;
+  role: string;
+  body: string;
+  created_at: string;
 }

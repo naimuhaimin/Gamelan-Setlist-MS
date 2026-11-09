@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { useStage } from '@/lib/stageContext';
-import type { ResolvedQueueItem } from '@/types';
+import { ArrowDown, ArrowUp, Check, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { DEFAULT_INTERLUDE_LABEL, useStage } from '@/lib/stageContext';
+import type { Part, ResolvedQueueItem } from '@/types';
 import { Badge, BreakIcon, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, Input, LiveDot, Modal, Rhythms, Stepper, Toggle, VoteCounts, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
 import { formatIntro } from '@/lib/format';
@@ -47,6 +47,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
   const queue = part ? resolveQueue(part.id) : [];
   const isLive = !!part && roomState.part_id === part.id && !isFinished;
   const liveCurrentId = isLive && activeIndex >= 0 ? liveQueue[activeIndex]?.queueItem.id : null;
+  const nextPartOf = (p: Part) => sessionParts.find((x) => x.part_number > p.part_number);
 
   return (
     <div>
@@ -116,13 +117,13 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                     className={cx(
                       'flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-3 sm:px-4 py-3',
                       r.queueItem.id === liveCurrentId && 'bg-songket-soft',
-                      r.isBreak && r.queueItem.id !== liveCurrentId && 'bg-jade/[0.05]'
+                      r.isBreak && r.queueItem.id !== liveCurrentId && 'bg-stop/[0.06]'
                     )}
                   >
                     <span className="w-7 text-center text-sm font-semibold text-muted tabular shrink-0">{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       {r.isBreak ? (
-                        <div className="flex items-center gap-2 min-w-0 text-jade-light font-medium">
+                        <div className="flex items-center gap-2 min-w-0 text-stop-light font-medium">
                           <BreakIcon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{r.song.title}</span>
                           {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
@@ -190,6 +191,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
               enabled={part.controller_enabled}
               onToggle={(v) => editPart(part.id, { controller_enabled: v })}
             />
+            {nextPartOf(part) && <IntermissionCard key={`int-${part.id}`} part={part} nextName={nextPartOf(part)!.name} />}
           </div>
         </div>
       )}
@@ -395,6 +397,60 @@ function ControllerCard({
         </div>
         <Toggle checked={enabled} onChange={onToggle} label="Allow controller" />
       </div>
+    </Card>
+  );
+}
+
+/** Intermission after this Bahagian: guest performers and how many songs they play. */
+function IntermissionCard({ part, nextName }: { part: Part; nextName: string }) {
+  const { interludeFor, interludeEditable, editInterlude } = useStage();
+  const current = interludeFor(part);
+  const [label, setLabel] = useState(current?.label ?? DEFAULT_INTERLUDE_LABEL);
+  const [songs, setSongs] = useState(current?.songs ?? 0);
+  const [saving, setSaving] = useState(false);
+  const dirty = label.trim() !== (current?.label ?? DEFAULT_INTERLUDE_LABEL) || songs !== (current?.songs ?? 0);
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-2">
+        <Coffee className="w-5 h-5 text-brass" />
+        <h3 className="font-semibold flex-1">Intermission after {part.name}</h3>
+      </div>
+      <p className="text-sm text-muted mt-1">
+        {current
+          ? `${current.label} plays ${current.songs} ${current.songs === 1 ? 'song' : 'songs'} before ${nextName}.`
+          : `No intermission: ${nextName} follows straight away.`}
+      </p>
+      {interludeEditable ? (
+        <form
+          className="mt-3 space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setSaving(true);
+            try {
+              await editInterlude(part.id, label, songs);
+            } catch {
+              // toast shown
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <Field label="Performed by" htmlFor={`int-label-${part.id}`}>
+            <Input id={`int-label-${part.id}`} value={label} onChange={(e) => setLabel(e.target.value)} placeholder={DEFAULT_INTERLUDE_LABEL} />
+          </Field>
+          <Field label="Songs" hint="0 = no intermission">
+            <Stepper value={songs} onChange={setSongs} min={0} max={10} suffix={songs === 1 ? 'song' : 'songs'} />
+          </Field>
+          <div className="flex justify-end">
+            <Button type="submit" variant="primary" size="sm" disabled={!dirty || saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <p className="text-xs text-faint mt-2">To change it, run the latest supabase-schema.sql (section 8) in Supabase.</p>
+      )}
     </Card>
   );
 }

@@ -264,3 +264,29 @@ DROP POLICY IF EXISTS "Thumbnails update" ON storage.objects;
 CREATE POLICY "Thumbnails update" ON storage.objects FOR UPDATE USING (bucket_id = 'thumbnails');
 DROP POLICY IF EXISTS "Thumbnails delete" ON storage.objects;
 CREATE POLICY "Thumbnails delete" ON storage.objects FOR DELETE USING (bucket_id = 'thumbnails');
+
+-- 8. INTERMISSIONS & LIVE CHAT (migration; safe to re-run)
+-- Intermission AFTER each Bahagian: who performs and how many songs (NULL = app default:
+-- Kumpulan Kombo Fakulti Muzik; 1 song after B1, 2 after B2, 1 after B3).
+ALTER TABLE public.parts ADD COLUMN IF NOT EXISTS interlude_label TEXT;
+ALTER TABLE public.parts ADD COLUMN IF NOT EXISTS interlude_songs INTEGER CHECK (interlude_songs >= 0);
+-- How many intermission songs have been performed so far (reset when a Bahagian goes live)
+ALTER TABLE public.room_state ADD COLUMN IF NOT EXISTS interlude_done INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    author TEXT NOT NULL CHECK (char_length(author) BETWEEN 1 AND 40),
+    instrument TEXT,
+    role TEXT NOT NULL DEFAULT 'player',
+    body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS chat_messages_session_idx ON public.chat_messages (session_id, created_at);
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Chat" ON public.chat_messages;
+CREATE POLICY "Public Read Chat" ON public.chat_messages FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Chat" ON public.chat_messages;
+CREATE POLICY "Public Write Chat" ON public.chat_messages FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

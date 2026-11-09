@@ -55,3 +55,8 @@ Konvo (`events`) → Sidang (`sessions.event_id`) → Bahagian (`parts`) → ord
 - Commits use Conventional Commits (`feat:`, `fix:`, `refactor:`).
 - **Release workflow (owner's rule): never push straight to `main`.** Commit and push to the `staging` branch first; Vercel builds it as a Preview at `anjunglive-git-staging-naimuhaimin.vercel.app`. Only merge `staging` into `main` (the live site, anjunglive.vercel.app) after the owner says it's tested and asks to release.
 - Previews use the same Supabase database as production, so testing there changes live data. Test on throwaway Sidang and restore anything you touch.
+
+## Intermissions & live chat
+- Breaks *inside* a Bahagian use the crimson `stop` color token. The **intermission** *between* Bahagian (coffee icon, brass) is shown when a Bahagian is finished and a next one exists: `interludeFor(part)` gives `{label, songs}` (defaults: Kumpulan Kombo Fakulti Muzik; 1 song after B1, 2 after B2, 1 after B3; 0 = none). `parts.interlude_label/interlude_songs` override it; `room_state.interlude_done` tracks guest songs done (reset on goLive/finish). `stageLive` = a Bahagian playing or its intermission.
+- Live chat per Sidang: `chat_messages` table, `lib/useChat.ts` (own realtime channel), `components/SidangChat.tsx` (floating launcher on Sidang pages and /live). Hidden until the table exists. Name stored per device (`anjung_chat_name`).
+- Both need section 8 of `supabase-schema.sql` run in Supabase.

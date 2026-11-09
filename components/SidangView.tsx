@@ -65,7 +65,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         </Link>
 
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 basis-full sm:basis-auto">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-3xl sm:text-4xl font-bold">{session.name}</h1>
               {isLive && (

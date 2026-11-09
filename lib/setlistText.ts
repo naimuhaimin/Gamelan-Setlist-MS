@@ -146,8 +146,9 @@ export function formatSetlist(session: Session, parts: Part[], resolve: (partId:
     .map((p) => {
       const lines = resolve(p.id).map((r) => {
         if (!r.isBreak) return r.song.title;
-        const label = r.song.title.trim();
-        return /^(break|rehat|stop)$/i.test(label) ? '-STOP-' : `-STOP (${label})-`;
+        // A label that already starts with STOP / REHAT / BREAK shouldn't say it twice
+        const label = r.song.title.trim().replace(/^(break|rehat|stop|berhenti)\b[\s:–—-]*/i, '').trim();
+        return label ? `-STOP (${label})-` : '-STOP-';
       });
       return [`BAHAGIAN ${p.part_number}`, ...lines].join('\n');
     });

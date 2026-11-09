@@ -5,6 +5,7 @@ import { RefreshCw, WifiOff } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useLockScreen, type LockScreenInfo } from '@/lib/useLockScreen';
 import { useChime } from '@/lib/useChime';
+import { useTheme } from '@/lib/useTheme';
 import { formatIntro } from '@/lib/format';
 import { TopBar, BottomNav } from './TopBar';
 import { InstrumentPicker, LoginModal, ShareModal } from './AccountDialogs';
@@ -21,6 +22,7 @@ type Dialog = 'login' | 'instrument' | 'share' | 'instruments' | 'access' | null
 interface ShellContextType {
   lockScreen: ReturnType<typeof useLockScreen>;
   chime: ReturnType<typeof useChime>;
+  theme: ReturnType<typeof useTheme>;
   openLogin: () => void;
   openInstrumentPicker: () => void;
   openShare: (target?: { url: string; title: string }) => void;
@@ -61,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // ---- Lock screen: the NEXT item is the headline, the current one the small line ----
   const lockInfo = useMemo<LockScreenInfo | null>(() => {
-    if (!liveSession || !livePart) return null;
+    if (!liveSession || !livePart || isFinished) return null; // ended: the lock screen shows "nothing live"
     const location = `${liveSession.name} · ${livePart.name}`;
     const onHold = roomState.is_paused;
     const blank: Pick<LockScreenInfo, 'stats' | 'highlight'> = { stats: [], highlight: false };
@@ -163,10 +165,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (loaded && !loadError && !instrumentChosen && role === 'player' && instruments.length) setDialog('instrument');
   }, [loaded, loadError, instrumentChosen, role, instruments.length]);
 
+  const theme = useTheme();
   const close = useCallback(() => setDialog(null), []);
   const shell: ShellContextType = {
     lockScreen,
     chime,
+    theme,
     openLogin: () => setDialog('login'),
     openInstrumentPicker: () => setDialog('instrument'),
     openShare: (target) => {

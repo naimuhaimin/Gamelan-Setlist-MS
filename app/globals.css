@@ -2,9 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme colours as "R G B" so Tailwind's /opacity modifiers work. Dark is the default. */
+:root {
+  color-scheme: dark;
+  --bg: 13 11 9;
+  --surface: 23 20 17;
+  --raised: 32 28 24;
+  --line: 47 41 35;
+  --line-strong: 67 58 49;
+  --ink: 244 238 228;
+  --muted: 171 159 143;
+  --faint: 120 109 96;
+  --brass: 227 173 72;
+  --brass-strong: 244 199 108;
+  --brass-soft: rgba(227, 173, 72, 0.16);
+  --brass-ink: 28 18 7;
+  --bronze: 122 82 34;
+  --songket: 208 70 59;
+  --songket-light: 243 160 146;
+  --songket-soft: rgba(208, 70, 59, 0.16);
+  --jade: 47 168 132;
+  --jade-light: 127 220 188;
+  --jade-soft: rgba(47, 168, 132, 0.16);
+  --danger: 242 121 124;
+}
+
+/* Light: ivory paper like the logo's background; accents deepened for contrast on white. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: 247 242 233;
+  --surface: 255 253 248;
+  --raised: 241 233 220;
+  --line: 227 216 198;
+  --line-strong: 205 191 168;
+  --ink: 29 23 18;
+  --muted: 107 95 80;
+  --faint: 140 128 112;
+  --brass: 168 116 24;
+  --brass-strong: 190 136 40;
+  --brass-soft: rgba(168, 116, 24, 0.14);
+  --brass-ink: 255 251 242;
+  --bronze: 122 82 34;
+  --songket: 190 52 42;
+  --songket-light: 165 40 32;
+  --songket-soft: rgba(190, 52, 42, 0.1);
+  --jade: 26 135 103;
+  --jade-light: 20 112 85;
+  --jade-soft: rgba(26, 135, 103, 0.1);
+  --danger: 179 38 30;
+}
+
 @layer base {
   html {
-    color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
   }
   body {
@@ -48,7 +97,7 @@
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #433a31;
+    background: rgb(var(--line-strong));
     border-radius: 9999px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {

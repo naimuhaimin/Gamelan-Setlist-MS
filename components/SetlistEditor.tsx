@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, Input, LiveDot, Modal, Rhythms, Stepper, Toggle, VoteCounts, cx } from './ui';
+import { Badge, BreakIcon, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, Input, LiveDot, Modal, Rhythms, Stepper, Toggle, VoteCounts, cx } from './ui';
 import { OverrideModal } from './OverrideModal';
 import { formatIntro } from '@/lib/format';
 import type { IntroUnit } from '@/types';
@@ -25,6 +25,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
     moveQueueItem,
     editPart,
     tally,
+    isFinished,
   } = useStage();
 
   const sessionParts = useMemo(
@@ -44,7 +45,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
 
   const part = sessionParts.find((p) => p.part_number === partNumber) ?? sessionParts[0];
   const queue = part ? resolveQueue(part.id) : [];
-  const isLive = !!part && roomState.part_id === part.id;
+  const isLive = !!part && roomState.part_id === part.id && !isFinished;
   const liveCurrentId = isLive && activeIndex >= 0 ? liveQueue[activeIndex]?.queueItem.id : null;
 
   return (
@@ -54,7 +55,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
         {sessionParts.map((p) => {
           const count = resolveQueue(p.id).filter((r) => !r.isBreak).length;
           const selected = p.id === part?.id;
-          const live = roomState.part_id === p.id;
+          const live = roomState.part_id === p.id && !isFinished;
           return (
             <button
               key={p.id}
@@ -93,7 +94,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <Button onClick={() => setBreakItem('new')}>
-                  <Coffee className="w-4 h-4" /> Add break
+                  <BreakIcon className="w-4 h-4" /> Add break
                 </Button>
                 {isLive ? (
                   <Button variant="secondary" onClick={onShowStage}>
@@ -122,7 +123,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
                     <div className="min-w-0 flex-1">
                       {r.isBreak ? (
                         <div className="flex items-center gap-2 min-w-0 text-jade-light font-medium">
-                          <Coffee className="w-4 h-4 shrink-0" />
+                          <BreakIcon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{r.song.title}</span>
                           {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
                           {r.queueItem.id === liveCurrentId && <Badge tone="live">Now</Badge>}

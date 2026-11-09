@@ -87,7 +87,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
               <span
                 className={cx(
                   'w-4 h-4 rounded-full border-2',
-                  selected === r.id ? 'border-brass bg-brass shadow-[inset_0_0_0_3px_#171411]' : 'border-line-strong'
+                  selected === r.id ? 'border-brass bg-brass shadow-[inset_0_0_0_3px_rgb(var(--surface))]' : 'border-line-strong'
                 )}
               />
             </button>

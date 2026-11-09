@@ -15,7 +15,7 @@ type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
 const variantClass: Record<ButtonVariant, string> = {
   primary: 'bg-brass text-brass-ink hover:bg-brass-strong font-semibold',
-  secondary: 'bg-raised text-ink border border-line hover:border-line-strong hover:bg-[#28231e]',
+  secondary: 'bg-raised text-ink border border-line hover:border-line-strong hover:bg-line/50',
   ghost: 'text-muted hover:text-ink hover:bg-raised',
   danger: 'bg-red-500/10 text-danger border border-red-500/30 hover:bg-red-500/20',
 };
@@ -65,6 +65,23 @@ export const IconButton = ({
     )}
     {...props}
   />
+);
+
+/** Break marker: a hexagon with a minus, like a stop sign (same stroke style as the Lucide icons). */
+export const BreakIcon = ({ className, strokeWidth = 2 }: { className?: string; strokeWidth?: number }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <path d="M8 12h8" />
+  </svg>
 );
 
 // ---------------------------------------------------------------------------
@@ -499,7 +516,7 @@ export const Toaster = () => {
           key={t.id}
           className={cx(
             'pointer-events-auto w-full flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm shadow-xl animate-fade-in',
-            t.kind === 'error' && 'bg-[#2b1513] border-songket/50 text-songket-light',
+            t.kind === 'error' && 'bg-surface border-songket/50 text-songket-light',
             t.kind === 'success' && 'bg-raised border-line text-ink',
             t.kind === 'info' && 'bg-raised border-line text-ink'
           )}

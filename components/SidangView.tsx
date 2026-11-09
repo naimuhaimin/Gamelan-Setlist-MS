@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CalendarDays, Check, ChevronLeft, Coffee, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { Part, ResolvedQueueItem } from '@/types';
 import { formatIntro } from '@/lib/format';
@@ -11,13 +11,13 @@ import { useShell } from './AppShell';
 import { StageView } from './StageView';
 import { SetlistEditor } from './SetlistEditor';
 import { SidangModal } from './SidangModal';
-import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } from './ui';
+import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, cx } from './ui';
 import { formatDate, sidangUrl } from './Cards';
 
 type View = 'live' | 'list' | 'edit';
 
 export function SidangView({ sessionId }: { sessionId: string }) {
-  const { sessions, events, liveSession, isManager } = useStage();
+  const { sessions, events, liveSession, isManager, isFinished } = useStage();
   const { openShare } = useShell();
   const router = useRouter();
   const pathname = usePathname();
@@ -26,7 +26,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
 
   const session = sessions.find((s) => s.id === sessionId);
   const event = events.find((e) => e.id === session?.event_id);
-  const isLive = liveSession?.id === sessionId;
+  const isLive = liveSession?.id === sessionId && !isFinished;
 
   const requested = params.get('view') as View | null;
   const view: View =
@@ -222,8 +222,8 @@ function PartSection({
 }) {
   const { isCued, roomState } = useStage();
   return (
-    <Card className={cx('overflow-hidden', isLivePart && 'border-songket/50')}>
-      <div className={cx('flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-line', isLivePart && 'border-t-[3px] border-t-songket')}>
+    <Card className={cx('overflow-hidden', isLivePart && !finished && 'border-songket/50')}>
+      <div className={cx('flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-line', isLivePart && !finished && 'border-t-[3px] border-t-songket')}>
         <h2 className="font-display text-xl font-bold flex-1">{part.name}</h2>
         {isLivePart && (
           <Badge tone={finished ? 'ok' : 'live'}>
@@ -255,7 +255,7 @@ function PartSection({
                 <div className="min-w-0 flex-1">
                   {r.isBreak ? (
                     <div className="flex items-center gap-2 text-jade-light font-semibold">
-                      <Coffee className="w-4 h-4" /> {r.song.title}
+                      <BreakIcon className="w-4 h-4" /> {r.song.title}
                       {r.breakMinutes ? <span className="text-xs text-muted font-normal tabular">· {r.breakMinutes} min</span> : null}
                       {now && <Badge tone="live">Now</Badge>}
                     </div>

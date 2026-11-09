@@ -6,7 +6,7 @@ import { LiveDot, Modal, cx } from './ui';
 
 /** Quick "what is live" switcher for Controller, Maestro and Admin. */
 export function LivePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { sessions, parts, events, roomState, resolveQueue, goLive } = useStage();
+  const { sessions, parts, events, roomState, resolveQueue, goLive, isFinished } = useStage();
   const eventName = (id: string | null) => events.find((e) => e.id === id)?.name;
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
 
@@ -46,7 +46,7 @@ export function LivePicker({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="grid grid-cols-2 gap-2">
             {sessionParts.map((p) => {
               const count = resolveQueue(p.id).length;
-              const live = roomState.part_id === p.id;
+              const live = roomState.part_id === p.id && !isFinished;
               return (
                 <button
                   key={p.id}

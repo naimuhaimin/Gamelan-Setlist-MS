@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ChevronLeft,
   CheckCircle2,
-  Coffee,
   ChevronRight,
   Layers,
   Lock,
@@ -19,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useStage } from '@/lib/stageContext';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
+import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
 import { LivePicker } from './LivePicker';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
@@ -85,6 +84,45 @@ export function StageView() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  // ---- Bahagian ended: the live view stops ----------------------------------
+  if (liveSession && livePart && isFinished) {
+    return (
+      <Shell>
+        <Card className="mt-6 p-6 sm:p-10">
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="w-16 h-16 rounded-full bg-raised text-muted grid place-items-center ring-1 ring-line">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+            <div className="text-sm font-bold uppercase tracking-[0.18em] text-muted">Live view stopped</div>
+            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">{livePart.name} has ended</h1>
+            <p className="text-lg text-muted">
+              {liveSession.name} · nothing is playing.{' '}
+              {nextPart ? (canSwitchLive ? '' : `Wait for ${nextPart.name} to go live.`) : 'That was the last Bahagian.'}
+            </p>
+            {canSwitchLive && (
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {nextPart && (
+                  <Button size="lg" variant="primary" onClick={() => goLive(nextPart.id)}>
+                    Go live: {nextPart.name} <ChevronRight className="w-5 h-5" />
+                  </Button>
+                )}
+                <Button size="lg" onClick={openPicker}>
+                  <Layers className="w-4 h-4" /> Choose another
+                </Button>
+                {canControl && (
+                  <Button size="lg" variant="ghost" onClick={goPrev}>
+                    <ChevronLeft className="w-4 h-4" /> Back to last song
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+        {picker}
+      </Shell>
+    );
+  }
 
   // ---- Nothing live -------------------------------------------------------
   if (!liveSession || !livePart) {
@@ -359,7 +397,7 @@ export function StageView() {
                       <>
                         <span className="w-6 text-sm text-faint tabular shrink-0">{pos}</span>
                         <span className="flex-1 min-w-0 inline-flex items-center gap-2 text-jade-light font-medium">
-                          <Coffee className="w-4 h-4 shrink-0" />
+                          <BreakIcon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{r.song.title}</span>
                           {r.breakMinutes ? <span className="text-xs text-muted tabular">· {r.breakMinutes} min</span> : null}
                         </span>
@@ -485,7 +523,7 @@ function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boo
     return (
       <div className="rounded-xl p-4 border border-jade/45 bg-jade-soft">
         <div className="text-xs font-bold uppercase tracking-wider text-jade-light mb-1 inline-flex items-center gap-1.5">
-          <Coffee className="w-3.5 h-3.5" /> Break next
+          <BreakIcon className="w-3.5 h-3.5" /> Break next
         </div>
         <div className="font-display text-xl sm:text-2xl font-bold leading-tight break-words">{item.song.title}</div>
         {item.breakMinutes ? <div className="mt-1 text-sm text-muted tabular">About {item.breakMinutes} minutes</div> : null}
@@ -538,7 +576,7 @@ function ControlBar({
 
         {isBreak ? (
           <div className="flex items-center gap-2 rounded-2xl border border-jade/40 bg-jade-soft px-4 text-jade-light font-semibold">
-            <Coffee className="w-5 h-5" /> Break
+            <BreakIcon className="w-5 h-5" /> Break
           </div>
         ) : (
         <div className="flex items-center gap-0.5 sm:gap-1 rounded-2xl border border-brass/30 bg-brass/[0.06] px-1 sm:px-1.5">
@@ -560,7 +598,7 @@ function ControlBar({
           variant="primary"
           onClick={onNext}
           aria-label={isLast ? 'Finish this Bahagian' : 'Next item'}
-          className={cx('px-3 sm:px-6', isLast && 'bg-jade hover:bg-jade-light text-black')}
+          className={cx('px-3 sm:px-6', isLast && 'bg-jade hover:bg-jade-light text-brass-ink')}
         >
           <span>{isLast ? 'Finish' : 'Next'}</span>
           {isLast ? <CheckCircle2 className="w-6 h-6" /> : <SkipForward className="w-6 h-6" />}
@@ -574,7 +612,7 @@ function BreakBody({ item, next }: { item: ResolvedQueueItem; next: ResolvedQueu
   return (
     <div className="flex flex-col items-center text-center gap-3 py-6 sm:py-10">
       <div className="w-20 h-20 rounded-full bg-jade-soft text-jade-light ring-1 ring-jade/45 grid place-items-center">
-        <Coffee className="w-10 h-10" />
+        <BreakIcon className="w-10 h-10" />
       </div>
       <div className="text-sm font-bold uppercase tracking-[0.2em] text-jade-light">Break</div>
       <h1 className="font-display text-4xl sm:text-6xl font-bold tracking-tight [text-wrap:balance]">{item.song.title}</h1>

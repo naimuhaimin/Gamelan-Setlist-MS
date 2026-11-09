@@ -2,12 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { CalendarDays, ChevronRight, Coffee, Pause, Share2 } from 'lucide-react';
+import { CalendarDays, ChevronRight, Pause, Share2 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import type { ConvoEvent, Session } from '@/types';
 import logoMark from '@/assets/logo-mark.png';
 import { useShell } from './AppShell';
-import { Badge, Card, LiveDot, cx } from './ui';
+import { Badge, BreakIcon, Card, LiveDot, cx } from './ui';
 
 export const formatDate = (d: string | null | undefined) =>
   d ? new Date(d + 'T00:00').toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
@@ -33,9 +33,9 @@ export function ConvoThumb({ event, className }: { event: ConvoEvent; className?
 }
 
 export function ConvoCard({ event }: { event: ConvoEvent }) {
-  const { sessions, liveSession } = useStage();
+  const { sessions, liveSession, isFinished } = useStage();
   const count = sessions.filter((s) => s.event_id === event.id).length;
-  const live = liveSession?.event_id === event.id;
+  const live = liveSession?.event_id === event.id && !isFinished;
   return (
     <Link href={`/konvo/${encodeURIComponent(event.id)}`} className="group block">
       <Card className={cx('overflow-hidden transition-colors group-hover:border-line-strong', live && 'border-songket/60')}>
@@ -69,7 +69,7 @@ export function SidangCard({ session }: { session: Session }) {
   const { openShare } = useShell();
   const myParts = parts.filter((p) => p.session_id === session.id);
   const songCount = myParts.reduce((n, p) => n + resolveQueue(p.id).filter((r) => !r.isBreak).length, 0);
-  const live = liveSession?.id === session.id;
+  const live = liveSession?.id === session.id && !isFinished;
   return (
     <Card className={cx('flex items-stretch overflow-hidden', live && 'border-songket/60')}>
       <Link href={`/sidang/${encodeURIComponent(session.id)}`} className="flex-1 min-w-0 p-4 hover:bg-raised/50 transition-colors">
@@ -77,7 +77,7 @@ export function SidangCard({ session }: { session: Session }) {
           <h3 className="font-display text-lg font-bold truncate">{session.name}</h3>
           {live && (
             <Badge tone="live">
-              <LiveDot /> {isFinished ? 'Finished' : roomState.is_paused ? 'On hold' : 'Live'} · {livePart?.name}
+              <LiveDot /> {roomState.is_paused ? 'On hold' : 'Live'} · {livePart?.name}
             </Badge>
           )}
         </div>
@@ -102,7 +102,7 @@ export function SidangCard({ session }: { session: Session }) {
 /** "Live now" summary for the home page. */
 export function LiveNowCard() {
   const { liveSession, livePart, liveEvent, activeItem, liveQueue, activeIndex, isFinished, roomState } = useStage();
-  if (!liveSession || !livePart)
+  if (!liveSession || !livePart || isFinished)
     return (
       <Card className="p-5 flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-raised grid place-items-center text-faint">
@@ -110,12 +110,16 @@ export function LiveNowCard() {
         </div>
         <div>
           <div className="font-semibold">Nothing is live right now</div>
-          <div className="text-sm text-muted">The stage will appear here as soon as a Bahagian goes live.</div>
+          <div className="text-sm text-muted">
+            {isFinished && liveSession && livePart
+              ? `${liveSession.name} · ${livePart.name} has ended. The next Bahagian will appear here when it goes live.`
+              : 'The stage will appear here as soon as a Bahagian goes live.'}
+          </div>
         </div>
       </Card>
     );
 
-  const status = isFinished ? 'Finished' : roomState.is_paused ? 'On hold' : 'Live now';
+  const status = roomState.is_paused ? 'On hold' : 'Live now';
   const next = liveQueue[activeIndex + 1];
   return (
     <Card className="overflow-hidden border-songket/50">
@@ -128,16 +132,16 @@ export function LiveNowCard() {
           {liveSession.name} · {livePart.name}
         </div>
         <div className="mt-2 font-display text-3xl sm:text-4xl font-bold leading-tight">
-          {isFinished ? `${livePart.name} is done` : activeItem ? (
+          {activeItem ? (
             <span className="inline-flex items-center gap-3">
-              {activeItem.isBreak && <Coffee className="w-8 h-8 text-jade-light" />}
+              {activeItem.isBreak && <BreakIcon className="w-8 h-8 text-jade-light" />}
               {activeItem.song.title}
             </span>
           ) : (
             'No songs yet'
           )}
         </div>
-        {!isFinished && next && <div className="mt-1 text-sm text-muted">Next: {next.song.title}</div>}
+        {next && <div className="mt-1 text-sm text-muted">Next: {next.song.title}</div>}
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/live"

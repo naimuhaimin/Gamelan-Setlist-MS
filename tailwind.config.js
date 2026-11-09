@@ -4,37 +4,38 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Anjung Seni palette (from the logo): warm black, ivory, carved bronze & gold.
-        bg: '#0d0b09',
-        surface: '#171411',
-        raised: '#201c18',
-        line: '#2f2923',
-        'line-strong': '#433a31',
-        ink: '#f4eee4', // ivory
-        muted: '#ab9f8f',
-        faint: '#786d60',
+        // Anjung Seni palette (from the logo). Values live in app/globals.css as CSS variables
+        // so the app can switch between dark (default) and light themes.
+        bg: 'rgb(var(--bg) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        raised: 'rgb(var(--raised) / <alpha-value>)',
+        line: 'rgb(var(--line) / <alpha-value>)',
+        'line-strong': 'rgb(var(--line-strong) / <alpha-value>)',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        faint: 'rgb(var(--faint) / <alpha-value>)',
         brass: {
-          DEFAULT: '#e3ad48', // gold leaf: primary actions, cues, loop
-          strong: '#f4c76c',
-          soft: 'rgba(227, 173, 72, 0.16)',
-          ink: '#1c1207',
+          DEFAULT: 'rgb(var(--brass) / <alpha-value>)', // gold leaf: primary actions, cues, loop
+          strong: 'rgb(var(--brass-strong) / <alpha-value>)',
+          soft: 'var(--brass-soft)',
+          ink: 'rgb(var(--brass-ink) / <alpha-value>)',
         },
-        bronze: '#7a5222', // the logo's carved-corner bronze
+        bronze: 'rgb(var(--bronze) / <alpha-value>)',
         // Songket crimson: LIVE, adjusted-for-ceremony, thumbs down
         songket: {
-          DEFAULT: '#d0463b',
-          light: '#f3a092',
-          soft: 'rgba(208, 70, 59, 0.16)',
+          DEFAULT: 'rgb(var(--songket) / <alpha-value>)',
+          light: 'rgb(var(--songket-light) / <alpha-value>)',
+          soft: 'var(--songket-soft)',
         },
         // Batik jade: rhythms, beats, finished, thumbs up
         jade: {
-          DEFAULT: '#2fa884',
-          light: '#7fdcbc',
-          soft: 'rgba(47, 168, 132, 0.16)',
+          DEFAULT: 'rgb(var(--jade) / <alpha-value>)',
+          light: 'rgb(var(--jade-light) / <alpha-value>)',
+          soft: 'var(--jade-soft)',
         },
-        live: '#d0463b',
-        ok: '#2fa884',
-        danger: '#f2797c',
+        live: 'rgb(var(--songket) / <alpha-value>)',
+        ok: 'rgb(var(--jade) / <alpha-value>)',
+        danger: 'rgb(var(--danger) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BellRing, ChevronRight, KeyRound, LogOut, Music2, QrCode, Settings2, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
+import { BellRing, ChevronRight, KeyRound, LogOut, Moon, Music2, QrCode, Settings2, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import logoMark from '@/assets/logo-mark.png';
 import { useShell } from './AppShell';
@@ -62,7 +62,7 @@ function Row({
 
 export function SettingsView() {
   const { role, logout, selectedInstrument, connection, notify } = useStage();
-  const { lockScreen, chime, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
+  const { lockScreen, chime, theme, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pt-6 pb-10 space-y-6">
@@ -77,6 +77,33 @@ export function SettingsView() {
         />
         <Row icon={<Music2 className="w-5 h-5" />} title="My instrument" text={selectedInstrument ?? 'Not chosen (just watching)'} onClick={openInstrumentPicker} />
         {role !== 'player' && <Row icon={<LogOut className="w-5 h-5" />} title="Back to Musician" text="Sign out of your role on this device." onClick={logout} danger />}
+      </Section>
+
+      <Section title="Appearance">
+        <Row
+          icon={theme.theme === 'light' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          title="Theme"
+          text={theme.theme === 'light' ? 'Light: ivory paper, good in bright halls.' : 'Dark (default): best for the stage.'}
+          right={
+            <div role="radiogroup" aria-label="Theme" className="inline-flex p-1 rounded-xl bg-bg border border-line shrink-0">
+              {(['dark', 'light'] as const).map((t) => (
+                <button
+                  key={t}
+                  role="radio"
+                  aria-checked={theme.theme === t}
+                  onClick={() => theme.setTheme(t)}
+                  className={cx(
+                    'h-8 px-3 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 capitalize transition-colors',
+                    theme.theme === t ? 'bg-brass text-brass-ink' : 'text-muted hover:text-ink'
+                  )}
+                >
+                  {t === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                  {t}
+                </button>
+              ))}
+            </div>
+          }
+        />
       </Section>
 
       <Section title="On this phone">

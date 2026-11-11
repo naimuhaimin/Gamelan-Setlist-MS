@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
+import { instrumentSlogan } from '@/lib/instrumentSlogans';
 import type { RoleType } from '@/types';
 import { Button, ConfirmDialog, Field, IconButton, Input, Modal } from './ui';
 
@@ -12,11 +13,13 @@ import { Button, ConfirmDialog, Field, IconButton, Input, Modal } from './ui';
 // ---------------------------------------------------------------------------
 
 export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { instruments, songs, addInstrument, renameInstrument, removeInstrument, moveInstrument } = useStage();
+  const { instruments, songs, addInstrument, renameInstrument, removeInstrument, moveInstrument, instrumentSlogans, slogansEditable, setInstrumentSlogan } =
+    useStage();
   const { t } = useT();
   const [name, setName] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editSlogan, setEditSlogan] = useState('');
   const [toDelete, setToDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +48,9 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
     if (!editing) return;
     setError(null);
     try {
-      await renameInstrument(editing, editValue);
+      const newName = editValue.trim();
+      if (newName && newName !== editing) await renameInstrument(editing, newName);
+      if (slogansEditable && editSlogan.trim() !== (instrumentSlogans[editing] ?? '')) await setInstrumentSlogan(newName || editing, editSlogan);
       setEditing(null);
     } catch (err) {
       setError((err as Error).message);
@@ -58,7 +63,11 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
         open={open && !toDelete}
         onClose={onClose}
         title={t('Instruments')}
-        description={t('The ensemble’s instruments. Renaming updates every song that uses it.')}
+        description={
+          slogansEditable
+            ? t('Tap the pencil to rename an instrument or change its catchphrase. Leave the catchphrase empty to use the default.')
+            : t('The ensemble’s instruments. Renaming updates every song that uses it.')
+        }
         footer={
           <Button variant="primary" onClick={onClose}>
             {t('Done')}
@@ -77,14 +86,26 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
             <li key={inst} className="flex items-center gap-2 px-3 py-2">
               {editing === inst ? (
                 <form
-                  className="flex-1 flex items-center gap-2"
+                  className="flex-1 flex items-start gap-2 min-w-0"
                   onSubmit={(e) => {
                     e.preventDefault();
                     saveEdit();
                   }}
                 >
-                  <Input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} className="h-9" />
-                  <IconButton label={t('Save name')} size="sm" variant="primary" onClick={saveEdit}>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <Input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} className="h-9" aria-label={t('Name')} />
+                    {slogansEditable && (
+                      <Input
+                        value={editSlogan}
+                        onChange={(e) => setEditSlogan(e.target.value)}
+                        maxLength={60}
+                        className="h-9 italic"
+                        aria-label={t('Catchphrase')}
+                        placeholder={t('Catchphrase, e.g. “{example}”', { example: t(instrumentSlogan(inst)) })}
+                      />
+                    )}
+                  </div>
+                  <IconButton label={t('Save')} size="sm" variant="primary" type="submit">
                     <Check className="w-4 h-4" />
                   </IconButton>
                   <IconButton label={t('Cancel')} size="sm" onClick={() => setEditing(null)}>
@@ -95,6 +116,10 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
                 <>
                   <span className="flex-1 min-w-0">
                     <span className="block font-medium truncate">{inst}</span>
+                    <span className="block text-xs italic text-brass">
+                      “{instrumentSlogans[inst] ?? t(instrumentSlogan(inst))}”
+                      {!instrumentSlogans[inst] && <span className="not-italic text-faint"> · {t('default')}</span>}
+                    </span>
                     <span className="block text-xs text-muted">
                       {t('Intro in {songs}', { songs: plural(usage(inst), '{n} song', '{n} songs') })}
                     </span>
@@ -106,11 +131,12 @@ export function InstrumentsModal({ open, onClose }: { open: boolean; onClose: ()
                     <ArrowDown className="w-4 h-4" />
                   </IconButton>
                   <IconButton
-                    label={t('Rename {name}', { name: inst })}
+                    label={t('Edit {name}', { name: inst })}
                     size="sm"
                     onClick={() => {
                       setEditing(inst);
                       setEditValue(inst);
+                      setEditSlogan(instrumentSlogans[inst] ?? '');
                       setError(null);
                     }}
                   >

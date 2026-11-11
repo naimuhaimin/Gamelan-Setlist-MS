@@ -122,7 +122,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
 // ---------------------------------------------------------------------------
 
 export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { instruments, selectedInstrument, selectInstrument } = useStage();
+  const { instruments, selectedInstrument, selectInstrument, instrumentSlogans } = useStage();
   const { t } = useT();
   const choose = (i: string | null) => {
     selectInstrument(i);
@@ -148,7 +148,7 @@ export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: ()
           >
             <span className="text-base font-semibold leading-tight">{i}</span>
             <span className={cx('mt-0.5 text-[11px] leading-tight italic', selectedInstrument === i ? 'text-brass-ink/75' : 'text-muted')}>
-              {t(instrumentSlogan(i))}
+              {instrumentSlogans[i] ?? t(instrumentSlogan(i))}
             </span>
           </button>
         ))}

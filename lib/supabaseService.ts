@@ -79,6 +79,17 @@ export async function fetchInstruments() {
   const res = await db().from('instruments').select('name, sort_order').order('sort_order', { ascending: true });
   return (check(res, 'Load instruments') as Array<{ name: string }>).map((i) => i.name);
 }
+/** Admin-written catchphrases per instrument; null while the slogan column doesn't exist yet. */
+export async function fetchInstrumentSlogans(): Promise<Record<string, string> | null> {
+  const res = await db().from('instruments').select('name, slogan');
+  if (res.error) return null;
+  const out: Record<string, string> = {};
+  for (const r of res.data as Array<{ name: string; slogan: string | null }>) if (r.slogan?.trim()) out[r.name] = r.slogan.trim();
+  return out;
+}
+export async function updateInstrumentSlogan(name: string, slogan: string | null) {
+  check(await db().from('instruments').update({ slogan }).eq('name', name), 'Save catchphrase');
+}
 export async function fetchRoles() {
   const res = await db().from('roles').select('role_name, passkey');
   return check(res, 'Load access settings') as RoleRow[];

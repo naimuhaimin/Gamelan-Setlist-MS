@@ -45,6 +45,8 @@ interface StageContextType {
   songs: Song[];
   queueItems: QueueItem[];
   instruments: string[];
+  instrumentSlogans: Record<string, string>; // Admin-written catchphrases (built-in ones fill the gaps)
+  slogansEditable: boolean; // false until the instruments.slogan column exists
   roomState: RoomState;
   connection: ConnectionState;
 
@@ -135,6 +137,7 @@ interface StageContextType {
   // Instruments (admin)
   addInstrument: (name: string) => Promise<void>;
   renameInstrument: (oldName: string, newName: string) => Promise<void>;
+  setInstrumentSlogan: (name: string, slogan: string) => Promise<void>;
   removeInstrument: (name: string) => Promise<void>;
   moveInstrument: (fromIndex: number, toIndex: number) => Promise<void>;
 
@@ -238,6 +241,17 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [instruments, setInstruments] = useState<string[]>([]);
+  const [instrumentSlogans, setInstrumentSlogans] = useState<Record<string, string>>({});
+  const [slogansEditable, setSlogansEditable] = useState(false);
+  const loadSlogans = useCallback(() => {
+    api
+      .fetchInstrumentSlogans()
+      .then((m) => {
+        setSlogansEditable(m !== null);
+        setInstrumentSlogans(m ?? {});
+      })
+      .catch(() => undefined);
+  }, []);
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [roomState, setRoomState] = useState<RoomState>(EMPTY_ROOM);
   const [connection, setConnection] = useState<ConnectionState>('connecting');
@@ -287,6 +301,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     try {
       applySnapshot(await api.fetchSnapshot());
       setLoadError(null);
+      loadSlogans();
       api
         .fetchVotes()
         .then((v) => {
@@ -299,7 +314,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoaded(true);
     }
-  }, [applySnapshot]);
+  }, [applySnapshot, loadSlogans]);
 
   // Restore identity from this device
   useEffect(() => {
@@ -354,7 +369,10 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
         debounced('sessions', async () => setSessions(await api.fetchSessions()))
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'instruments' }, () =>
-        debounced('instruments', async () => setInstruments(await api.fetchInstruments()))
+        debounced('instruments', async () => {
+          setInstruments(await api.fetchInstruments());
+          loadSlogans();
+        })
       )
       // (roles is not in the realtime publication; passkeys are re-read on every resync instead)
       .subscribe((status) => {
@@ -899,6 +917,11 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       prev.map((q) => (q.override_intro_instruments ? { ...q, override_intro_instruments: swap(q.override_intro_instruments) } : q))
     );
     if (selectedInstrument === oldName) selectInstrument(trimmed);
+    setInstrumentSlogans((prev) => {
+      if (!(oldName in prev)) return prev;
+      const { [oldName]: s, ...rest } = prev;
+      return { ...rest, [trimmed]: s };
+    });
     await commit(() => api.renameInstrument(oldName, trimmed), { success: tr('Instrument renamed'), rethrow: true });
   };
 
@@ -910,6 +933,15 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       prev.map((q) => (q.override_intro_instruments ? { ...q, override_intro_instruments: drop(q.override_intro_instruments) } : q))
     );
     await commit(() => api.deleteInstrument(name), { success: tr('{name} removed', { name }) });
+  };
+
+  const setInstrumentSlogan = async (name: string, slogan: string) => {
+    const v = slogan.trim().slice(0, 60);
+    setInstrumentSlogans((prev) => {
+      const { [name]: _, ...rest } = prev;
+      return v ? { ...rest, [name]: v } : rest;
+    });
+    await commit(() => api.updateInstrumentSlogan(name, v || null), { success: tr('Catchphrase saved'), rethrow: true });
   };
 
   const moveInstrument = async (from: number, to: number) => {
@@ -1067,6 +1099,9 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     removeSong,
     addInstrument,
     renameInstrument,
+    setInstrumentSlogan,
+    instrumentSlogans,
+    slogansEditable,
     removeInstrument,
     moveInstrument,
     setRolePasskey,

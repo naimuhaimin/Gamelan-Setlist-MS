@@ -290,3 +290,7 @@ CREATE POLICY "Public Read Chat" ON public.chat_messages FOR SELECT USING (true)
 DROP POLICY IF EXISTS "Public Write Chat" ON public.chat_messages;
 CREATE POLICY "Public Write Chat" ON public.chat_messages FOR ALL USING (true) WITH CHECK (true);
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- 9. INSTRUMENT CATCHPHRASES (migration; safe to re-run)
+-- A fun line shown under each instrument in the instrument picker. NULL = the app's built-in one.
+ALTER TABLE public.instruments ADD COLUMN IF NOT EXISTS slogan TEXT CHECK (slogan IS NULL OR char_length(slogan) <= 60);

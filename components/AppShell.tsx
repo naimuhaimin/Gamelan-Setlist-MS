@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
-import { useLockScreen, type LockScreenInfo } from '@/lib/useLockScreen';
+import { useLockScreen, type LockScreenControls, type LockScreenInfo } from '@/lib/useLockScreen';
 import { useChime } from '@/lib/useChime';
 import { useTheme } from '@/lib/useTheme';
 import { formatIntro } from '@/lib/format';
@@ -66,6 +66,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     liveInterlude,
     interludeDone,
     resolveQueue,
+    goNext,
+    goPrev,
+    goLive,
+    interludeTracking,
+    setInterludeDone,
   } = useStage();
   const [dialog, setDialog] = useState<Dialog>(null);
   const { t, lang } = useT();
@@ -180,7 +185,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveSession, livePart, nextPart, activeItem, liveQueue, activeIndex, roomState.current_loop_iteration, roomState.is_paused, isCued, isFinished, liveInterlude, interludeDone, resolveQueue, lang]);
-  const lockScreen = useLockScreen(lockInfo);
+  // Controllers (and Maestro/Admin) get ⏮ / ⏭ on the lock screen to run the stage without opening the app
+  const lockControls = useMemo<LockScreenControls | null>(() => {
+    if (!canControl || !liveSession || !livePart) return null;
+    if (isFinished && liveInterlude && nextPart) {
+      // Intermission: ⏭ marks a guest song done, then starts the next Bahagian; ⏮ undoes
+      const ready = !interludeTracking || interludeDone >= liveInterlude.songs;
+      return {
+        next: ready ? () => goLive(nextPart.id) : () => setInterludeDone(interludeDone + 1),
+        prev: interludeTracking && interludeDone > 0 ? () => setInterludeDone(interludeDone - 1) : goPrev,
+      };
+    }
+    if (isFinished) return { prev: goPrev, next: nextPart ? () => goLive(nextPart.id) : undefined };
+    if (!activeItem) return null;
+    return { prev: activeIndex > 0 ? goPrev : undefined, next: goNext };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canControl, liveSession, livePart, isFinished, liveInterlude, nextPart, interludeTracking, interludeDone, activeItem, activeIndex, liveQueue, roomState]);
+  const lockScreen = useLockScreen(lockInfo, lockControls);
 
   // On by default. Browsers only allow the silent audio after a tap, so whenever the
   // preference is on and it isn't running (first load, or another app took the audio),

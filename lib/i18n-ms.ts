@@ -40,6 +40,7 @@ export const MS: Record<string, string> = {
   "Anjung Live home": "Laman utama Anjung Live",
   "Anyone in Controller mode can change songs and loops during {part}.": "Sesiapa dalam mod Pengawal boleh menukar lagu dan ulangan semasa {part}.",
   "Appearance": "Paparan",
+  "As {role}, the ⏮ ⏭ buttons on your lock screen move the live stage.": "Sebagai {role}, butang ⏮ ⏭ di skrin kunci anda menggerakkan pentas live.",
   "Back to Musician": "Kembali sebagai Pemuzik",
   "Back to home": "Kembali ke laman utama",
   "Back to last song": "Kembali ke lagu terakhir",

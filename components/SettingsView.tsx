@@ -32,10 +32,12 @@ function Row({
   right,
   onClick,
   danger,
+  extra,
 }: {
   icon: React.ReactNode;
   title: string;
   text?: React.ReactNode;
+  extra?: React.ReactNode;
   right?: React.ReactNode;
   onClick?: () => void;
   danger?: boolean;
@@ -48,6 +50,7 @@ function Row({
       <span className="flex-1 min-w-[9.5rem]">
         <span className={cx('block font-medium', danger && 'text-songket-light')}>{title}</span>
         {text && <span className="block text-sm text-muted">{text}</span>}
+        {extra && <span className="block text-sm text-brass mt-0.5">{extra}</span>}
       </span>
       {right ?? (onClick && <ChevronRight className="w-5 h-5 text-faint" />)}
     </>
@@ -95,7 +98,7 @@ function Segmented<T extends string>({
 }
 
 export function SettingsView() {
-  const { role, logout, selectedInstrument, connection, notify } = useStage();
+  const { role, logout, selectedInstrument, connection, notify, canSwitchLive } = useStage();
   const { lockScreen, lockPref, setLockPref, chime, theme, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
   const { t, lang, setLang } = useT();
 
@@ -186,6 +189,7 @@ export function SettingsView() {
                   : t('On: starts at your next tap. Keep this tab open.')
                 : t('Off. Turn on to see the next song on your locked phone.')
             }
+            extra={canSwitchLive ? t('As {role}, the ⏮ ⏭ buttons on your lock screen move the live stage.', { role: t(ROLE_LABEL[role]) }) : undefined}
             right={
               <Toggle
                 checked={lockPref}

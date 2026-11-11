@@ -135,9 +135,20 @@ function drawArtwork(info: LockScreenInfo): string | null {
   }
 }
 
-export function useLockScreen(info: LockScreenInfo | null) {
+/** Lock-screen ⏮ / ⏭ buttons, only for people who can control the stage. */
+export interface LockScreenControls {
+  prev?: () => void;
+  next?: () => void;
+}
+
+export function useLockScreen(info: LockScreenInfo | null, controls?: LockScreenControls | null) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [active, setActive] = useState(false);
+  // Always call the latest functions without re-registering handlers on every render
+  const controlsRef = useRef(controls);
+  controlsRef.current = controls;
+  const hasPrev = !!controls?.prev;
+  const hasNext = !!controls?.next;
 
   const stop = useCallback(() => {
     audioRef.current?.pause();
@@ -192,6 +203,25 @@ export function useLockScreen(info: LockScreenInfo | null) {
       safe('stop', null);
     };
   }, [start, stop]);
+
+  // Previous / next track buttons drive the live stage (Controller, Maestro, Admin only)
+  useEffect(() => {
+    if (!lockScreenSupported()) return;
+    const ms = navigator.mediaSession;
+    const safe = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try {
+        ms.setActionHandler(action, handler);
+      } catch {
+        // action not supported on this platform
+      }
+    };
+    safe('previoustrack', hasPrev ? () => controlsRef.current?.prev?.() : null);
+    safe('nexttrack', hasNext ? () => controlsRef.current?.next?.() : null);
+    return () => {
+      safe('previoustrack', null);
+      safe('nexttrack', null);
+    };
+  }, [hasPrev, hasNext]);
 
   // Push the latest stage info to the lock screen
   const key = info ? JSON.stringify(info) : '';

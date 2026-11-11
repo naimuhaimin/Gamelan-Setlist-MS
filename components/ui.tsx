@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
-import { AlertTriangle, CheckCircle2, Info, Minus, Plus, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, Minus, Plus, StickyNote, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { tr, useT } from '@/lib/i18n';
 
@@ -255,6 +255,22 @@ export const UnitSwitch = ({ value, onChange }: { value: 'bars' | 'beats'; onCha
   </div>
 );
 
+/** A song's short performance note. `size="lg"` is the boxed version on the Live screen. */
+export const SongNote = ({ text, size = 'sm', className }: { text: string; size?: 'sm' | 'lg'; className?: string }) =>
+  size === 'lg' ? (
+    <div className={cx('rounded-xl border border-brass/40 bg-brass/[0.07] px-4 py-3', className)}>
+      <div className="text-xs font-semibold uppercase tracking-wider text-brass mb-0.5 inline-flex items-center gap-1.5">
+        <StickyNote className="w-3.5 h-3.5" /> {tr('Note')}
+      </div>
+      <div className="text-base sm:text-lg font-medium whitespace-pre-wrap break-words">{text}</div>
+    </div>
+  ) : (
+    <div className={cx('flex items-start gap-1.5 text-xs text-brass', className)}>
+      <StickyNote className="w-3.5 h-3.5 mt-px shrink-0" />
+      <span className="italic whitespace-pre-wrap break-words min-w-0">{text}</span>
+    </div>
+  );
+
 /** Rhythm names in playing order, e.g. "Inang → Joget". */
 export const Rhythms = ({ rhythms, size = 'sm', className }: { rhythms: string[]; size?: 'sm' | 'lg'; className?: string }) =>
   rhythms.length ? (
@@ -357,19 +373,22 @@ export const Toggle = ({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) => (
   <button
     type="button"
     role="switch"
     aria-checked={checked}
     aria-label={label}
+    disabled={disabled}
     onClick={() => onChange(!checked)}
     className={cx(
-      'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+      'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
       checked ? 'bg-ok' : 'bg-line-strong'
     )}
   >

@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { BellRing, ChevronRight, KeyRound, Languages, LogOut, Moon, Music2, QrCode, Settings2, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react';
+import { BellDot, BellRing, ChevronRight, KeyRound, Languages, LogOut, Moon, Music2, QrCode, Settings2, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
+import { usePush } from '@/lib/usePush';
 import logoMark from '@/assets/logo-mark.png';
 import { useShell } from './AppShell';
 import { Card, Toggle, cx } from './ui';
@@ -101,6 +102,7 @@ export function SettingsView() {
   const { role, logout, selectedInstrument, connection, notify, canSwitchLive } = useStage();
   const { lockScreen, lockPref, setLockPref, chime, theme, openLogin, openInstrumentPicker, openShare, openInstruments, openAccess } = useShell();
   const { t, lang, setLang } = useT();
+  const push = usePush();
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pt-6 pb-10 space-y-6">
@@ -199,6 +201,36 @@ export function SettingsView() {
                   if (!v) return lockScreen.stop();
                   const ok = await lockScreen.start();
                   if (!ok) notify(t('Your browser blocked it. Tap anywhere to start it.'), 'error');
+                }}
+              />
+            }
+          />
+        )}
+        {push.state !== 'unavailable' && (
+          <Row
+            icon={<BellDot className="w-5 h-5" />}
+            title={t('Notifications')}
+            text={
+              push.state === 'on'
+                ? t('On: you’ll get a notification when a Bahagian goes live, even with the app closed.')
+                : push.state === 'blocked'
+                  ? t('Blocked. Allow notifications for this app in your phone’s settings, then try again.')
+                  : push.state === 'needs-install'
+                    ? t('On iPhone, add the app to your Home Screen first, then turn this on.')
+                    : push.state === 'unsupported'
+                      ? t('This browser can’t show notifications.')
+                      : t('Get a notification when a Bahagian goes live, even with the app closed.')
+            }
+            right={
+              <Toggle
+                checked={push.state === 'on'}
+                label={t('Notifications')}
+                disabled={push.busy || push.state === 'unsupported' || push.state === 'needs-install'}
+                onChange={async (v) => {
+                  if (!v) return push.disable();
+                  const ok = await push.enable();
+                  if (ok) notify(t('Notifications are on'));
+                  else notify(t('Notifications were not turned on. Allow them when your phone asks.'), 'error');
                 }}
               />
             }

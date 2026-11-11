@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import type {
   ChatMessage,
+  PlayLogRow,
   ConvoEvent,
   DatabaseSnapshot,
   QueueVote,
@@ -154,15 +155,15 @@ export async function updateRoomState(updates: Partial<RoomState>) {
 // Songs
 // ---------------------------------------------------------------------------
 
+// `notes` is only sent when the caller set it, so saving works before the notes column exists
 export async function insertSong(song: Song) {
-  check(await db().from('songs').insert(song), 'Add song');
+  const { notes, ...rest } = song;
+  check(await db().from('songs').insert(notes === undefined ? rest : song), 'Add song');
 }
 export async function updateSong(song: Song) {
-  const { id, title, intro_bar_count, intro_unit, intro_instruments, loop_count, rhythms } = song;
-  check(
-    await db().from('songs').update({ title, intro_bar_count, intro_unit, intro_instruments, loop_count, rhythms }).eq('id', id),
-    'Update song'
-  );
+  const { id, title, intro_bar_count, intro_unit, intro_instruments, loop_count, rhythms, notes } = song;
+  const fields = { title, intro_bar_count, intro_unit, intro_instruments, loop_count, rhythms };
+  check(await db().from('songs').update(notes === undefined ? fields : { ...fields, notes }).eq('id', id), 'Update song');
 }
 export async function deleteSong(songId: string) {
   // queue_items cascade on delete
@@ -309,9 +310,10 @@ export async function updateRolePasskey(role: RoleType, passkey: string) {
 }
 
 // ---- Live chat (table may not exist until the migration has run) ----------------
-export async function fetchChat(sessionId: string): Promise<ChatMessage[] | null> {
+export type MessageTable = 'chat_messages' | 'sidang_comments';
+export async function fetchChat(sessionId: string, table: MessageTable = 'chat_messages'): Promise<ChatMessage[] | null> {
   const res = await db()
-    .from('chat_messages')
+    .from(table)
     .select('*')
     .eq('session_id', sessionId)
     .order('created_at', { ascending: false })
@@ -319,9 +321,39 @@ export async function fetchChat(sessionId: string): Promise<ChatMessage[] | null
   if (res.error) return null;
   return (res.data as ChatMessage[]).reverse();
 }
-export async function sendChat(msg: Omit<ChatMessage, 'created_at'>): Promise<ChatMessage> {
-  return check(await db().from('chat_messages').insert(msg).select().single(), 'Send message') as ChatMessage;
+export async function sendChat(msg: Omit<ChatMessage, 'created_at'>, table: MessageTable = 'chat_messages'): Promise<ChatMessage> {
+  return check(await db().from(table).insert(msg).select().single(), 'Send message') as ChatMessage;
 }
-export async function deleteChat(id: string) {
-  check(await db().from('chat_messages').delete().eq('id', id), 'Delete message');
+export async function deleteChat(id: string, table: MessageTable = 'chat_messages') {
+  check(await db().from(table).delete().eq('id', id), 'Delete message');
+}
+
+// ---- Performance log (table may not exist until the migration has run) ----------
+export async function playLogAvailable(): Promise<boolean> {
+  const res = await db().from('play_log').select('id').limit(1);
+  return !res.error;
+}
+export async function fetchPlayLog(sessionId: string): Promise<PlayLogRow[] | null> {
+  const res = await db().from('play_log').select('*').eq('session_id', sessionId).order('started_at', { ascending: true }).limit(2000);
+  if (res.error) return null;
+  return res.data as PlayLogRow[];
+}
+export async function insertPlayLog(row: Omit<PlayLogRow, 'id' | 'up' | 'down' | 'started_at'>) {
+  check(await db().from('play_log').insert(row), 'Log performance');
+}
+/** When a Bahagian finishes, keep its thumbs counts with the log (votes are lost if the setlist is replaced later). */
+export async function snapshotPlayVotes(partId: string, votes: Array<{ queueItemId: string; up: number; down: number }>) {
+  await Promise.all(
+    votes.map((v) =>
+      db().from('play_log').update({ up: v.up, down: v.down }).eq('part_id', partId).eq('queue_item_id', v.queueItemId).is('up', null)
+    )
+  );
+}
+
+// ---- Notifications -----------------------------------------------------------------
+export async function savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string; device_id: string; lang: string }) {
+  check(await db().from('push_subscriptions').upsert(sub, { onConflict: 'endpoint' }), 'Turn on notifications');
+}
+export async function deletePushSubscription(endpoint: string) {
+  check(await db().from('push_subscriptions').delete().eq('endpoint', endpoint), 'Turn off notifications');
 }

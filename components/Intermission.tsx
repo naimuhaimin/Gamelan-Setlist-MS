@@ -6,7 +6,7 @@ import { useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Interlude, Part } from '@/types';
 import { formatIntro } from '@/lib/format';
-import { Badge, Button, Card, LiveDot, Rhythms, cx } from './ui';
+import { Badge, Button, Card, LiveDot, Rhythms, SongNote, cx } from './ui';
 import { LivePicker } from './LivePicker';
 
 /** Little dots showing how many guest songs are done. */
@@ -143,6 +143,7 @@ export function IntermissionStage() {
                     {firstSong.introInstruments.join(', ') || '—'}
                   </div>
                   {firstSong.song.rhythms.length > 0 && <Rhythms rhythms={firstSong.song.rhythms} className="mt-2" />}
+                  {firstSong.song.notes && <SongNote text={firstSong.song.notes} className="mt-2" />}
                 </>
               )}
             </div>

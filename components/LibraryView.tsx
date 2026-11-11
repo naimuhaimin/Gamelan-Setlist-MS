@@ -5,7 +5,7 @@ import { ListMusic, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Song } from '@/types';
-import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, Stepper, UnitSwitch, VoteCounts, cx } from './ui';
+import { Badge, Button, Card, Chip, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, Rhythms, SongNote, Stepper, UnitSwitch, VoteCounts, cx } from './ui';
 import { formatIntro, introUnitWord } from '@/lib/format';
 import type { IntroUnit } from '@/types';
 
@@ -126,6 +126,7 @@ export function LibraryView() {
                       <span className="truncate">{s.intro_instruments.join(', ') || t('no intro instrument')}</span>
                     </div>
                     {s.rhythms.length > 0 && <Rhythms rhythms={s.rhythms} className="mt-1.5" />}
+                    {s.notes && <SongNote text={s.notes} className="mt-1.5" />}
                     <VoteCounts {...songTally(s.id)} className="mt-1.5" />
                   </div>
                   {isManager && (
@@ -184,7 +185,7 @@ export function LibraryView() {
 // ---------------------------------------------------------------------------
 
 function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: () => void }) {
-  const { instruments, songs, addSong, editSong } = useStage();
+  const { instruments, songs, addSong, editSong, notesEnabled } = useStage();
   const isNew = song === 'new';
   const [title, setTitle] = useState('');
   const [bars, setBars] = useState(4);
@@ -193,6 +194,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
   const [loops, setLoops] = useState(4);
   const [rhythms, setRhythms] = useState<string[]>([]);
   const [rhythmDraft, setRhythmDraft] = useState('');
+  const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { t } = useT();
@@ -207,6 +209,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
       setInsts([]);
       setLoops(4);
       setRhythms([]);
+      setNotes('');
     } else {
       setTitle(song.title);
       setBars(song.intro_bar_count);
@@ -214,6 +217,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
       setInsts(song.intro_instruments);
       setLoops(song.loop_count);
       setRhythms(song.rhythms ?? []);
+      setNotes(song.notes ?? '');
     }
     setRhythmDraft('');
   }, [song]);
@@ -246,7 +250,7 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
       const pending = rhythmDraft.trim();
       const finalRhythms =
         pending && !rhythms.some((x) => x.toLowerCase() === pending.toLowerCase()) ? [...rhythms, pending] : rhythms;
-      const data = { title: name, intro_bar_count: bars, intro_unit: unit, intro_instruments: insts, loop_count: loops, rhythms: finalRhythms };
+      const data = { title: name, intro_bar_count: bars, intro_unit: unit, intro_instruments: insts, loop_count: loops, rhythms: finalRhythms, ...(notesEnabled ? { notes: notes.trim() || null } : {}) };
       if (isNew) await addSong(data);
       else await editSong({ ...(song as Song), ...data });
       onClose();
@@ -379,6 +383,18 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
             </div>
           )}
         </Field>
+        {notesEnabled && (
+          <Field label={t('Note')} htmlFor="song-notes" hint={t('Optional. Shown to everyone on the Live screen, e.g. “Slow ending, watch the gendang”.')}>
+            <textarea
+              id="song-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={200}
+              rows={2}
+              className="w-full rounded-xl bg-bg border border-line px-3.5 py-2.5 text-base placeholder:text-faint focus:outline-none focus:border-brass/70"
+            />
+          </Field>
+        )}
         {error && <p className="text-sm text-danger">{error}</p>}
       </form>
     </Modal>

@@ -21,7 +21,7 @@ import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, VoteButtons, cx } from './ui';
+import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, SongNote, VoteButtons, cx } from './ui';
 import { LivePicker } from './LivePicker';
 import { IntermissionStage } from './Intermission';
 import { LiveAddSong } from './LiveAddSong';
@@ -372,6 +372,8 @@ export function StageView() {
               </div>
             </div>
 
+            {activeItem.song.notes && <SongNote text={activeItem.song.notes} size="lg" />}
+
             {votesEnabled && (
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <span className="text-sm text-muted font-medium">{t('Rate this song')}</span>
@@ -588,6 +590,7 @@ function NextCard({ item, cued, children }: { item: ResolvedQueueItem; cued: boo
       </div>
       <div className="mt-1 text-sm text-muted">{item.introInstruments.join(', ') || t('No intro instruments')}</div>
       {item.song.rhythms.length > 0 && <Rhythms rhythms={item.song.rhythms} className="mt-2" />}
+      {item.song.notes && <SongNote text={item.song.notes} className="mt-2" />}
       {item.hasOverride && <Badge tone="override" className="mt-2">{t('Adjusted')}</Badge>}
       {children && <div className="mt-3">{children}</div>}
     </div>

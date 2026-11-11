@@ -7,7 +7,7 @@ import * as api from '@/lib/supabaseService';
 
 const DEVICE_KEY = 'gamelan_device_id';
 const NAME_KEY = 'anjung_chat_name';
-const seenKey = (sessionId: string) => `anjung_chat_seen_${sessionId}`;
+const seenKey = (sessionId: string, table: string) => `anjung_${table === 'chat_messages' ? 'chat' : table}_seen_${sessionId}`;
 
 function read(key: string) {
   try {
@@ -29,7 +29,8 @@ function write(key: string, value: string) {
  * on its own channel (so a missing table never breaks the live stage sync).
  * `available` is null while loading and false when the chat_messages table doesn't exist yet.
  */
-export function useChat(sessionId: string | undefined) {
+export function useChat(sessionId: string | undefined, table: api.MessageTable = 'chat_messages') {
+  const maxLength = table === 'chat_messages' ? 500 : 1000;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [name, setNameState] = useState('');
@@ -43,15 +44,15 @@ export function useChat(sessionId: string | undefined) {
 
   useEffect(() => {
     if (!sessionId) return;
-    setSeenAt(read(seenKey(sessionId)) || '');
-  }, [sessionId]);
+    setSeenAt(read(seenKey(sessionId, table)) || '');
+  }, [sessionId, table]);
 
   const load = useCallback(async () => {
     if (!sessionId || !isSupabaseConfigured) return;
-    const list = await api.fetchChat(sessionId).catch(() => null);
+    const list = await api.fetchChat(sessionId, table).catch(() => null);
     setAvailable(list !== null);
     if (list) setMessages(list);
-  }, [sessionId]);
+  }, [sessionId, table]);
 
   useEffect(() => {
     setMessages([]);
@@ -63,17 +64,17 @@ export function useChat(sessionId: string | undefined) {
     if (!sessionId || !available || !supabase) return;
     const client = supabase;
     const channel = client
-      .channel(`chat_${sessionId}`)
+      .channel(`${table}_${sessionId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` },
+        { event: 'INSERT', schema: 'public', table, filter: `session_id=eq.${sessionId}` },
         (payload) => {
           const m = payload.new as ChatMessage;
           setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].slice(-300)));
         }
       )
       // DELETE events can't be filtered by column; drop by id
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table }, (payload) => {
         const id = (payload.old as { id?: string })?.id;
         if (id) setMessages((prev) => prev.filter((x) => x.id !== id));
       })
@@ -86,7 +87,7 @@ export function useChat(sessionId: string | undefined) {
       document.removeEventListener('visibilitychange', onVisible);
       client.removeChannel(channel);
     };
-  }, [sessionId, available, load]);
+  }, [sessionId, table, available, load]);
 
   const setName = (n: string) => {
     const v = n.trim().slice(0, 40);
@@ -94,14 +95,15 @@ export function useChat(sessionId: string | undefined) {
     write(NAME_KEY, v);
   };
 
-  const send = async (body: string, meta: { instrument: string | null; role: string }) => {
-    const text = body.trim().slice(0, 500);
-    if (!sessionId || !text || !name) return;
+  const send = async (body: string, meta: { instrument: string | null; role: string; author?: string }) => {
+    const text = body.trim().slice(0, maxLength);
+    const author = (meta.author ?? name).trim().slice(0, 40); // `author` lets a first-time poster send in the same tap as naming themselves
+    if (!sessionId || !text || !author) return;
     const msg: Omit<ChatMessage, 'created_at'> = {
       id: api.newId('msg'),
       session_id: sessionId,
       device_id: deviceId.current,
-      author: name,
+      author,
       instrument: meta.instrument,
       role: meta.role,
       body: text,
@@ -110,7 +112,7 @@ export function useChat(sessionId: string | undefined) {
     const optimistic: ChatMessage = { ...msg, created_at: new Date().toISOString() };
     setMessages((prev) => [...prev, optimistic]);
     try {
-      const saved = await api.sendChat(msg);
+      const saved = await api.sendChat(msg, table);
       setMessages((prev) => prev.map((x) => (x.id === saved.id ? saved : x)));
     } catch (err) {
       setMessages((prev) => prev.filter((x) => x.id !== msg.id));
@@ -121,7 +123,7 @@ export function useChat(sessionId: string | undefined) {
   const remove = async (id: string) => {
     setMessages((prev) => prev.filter((x) => x.id !== id));
     try {
-      await api.deleteChat(id);
+      await api.deleteChat(id, table);
     } catch (err) {
       load();
       throw err;
@@ -132,8 +134,8 @@ export function useChat(sessionId: string | undefined) {
     if (!sessionId) return;
     const now = new Date().toISOString();
     setSeenAt(now);
-    write(seenKey(sessionId), now);
-  }, [sessionId]);
+    write(seenKey(sessionId, table), now);
+  }, [sessionId, table]);
 
   const unread = useMemo(
     () => messages.filter((m) => m.device_id !== deviceId.current && (!seenAt || m.created_at > seenAt)).length,

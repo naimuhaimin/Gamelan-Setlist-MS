@@ -22,6 +22,7 @@ export interface Song {
   intro_instruments: string[];
   loop_count: number;
   rhythms: string[];
+  notes?: string | null; // short performance note (column added by migration)
   created_at?: string;
 }
 
@@ -87,6 +88,8 @@ export interface RoomState {
   is_paused: boolean;
   is_finished?: boolean; // the live Bahagian has ended (column added by migration)
   interlude_done?: number; // intermission songs performed so far (column added by migration)
+  live_key?: string | null; // changes each time a Bahagian goes live (for notifications)
+  notified_key?: string | null;
   updated_at: string;
   updated_by_role: string;
 }
@@ -152,4 +155,20 @@ export interface ChatMessage {
   role: string;
   body: string;
   created_at: string;
+}
+
+/** One row of the performance log: the stage moved to this item at `started_at`. */
+export interface PlayLogRow {
+  id: string;
+  session_id: string;
+  part_id: string;
+  part_number: number;
+  part_name: string;
+  queue_item_id: string | null;
+  kind: 'song' | 'break' | 'finish';
+  title: string;
+  started_part: boolean;
+  up: number | null;
+  down: number | null;
+  started_at: string;
 }

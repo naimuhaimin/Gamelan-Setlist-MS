@@ -47,6 +47,8 @@ interface StageContextType {
   instruments: string[];
   instrumentSlogans: Record<string, string>; // Admin-written catchphrases (built-in ones fill the gaps)
   slogansEditable: boolean; // false until the instruments.slogan column exists
+  notesEnabled: boolean; // false until the songs.notes column exists
+  playLogEnabled: boolean; // false until the play_log table exists
   roomState: RoomState;
   connection: ConnectionState;
 
@@ -243,6 +245,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   const [instruments, setInstruments] = useState<string[]>([]);
   const [instrumentSlogans, setInstrumentSlogans] = useState<Record<string, string>>({});
   const [slogansEditable, setSlogansEditable] = useState(false);
+  const [playLogEnabled, setPlayLogEnabled] = useState(false);
   const loadSlogans = useCallback(() => {
     api
       .fetchInstrumentSlogans()
@@ -302,6 +305,7 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       applySnapshot(await api.fetchSnapshot());
       setLoadError(null);
       loadSlogans();
+      api.playLogAvailable().then(setPlayLogEnabled).catch(() => undefined);
       api
         .fetchVotes()
         .then((v) => {
@@ -637,9 +641,27 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     await commit(() => api.updatePart(partId, updates), { success: tr('Intermission saved'), rethrow: true });
   };
 
+  // ---- Performance log: what was actually played and when (feeds the Sidang summary) ----
+  const logPlay = (part: Part | undefined, item: ResolvedQueueItem | null, opts: { startedPart?: boolean; finish?: boolean } = {}) => {
+    if (!playLogEnabled || !part) return;
+    api
+      .insertPlayLog({
+        session_id: part.session_id,
+        part_id: part.id,
+        part_number: part.part_number,
+        part_name: part.name,
+        queue_item_id: opts.finish ? null : item?.queueItem.id ?? null,
+        kind: opts.finish ? 'finish' : item?.isBreak ? 'break' : 'song',
+        title: opts.finish ? '' : item?.song.title ?? '',
+        started_part: !!opts.startedPart,
+      })
+      .catch(() => undefined); // never let logging get in the way of the stage
+  };
+
   const goToIndex = (i: number) => {
     if (!canControl || i < 0 || i >= liveQueue.length) return;
     setRoom({ current_queue_item_id: liveQueue[i].queueItem.id, current_loop_iteration: 1, ...unfinish });
+    if (isFinished || i !== activeIndex) logPlay(livePart, liveQueue[i]);
   };
   const finishPart = () => {
     if (!canControl) return;
@@ -648,12 +670,24 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setRoom({ is_finished: true, is_paused: false, ...resetInterlude });
+    logPlay(livePart, null, { finish: true });
+    if (playLogEnabled && livePart) {
+      api
+        .snapshotPlayVotes(
+          livePart.id,
+          liveQueue.filter((r) => !r.isBreak).map((r) => ({ queueItemId: r.queueItem.id, up: tally(r.queueItem.id).up, down: tally(r.queueItem.id).down }))
+        )
+        .catch(() => undefined);
+    }
   };
   // Next on the last song finishes the Bahagian; Prev while finished goes back to the last song
   const goNext = () => (activeIndex >= liveQueue.length - 1 ? finishPart() : goToIndex(activeIndex + 1));
   const goPrev = () => {
     if (isFinished) {
-      if (canControl) setRoom({ is_finished: false });
+      if (canControl) {
+        setRoom({ is_finished: false });
+        logPlay(livePart, activeItem);
+      }
       return;
     }
     goToIndex(activeIndex - 1);
@@ -680,7 +714,16 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
       is_paused: false,
       ...unfinish,
       ...resetInterlude,
+      // A new key each time tells the notification sender this is a fresh "go live"
+      ...('live_key' in roomState ? { live_key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` } : {}),
     });
+    if (first) logPlay(part, first, { startedPart: true });
+    if ('live_key' in roomState) {
+      const exclude = safeStorage(() => localStorage.getItem('anjung_push_endpoint'), null);
+      fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exclude }) }).catch(
+        () => undefined
+      );
+    }
   };
 
   // ---- Setlists --------------------------------------------------------------
@@ -1102,6 +1145,8 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     setInstrumentSlogan,
     instrumentSlogans,
     slogansEditable,
+    notesEnabled: songs.some((s) => 'notes' in s),
+    playLogEnabled,
     removeInstrument,
     moveInstrument,
     setRolePasskey,

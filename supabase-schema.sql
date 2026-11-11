@@ -294,3 +294,67 @@ DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages; 
 -- 9. INSTRUMENT CATCHPHRASES (migration; safe to re-run)
 -- A fun line shown under each instrument in the instrument picker. NULL = the app's built-in one.
 ALTER TABLE public.instruments ADD COLUMN IF NOT EXISTS slogan TEXT CHECK (slogan IS NULL OR char_length(slogan) <= 60);
+
+-- 10. SONG NOTES, PERFORMANCE LOG (SUMMARY), SIDANG COMMENTS, NOTIFICATIONS (migration; safe to re-run)
+-- A short note per song, shown on the Live screen (e.g. "slow ending").
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS notes TEXT CHECK (notes IS NULL OR char_length(notes) <= 200);
+
+-- What was actually performed, and when: one row each time the stage moves to an item.
+-- Titles are copied in, so the summary survives later edits to the setlist.
+CREATE TABLE IF NOT EXISTS public.play_log (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    part_id TEXT NOT NULL,
+    part_number INTEGER NOT NULL,
+    part_name TEXT NOT NULL,
+    queue_item_id TEXT,
+    kind TEXT NOT NULL CHECK (kind IN ('song','break','finish')),
+    title TEXT NOT NULL DEFAULT '',
+    started_part BOOLEAN NOT NULL DEFAULT FALSE,   -- this row is the Bahagian going live
+    up INTEGER,                                    -- thumbs snapshot taken when the Bahagian finishes
+    down INTEGER,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS play_log_session_idx ON public.play_log (session_id, started_at);
+ALTER TABLE public.play_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Play Log" ON public.play_log;
+CREATE POLICY "Public Read Play Log" ON public.play_log FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Play Log" ON public.play_log;
+CREATE POLICY "Public Write Play Log" ON public.play_log FOR ALL USING (true) WITH CHECK (true);
+
+-- Comments people leave to sum up a Sidang (shown in its Summary tab).
+CREATE TABLE IF NOT EXISTS public.sidang_comments (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    author TEXT NOT NULL CHECK (char_length(author) BETWEEN 1 AND 40),
+    instrument TEXT,
+    role TEXT NOT NULL DEFAULT 'player',
+    body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 1000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS sidang_comments_session_idx ON public.sidang_comments (session_id, created_at);
+ALTER TABLE public.sidang_comments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Sidang Comments" ON public.sidang_comments;
+CREATE POLICY "Public Read Sidang Comments" ON public.sidang_comments FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Sidang Comments" ON public.sidang_comments;
+CREATE POLICY "Public Write Sidang Comments" ON public.sidang_comments FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.sidang_comments; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Phones that asked for a notification when a Bahagian goes live.
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+    endpoint TEXT PRIMARY KEY,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    device_id TEXT,
+    lang TEXT NOT NULL DEFAULT 'en',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Push" ON public.push_subscriptions;
+CREATE POLICY "Public Read Push" ON public.push_subscriptions FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Push" ON public.push_subscriptions;
+CREATE POLICY "Public Write Push" ON public.push_subscriptions FOR ALL USING (true) WITH CHECK (true);
+-- live_key changes each time a Bahagian goes live; notified_key is the last one notifications were sent for.
+ALTER TABLE public.room_state ADD COLUMN IF NOT EXISTS live_key TEXT;
+ALTER TABLE public.room_state ADD COLUMN IF NOT EXISTS notified_key TEXT;

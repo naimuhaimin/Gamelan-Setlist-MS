@@ -92,7 +92,8 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         </div>
 
         {/* View switch */}
-        <div className="mt-4 inline-flex p-1 rounded-xl bg-surface border border-line" role="tablist" aria-label={t('View')}>
+        <div className="mt-4 flex justify-center">
+        <div className="inline-flex p-1 rounded-xl bg-surface border border-line" role="tablist" aria-label={t('View')}>
           {views.map((v) => (
             <button
               key={v.id}
@@ -109,6 +110,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
               {v.id === 'live' && isLive && <LiveDot />}
             </button>
           ))}
+          </div>
         </div>
       </div>
 

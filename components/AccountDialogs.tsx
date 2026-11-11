@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { Check, Copy, KeyRound, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
+import { instrumentSlogan } from '@/lib/instrumentSlogans';
 import type { RoleType } from '@/types';
 import { Button, Chip, Field, Input, Modal, cx } from './ui';
 
@@ -141,11 +142,14 @@ export function InstrumentPicker({ open, onClose }: { open: boolean; onClose: ()
             key={i}
             onClick={() => choose(i)}
             className={cx(
-              'h-14 rounded-xl border text-base font-semibold transition-colors',
+              'min-h-[4.25rem] px-2 py-2 rounded-xl border flex flex-col items-center justify-center text-center transition-colors',
               selectedInstrument === i ? 'bg-brass text-brass-ink border-brass' : 'bg-raised border-line hover:border-line-strong'
             )}
           >
-            {i}
+            <span className="text-base font-semibold leading-tight">{i}</span>
+            <span className={cx('mt-0.5 text-[11px] leading-tight italic', selectedInstrument === i ? 'text-brass-ink/75' : 'text-muted')}>
+              {t(instrumentSlogan(i))}
+            </span>
           </button>
         ))}
       </div>

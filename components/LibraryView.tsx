@@ -12,19 +12,43 @@ import type { IntroUnit } from '@/types';
 export function LibraryView() {
   const { songs, instruments, queueItems, isManager, selectedInstrument, removeSong, songTally } = useStage();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string | null>(null); // intro instrument
+  const [rhythm, setRhythm] = useState<string | null>(null);
   const [editing, setEditing] = useState<Song | 'new' | null>(null);
   const [toDelete, setToDelete] = useState<Song | null>(null);
   const { t, lang } = useT();
 
-  const filtered = useMemo(() => {
+  // Each filter row only offers choices that have songs, given the search and the other filter
+  const searched = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return songs.filter(
-      (x) =>
-        (!s || x.title.toLowerCase().includes(s) || x.rhythms.some((r) => r.toLowerCase().includes(s))) &&
-        (!filter || x.intro_instruments.includes(filter))
-    );
-  }, [songs, q, filter]);
+    return s ? songs.filter((x) => x.title.toLowerCase().includes(s) || x.rhythms.some((r) => r.toLowerCase().includes(s))) : songs;
+  }, [songs, q]);
+  const sameRhythm = (x: Song) => !rhythm || x.rhythms.some((r) => r.toLowerCase() === rhythm.toLowerCase());
+  const sameInst = (x: Song) => !filter || x.intro_instruments.includes(filter);
+  const filtered = useMemo(() => searched.filter((x) => sameRhythm(x) && sameInst(x)), [searched, rhythm, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const instrumentChips = useMemo(() => {
+    const pool = searched.filter(sameRhythm);
+    return instruments
+      .map((i) => ({ name: i, count: pool.filter((x) => x.intro_instruments.includes(i)).length }))
+      .filter((c) => c.count > 0 || c.name === filter)
+      .sort((a, b) => Number(b.name === filter) - Number(a.name === filter)); // the chosen one first, so it stays in view
+  }, [searched, instruments, rhythm, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rhythmChips = useMemo(() => {
+    const pool = searched.filter(sameInst);
+    const counts = new Map<string, { name: string; count: number }>();
+    for (const x of songs) for (const r of x.rhythms) if (!counts.has(r.toLowerCase())) counts.set(r.toLowerCase(), { name: r, count: 0 });
+    for (const x of pool) for (const r of new Set(x.rhythms.map((v) => v.toLowerCase()))) counts.get(r)!.count++;
+    return [...counts.values()]
+      .filter((c) => c.count > 0 || c.name.toLowerCase() === rhythm?.toLowerCase())
+      .sort(
+        (a, b) =>
+          Number(b.name.toLowerCase() === rhythm?.toLowerCase()) - Number(a.name.toLowerCase() === rhythm?.toLowerCase()) ||
+          b.count - a.count ||
+          a.name.localeCompare(b.name)
+      );
+  }, [songs, searched, filter, rhythm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const usage = (songId: string) => queueItems.filter((qi) => qi.song_id === songId).length;
 
@@ -49,17 +73,34 @@ export function LibraryView() {
           <Search className="w-4 h-4 text-faint absolute left-3 top-1/2 -translate-y-1/2" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search songs or rhythms')} className="pl-9" />
         </div>
-        {instruments.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+        {instrumentChips.length > 0 && (
+          <FilterRow label={t('Intro')}>
             <Chip selected={!filter} onClick={() => setFilter(null)} className="shrink-0">
               {t('All')}
             </Chip>
-            {instruments.map((i) => (
-              <Chip key={i} selected={filter === i} onClick={() => setFilter(filter === i ? null : i)} className="shrink-0">
-                {lang === 'ms' ? `Intro ${i}` : `${i} intro`}
+            {instrumentChips.map((c) => (
+              <Chip key={c.name} selected={filter === c.name} onClick={() => setFilter(filter === c.name ? null : c.name)} className="shrink-0">
+                {c.name} <span className="ml-1 opacity-60 tabular">{c.count}</span>
               </Chip>
             ))}
-          </div>
+          </FilterRow>
+        )}
+        {rhythmChips.length > 0 && (
+          <FilterRow label={t('Rhythm')}>
+            <Chip selected={!rhythm} onClick={() => setRhythm(null)} className="shrink-0">
+              {t('All')}
+            </Chip>
+            {rhythmChips.map((c) => (
+              <Chip
+                key={c.name}
+                selected={rhythm?.toLowerCase() === c.name.toLowerCase()}
+                onClick={() => setRhythm(rhythm?.toLowerCase() === c.name.toLowerCase() ? null : c.name)}
+                className="shrink-0"
+              >
+                {c.name} <span className="ml-1 opacity-60 tabular">{c.count}</span>
+              </Chip>
+            ))}
+          </FilterRow>
         )}
       </div>
 
@@ -341,5 +382,15 @@ function SongFormModal({ song, onClose }: { song: Song | 'new' | null; onClose: 
         {error && <p className="text-sm text-danger">{error}</p>}
       </form>
     </Modal>
+  );
+}
+
+/** One labelled row of filter chips; scrolls sideways on phones. */
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <span className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted">{label}</span>
+      <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1 min-w-0 sm:flex-wrap">{children}</div>
+    </div>
   );
 }

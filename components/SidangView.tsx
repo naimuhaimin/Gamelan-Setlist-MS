@@ -18,6 +18,7 @@ import { IntermissionRow } from './Intermission';
 import { ChatLauncher } from './SidangChat';
 import { CopySetlistModal } from './SetlistText';
 import { SidangSummary } from './SidangSummary';
+import { SongRequests } from './SongRequests';
 
 type View = 'live' | 'list' | 'summary' | 'edit';
 
@@ -227,6 +228,7 @@ function SidangList({ sessionId }: { sessionId: string }) {
         </React.Fragment>
         );
       })}
+      <SongRequests sessionId={sessionId} />
     </div>
   );
 }

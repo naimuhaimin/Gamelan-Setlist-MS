@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import type {
   ChatMessage,
+  SongRequest,
   PlayLogRow,
   ConvoEvent,
   DatabaseSnapshot,
@@ -356,4 +357,27 @@ export async function savePushSubscription(sub: { endpoint: string; p256dh: stri
 }
 export async function deletePushSubscription(endpoint: string) {
   check(await db().from('push_subscriptions').delete().eq('endpoint', endpoint), 'Turn off notifications');
+}
+
+// ---- Song requests (tables may not exist until the migration has run) ------------
+export async function fetchSongRequests(sessionId: string): Promise<{ requests: SongRequest[]; votes: Array<{ request_id: string; device_id: string }> } | null> {
+  const res = await db().from('song_requests').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }).limit(500);
+  if (res.error) return null;
+  const requests = res.data as SongRequest[];
+  if (!requests.length) return { requests, votes: [] };
+  const v = await db().from('song_request_votes').select('request_id, device_id').in('request_id', requests.map((r) => r.id));
+  return { requests, votes: v.error ? [] : (v.data as Array<{ request_id: string; device_id: string }>) };
+}
+export async function insertSongRequest(r: Omit<SongRequest, 'created_at' | 'handled_note'>) {
+  check(await db().from('song_requests').insert(r), 'Send request');
+}
+export async function updateSongRequest(id: string, updates: Partial<Pick<SongRequest, 'status' | 'handled_note'>>) {
+  check(await db().from('song_requests').update(updates).eq('id', id), 'Update request');
+}
+export async function deleteSongRequest(id: string) {
+  check(await db().from('song_requests').delete().eq('id', id), 'Delete request');
+}
+export async function setRequestVote(requestId: string, deviceId: string, on: boolean) {
+  if (on) check(await db().from('song_request_votes').upsert({ request_id: requestId, device_id: deviceId }, { onConflict: 'request_id,device_id' }), 'Back request');
+  else check(await db().from('song_request_votes').delete().eq('request_id', requestId).eq('device_id', deviceId), 'Remove +1');
 }

@@ -172,3 +172,18 @@ export interface PlayLogRow {
   down: number | null;
   started_at: string;
 }
+
+/** A musician's song suggestion for a Sidang. */
+export interface SongRequest {
+  id: string;
+  session_id: string;
+  song_id: string | null;
+  title: string;
+  note: string | null;
+  device_id: string;
+  author: string;
+  instrument: string | null;
+  status: 'open' | 'added' | 'dismissed';
+  handled_note: string | null;
+  created_at: string;
+}

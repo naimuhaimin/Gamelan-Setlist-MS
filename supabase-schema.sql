@@ -358,3 +358,39 @@ CREATE POLICY "Public Write Push" ON public.push_subscriptions FOR ALL USING (tr
 -- live_key changes each time a Bahagian goes live; notified_key is the last one notifications were sent for.
 ALTER TABLE public.room_state ADD COLUMN IF NOT EXISTS live_key TEXT;
 ALTER TABLE public.room_state ADD COLUMN IF NOT EXISTS notified_key TEXT;
+
+-- 11. SONG REQUESTS (migration; safe to re-run)
+-- Musicians suggest songs for a Sidang; others back them with +1. The Maestro adds or dismisses them.
+CREATE TABLE IF NOT EXISTS public.song_requests (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    song_id TEXT REFERENCES public.songs(id) ON DELETE SET NULL,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+    note TEXT CHECK (note IS NULL OR char_length(note) <= 200),
+    device_id TEXT NOT NULL,
+    author TEXT NOT NULL CHECK (char_length(author) BETWEEN 1 AND 40),
+    instrument TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','added','dismissed')),
+    handled_note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS song_requests_session_idx ON public.song_requests (session_id, created_at);
+ALTER TABLE public.song_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Song Requests" ON public.song_requests;
+CREATE POLICY "Public Read Song Requests" ON public.song_requests FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Song Requests" ON public.song_requests;
+CREATE POLICY "Public Write Song Requests" ON public.song_requests FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.song_requests; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS public.song_request_votes (
+    request_id TEXT NOT NULL REFERENCES public.song_requests(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (request_id, device_id)
+);
+ALTER TABLE public.song_request_votes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Request Votes" ON public.song_request_votes;
+CREATE POLICY "Public Read Request Votes" ON public.song_request_votes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Request Votes" ON public.song_request_votes;
+CREATE POLICY "Public Write Request Votes" ON public.song_request_votes FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.song_request_votes; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

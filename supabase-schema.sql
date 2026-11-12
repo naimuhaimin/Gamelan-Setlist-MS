@@ -394,3 +394,36 @@ CREATE POLICY "Public Read Request Votes" ON public.song_request_votes FOR SELEC
 DROP POLICY IF EXISTS "Public Write Request Votes" ON public.song_request_votes;
 CREATE POLICY "Public Write Request Votes" ON public.song_request_votes FOR ALL USING (true) WITH CHECK (true);
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.song_request_votes; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- 12. ATTENDANCE (migration; safe to re-run)
+-- Players register their name and instrument for a Sidang (one entry per phone);
+-- the Maestro sets how many players each instrument needs for that Sidang.
+CREATE TABLE IF NOT EXISTS public.sidang_attendance (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    name TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 40),
+    instrument TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (session_id, device_id)
+);
+CREATE INDEX IF NOT EXISTS sidang_attendance_session_idx ON public.sidang_attendance (session_id);
+ALTER TABLE public.sidang_attendance ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Attendance" ON public.sidang_attendance;
+CREATE POLICY "Public Read Attendance" ON public.sidang_attendance FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Attendance" ON public.sidang_attendance;
+CREATE POLICY "Public Write Attendance" ON public.sidang_attendance FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.sidang_attendance; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS public.sidang_needs (
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    instrument TEXT NOT NULL,
+    needed INTEGER NOT NULL DEFAULT 0 CHECK (needed BETWEEN 0 AND 50),
+    PRIMARY KEY (session_id, instrument)
+);
+ALTER TABLE public.sidang_needs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Needs" ON public.sidang_needs;
+CREATE POLICY "Public Read Needs" ON public.sidang_needs FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Needs" ON public.sidang_needs;
+CREATE POLICY "Public Write Needs" ON public.sidang_needs FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.sidang_needs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

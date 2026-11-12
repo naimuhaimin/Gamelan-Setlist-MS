@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import type {
+  AttendanceEntry,
   ChatMessage,
   SongRequest,
   PlayLogRow,
@@ -380,4 +381,27 @@ export async function deleteSongRequest(id: string) {
 export async function setRequestVote(requestId: string, deviceId: string, on: boolean) {
   if (on) check(await db().from('song_request_votes').upsert({ request_id: requestId, device_id: deviceId }, { onConflict: 'request_id,device_id' }), 'Back request');
   else check(await db().from('song_request_votes').delete().eq('request_id', requestId).eq('device_id', deviceId), 'Remove +1');
+}
+
+// ---- Attendance (tables may not exist until the migration has run) ---------------
+export async function fetchAttendance(
+  sessionId: string
+): Promise<{ entries: AttendanceEntry[]; needs: Record<string, number> } | null> {
+  const [a, n] = await Promise.all([
+    db().from('sidang_attendance').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }),
+    db().from('sidang_needs').select('instrument, needed').eq('session_id', sessionId),
+  ]);
+  if (a.error || n.error) return null;
+  const needs: Record<string, number> = {};
+  for (const r of n.data as Array<{ instrument: string; needed: number }>) needs[r.instrument] = r.needed;
+  return { entries: a.data as AttendanceEntry[], needs };
+}
+export async function upsertAttendance(e: Omit<AttendanceEntry, 'created_at'>) {
+  check(await db().from('sidang_attendance').upsert(e, { onConflict: 'session_id,device_id' }), 'Register');
+}
+export async function deleteAttendance(id: string) {
+  check(await db().from('sidang_attendance').delete().eq('id', id), 'Remove registration');
+}
+export async function setNeeded(sessionId: string, instrument: string, needed: number) {
+  check(await db().from('sidang_needs').upsert({ session_id: sessionId, instrument, needed }, { onConflict: 'session_id,instrument' }), 'Save players needed');
 }

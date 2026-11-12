@@ -187,3 +187,13 @@ export interface SongRequest {
   handled_note: string | null;
   created_at: string;
 }
+
+/** A player registered for a Sidang (one per phone). */
+export interface AttendanceEntry {
+  id: string;
+  session_id: string;
+  device_id: string;
+  name: string;
+  instrument: string;
+  created_at: string;
+}

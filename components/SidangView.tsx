@@ -19,6 +19,7 @@ import { ChatLauncher } from './SidangChat';
 import { CopySetlistModal } from './SetlistText';
 import { SidangSummary } from './SidangSummary';
 import { SongRequests } from './SongRequests';
+import { Attendance } from './Attendance';
 
 type View = 'live' | 'list' | 'summary' | 'edit';
 
@@ -211,6 +212,7 @@ function SidangList({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10 space-y-5">
+      <Attendance sessionId={sessionId} />
       {myParts.map((p) => {
         const interlude = interludeFor(p);
         return (

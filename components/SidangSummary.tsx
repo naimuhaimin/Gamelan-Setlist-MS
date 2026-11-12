@@ -10,6 +10,7 @@ import { buildSummary, formatClock, formatDuration, type Summary } from '@/lib/s
 import type { PlayLogRow } from '@/types';
 import { ROLE_LABEL } from './SettingsView';
 import { PartLengthChart } from './PartLengthChart';
+import { SummaryPeople } from './SummaryPeople';
 import { Badge, BreakIcon, Button, Card, EmptyState, Input, LiveDot, cx } from './ui';
 
 /** After-event summary of one Sidang: what was played, when, for how long, the ratings, and people's comments. */
@@ -201,6 +202,8 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
           </div>
         </>
       )}
+
+      <SummaryPeople sessionId={sessionId} />
 
       <SidangComments sessionId={sessionId} />
     </div>

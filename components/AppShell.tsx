@@ -8,6 +8,7 @@ import { useChime } from '@/lib/useChime';
 import { useTheme } from '@/lib/useTheme';
 import { formatIntro } from '@/lib/format';
 import { tr, useT } from '@/lib/i18n';
+import * as api from '@/lib/supabaseService';
 import { TopBar, BottomNav } from './TopBar';
 import { InstrumentPicker, LoginModal, ShareModal } from './AccountDialogs';
 import { AccessModal, InstrumentsModal } from './AdminDialogs';
@@ -71,6 +72,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     goLive,
     interludeTracking,
     setInterludeDone,
+    stageLive,
+    selectedInstrument,
   } = useStage();
   const [dialog, setDialog] = useState<Dialog>(null);
   const { t, lang } = useT();
@@ -202,6 +205,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canControl, liveSession, livePart, isFinished, liveInterlude, nextPart, interludeTracking, interludeDone, activeItem, activeIndex, liveQueue, roomState]);
   const lockScreen = useLockScreen(lockInfo, lockControls);
+
+  // ---- App usage: while a Sidang is live, this phone checks in about once a minute ----
+  // (feeds "people using the app" in that Sidang's Summary; silently does nothing before the migration)
+  const viewingSession = stageLive ? liveSession?.id ?? null : null;
+  useEffect(() => {
+    if (!viewingSession) return;
+    let deviceId = '';
+    try {
+      deviceId = localStorage.getItem('gamelan_device_id') || '';
+    } catch {
+      // private mode
+    }
+    if (!deviceId) return;
+    let stopped = false;
+    const ping = () => {
+      if (stopped) return;
+      api
+        .pingViewer({ session_id: viewingSession, device_id: deviceId, role, instrument: selectedInstrument })
+        .then((ok) => {
+          if (!ok) stopped = true; // table not created yet: stop trying
+        })
+        .catch(() => undefined);
+    };
+    ping();
+    const id = setInterval(ping, 60_000);
+    const onVisible = () => document.visibilityState === 'visible' && ping();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [viewingSession, role, selectedInstrument]);
 
   // On by default. Browsers only allow the silent audio after a tap, so whenever the
   // preference is on and it isn't running (first load, or another app took the audio),

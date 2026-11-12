@@ -427,3 +427,21 @@ CREATE POLICY "Public Read Needs" ON public.sidang_needs FOR SELECT USING (true)
 DROP POLICY IF EXISTS "Public Write Needs" ON public.sidang_needs;
 CREATE POLICY "Public Write Needs" ON public.sidang_needs FOR ALL USING (true) WITH CHECK (true);
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.sidang_needs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- 13. APP USAGE DURING A LIVE SIDANG (migration; safe to re-run)
+-- Each phone with the app open while a Sidang is live checks in about once a minute.
+-- first_seen is set on the first check-in only; last_seen moves forward each time.
+CREATE TABLE IF NOT EXISTS public.sidang_viewers (
+    session_id TEXT NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'player',
+    instrument TEXT,
+    first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (session_id, device_id)
+);
+ALTER TABLE public.sidang_viewers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Viewers" ON public.sidang_viewers;
+CREATE POLICY "Public Read Viewers" ON public.sidang_viewers FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Viewers" ON public.sidang_viewers;
+CREATE POLICY "Public Write Viewers" ON public.sidang_viewers FOR ALL USING (true) WITH CHECK (true);

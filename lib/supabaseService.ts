@@ -405,3 +405,24 @@ export async function deleteAttendance(id: string) {
 export async function setNeeded(sessionId: string, instrument: string, needed: number) {
   check(await db().from('sidang_needs').upsert({ session_id: sessionId, instrument, needed }, { onConflict: 'session_id,instrument' }), 'Save players needed');
 }
+
+// ---- App usage during a live Sidang (table may not exist until the migration has run) ----
+export interface ViewerRow {
+  device_id: string;
+  role: string;
+  instrument: string | null;
+  first_seen: string;
+  last_seen: string;
+}
+/** Upsert without first_seen, so the first check-in keeps its time and later ones only move last_seen. */
+export async function pingViewer(v: { session_id: string; device_id: string; role: string; instrument: string | null }) {
+  const res = await db()
+    .from('sidang_viewers')
+    .upsert({ ...v, last_seen: new Date().toISOString() }, { onConflict: 'session_id,device_id' });
+  return !res.error;
+}
+export async function fetchViewers(sessionId: string): Promise<ViewerRow[] | null> {
+  const res = await db().from('sidang_viewers').select('device_id, role, instrument, first_seen, last_seen').eq('session_id', sessionId);
+  if (res.error) return null;
+  return res.data as ViewerRow[];
+}

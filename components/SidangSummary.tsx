@@ -203,7 +203,7 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
         </>
       )}
 
-      <SummaryPeople sessionId={sessionId} />
+      <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} />
 
       <SidangComments sessionId={sessionId} />
     </div>

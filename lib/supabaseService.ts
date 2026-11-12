@@ -426,3 +426,12 @@ export async function fetchViewers(sessionId: string): Promise<ViewerRow[] | nul
   if (res.error) return null;
   return res.data as ViewerRow[];
 }
+/** Registrations per Sidang, for comparing a Sidang with the rest of its event. */
+export async function fetchAttendanceCounts(sessionIds: string[]): Promise<Record<string, number> | null> {
+  if (!sessionIds.length) return {};
+  const res = await db().from('sidang_attendance').select('session_id').in('session_id', sessionIds);
+  if (res.error) return null;
+  const out: Record<string, number> = {};
+  for (const r of res.data as Array<{ session_id: string }>) out[r.session_id] = (out[r.session_id] ?? 0) + 1;
+  return out;
+}

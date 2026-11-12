@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, MapPin, Pencil, Plus } from 'lucide-react';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronLeft, MapPin, Pencil, Plus } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import { Button, EmptyState } from './ui';
@@ -18,7 +18,31 @@ export function ConvoView({ eventId }: { eventId: string }) {
   const [creatingSidang, setCreatingSidang] = useState(false);
   const { t } = useT();
   const event = events.find((e) => e.id === eventId);
-  const list = sessions.filter((s) => s.event_id === eventId).sort((a, b) => a.sidang_number - b.sidang_number);
+  // Sort by date, oldest or newest first (remembered on this phone); same date falls back to Sidang number
+  const [newestFirst, setNewestFirst] = useState(false);
+  useEffect(() => {
+    try {
+      setNewestFirst(localStorage.getItem('anjung_sidang_sort') === 'desc');
+    } catch {
+      // private mode
+    }
+  }, []);
+  const toggleSort = () => {
+    setNewestFirst((v) => {
+      try {
+        localStorage.setItem('anjung_sidang_sort', v ? 'asc' : 'desc');
+      } catch {
+        // private mode
+      }
+      return !v;
+    });
+  };
+  const list = sessions
+    .filter((s) => s.event_id === eventId)
+    .sort((a, b) => {
+      const byDate = (a.date || '').localeCompare(b.date || '') || a.sidang_number - b.sidang_number;
+      return newestFirst ? -byDate : byDate;
+    });
 
   if (!event)
     return (
@@ -62,6 +86,16 @@ export function ConvoView({ eventId }: { eventId: string }) {
       <section className="mt-6">
         <div className="flex items-end gap-3 mb-3">
           <h2 className="font-display text-2xl font-bold flex-1">Sidang</h2>
+          {list.length > 1 && (
+            <Button
+              variant="ghost"
+              onClick={toggleSort}
+              aria-label={newestFirst ? t('Sorted by date, newest first. Tap for oldest first.') : t('Sorted by date, oldest first. Tap for newest first.')}
+            >
+              {newestFirst ? <ArrowDownWideNarrow className="w-4 h-4" /> : <ArrowUpNarrowWide className="w-4 h-4" />}
+              {newestFirst ? t('Newest first') : t('Oldest first')}
+            </Button>
+          )}
           {isManager && (
             <Button variant="primary" onClick={() => setCreatingSidang(true)}>
               <Plus className="w-4 h-4" /> {t('New Sidang')}

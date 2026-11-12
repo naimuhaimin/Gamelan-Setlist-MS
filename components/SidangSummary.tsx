@@ -73,6 +73,8 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10 space-y-5">
+      <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} only="usage" />
+
       {!playLogEnabled ? (
         <Card>
           <EmptyState title={t('The summary isn’t switched on yet')}>
@@ -203,7 +205,7 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
         </>
       )}
 
-      <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} />
+      <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} only="attendance" />
 
       <SidangComments sessionId={sessionId} />
     </div>

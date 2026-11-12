@@ -53,7 +53,7 @@ export function useAttendance(sessionId: string, eventId: string | null = null) 
       timer = setTimeout(() => load(), 200);
     };
     const channel = client
-      .channel(`attendance_${sessionId}`)
+      .channel(`attendance_${sessionId}_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sidang_attendance', filter: `session_id=eq.${sessionId}` }, refresh)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'sidang_attendance' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sidang_needs', filter: `session_id=eq.${sessionId}` }, refresh)

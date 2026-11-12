@@ -64,7 +64,7 @@ export function useChat(sessionId: string | undefined, table: api.MessageTable =
     if (!sessionId || !available || !supabase) return;
     const client = supabase;
     const channel = client
-      .channel(`${table}_${sessionId}`)
+      .channel(`${table}_${sessionId}_${Math.random().toString(36).slice(2, 8)}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table, filter: `session_id=eq.${sessionId}` },

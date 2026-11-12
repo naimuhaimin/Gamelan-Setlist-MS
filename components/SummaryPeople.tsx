@@ -35,7 +35,16 @@ function peakAtOnce(rows: api.ViewerRow[]): { peak: number; at: string | null } 
 }
 
 /** Summary section: app users while live, and attendance insights. */
-export function SummaryPeople({ sessionId, startedAt }: { sessionId: string; startedAt: string | null }) {
+export function SummaryPeople({
+  sessionId,
+  startedAt,
+  only,
+}: {
+  sessionId: string;
+  startedAt: string | null;
+  /** Show just one of the two cards (the Summary puts App users at the very top). */
+  only?: 'usage' | 'attendance';
+}) {
   const { roomState, instruments, sessions } = useStage();
   const { t } = useT();
   const att = useAttendance(sessionId, sessions.find((s) => s.id === sessionId)?.event_id ?? null);
@@ -141,8 +150,8 @@ export function SummaryPeople({ sessionId, startedAt }: { sessionId: string; sta
     };
   }, [viewers, att.entries, att.needs, instruments, startedAt, eventCounts, siblings, sessionId]);
 
-  const showUsage = viewers !== null && viewers !== undefined;
-  const showAttendance = att.available === true;
+  const showUsage = only !== 'attendance' && viewers !== null && viewers !== undefined;
+  const showAttendance = only !== 'usage' && att.available === true;
   if (!showUsage && !showAttendance) return null;
 
   const instrumentMax = usage ? Math.max(1, ...usage.byInstrument.values()) : 1;

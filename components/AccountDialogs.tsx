@@ -213,11 +213,13 @@ export function ShareModal({
             {copied ? <Check className="w-4 h-4 text-ok" /> : <Copy className="w-4 h-4" />}
           </Button>
         </div>
+        {!target && (
         <ul className="w-full text-sm text-muted space-y-1.5">
           <li>• {t('Musicians just open the link and pick their instrument.')}</li>
           <li>• {t('Controllers and the Maestro switch role in Settings (no passkey).')}</li>
           <li>• {t('Every device updates live. Keep screens open during the performance.')}</li>
         </ul>
+        )}
         <div className="w-full">
           <Chip selected={false} onClick={() => window.open(url, '_blank')} className="w-full">
             {t('Open in a new tab')}

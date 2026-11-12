@@ -15,8 +15,11 @@ export const formatDate = (d: string | null | undefined) =>
     ? new Date(d + 'T00:00').toLocaleDateString(getLang() === 'ms' ? 'ms-MY' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
-export const sidangUrl = (id: string, view?: 'live' | 'list') =>
+export const sidangUrl = (id: string, view?: 'live' | 'list' | 'attendance') =>
   `${typeof window !== 'undefined' ? window.location.origin : ''}/sidang/${encodeURIComponent(id)}${view ? `?view=${view}` : ''}`;
+
+/** Opens a Sidang's Attendance tab with the registration form already open. */
+export const registerUrl = (id: string) => `${sidangUrl(id, 'attendance')}&register=1`;
 
 /** Konvo thumbnail, or a logo pattern when there is no photo. */
 export function ConvoThumb({ event, className }: { event: ConvoEvent; className?: string }) {

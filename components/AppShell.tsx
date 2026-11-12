@@ -292,7 +292,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // First visit on a device: ask the musician for their instrument
   useEffect(() => {
-    if (loaded && !loadError && !instrumentChosen && role === 'player' && instruments.length) setDialog('instrument');
+    const viaRegisterLink = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('register') === '1';
+    if (loaded && !loadError && !instrumentChosen && role === 'player' && instruments.length && !viaRegisterLink) setDialog('instrument');
   }, [loaded, loadError, instrumentChosen, role, instruments.length]);
 
   const theme = useTheme();

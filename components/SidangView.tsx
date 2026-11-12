@@ -125,7 +125,13 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         {view === 'live' && (isLive ? <StageView /> : <NotLive sessionId={sessionId} onList={() => setView('list')} />)}
         {view === 'list' && <SidangList sessionId={sessionId} />}
         {view === 'summary' && <SidangSummary sessionId={sessionId} />}
-        {view === 'attendance' && <Attendance sessionId={sessionId} />}
+        {view === 'attendance' && (
+          <Attendance
+            sessionId={sessionId}
+            autoRegister={params.get('register') === '1'}
+            onAutoRegisterDone={() => router.replace(`${pathname}?view=attendance`, { scroll: false })}
+          />
+        )}
         {view === 'edit' && isManager && (
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
             <SetlistEditor sessionId={sessionId} onShowStage={() => setView('live')} />

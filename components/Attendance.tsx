@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Check, Minus, Pencil, Plus, UserCheck, Users, X } from 'lucide-react';
+import { AlertTriangle, Check, Link2, Minus, Pencil, Plus, UserCheck, Users, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import { useAttendance } from '@/lib/useAttendance';
 import { Button, Card, Chip, EmptyState, Field, IconButton, Input, Modal, cx } from './ui';
+import { useShell } from './AppShell';
+import { registerUrl } from './Cards';
 
 const NAME_KEY = 'anjung_chat_name';
 const readName = () => {
@@ -28,13 +30,36 @@ const saveName = (n: string) => {
  * compares, per instrument, players registered (gold bar) with players needed (grey bar below),
  * on one shared scale with a gridline per player. The Maestro sets the numbers needed.
  */
-export function Attendance({ sessionId }: { sessionId: string }) {
-  const { instruments, selectedInstrument, isManager, notify } = useStage();
+export function Attendance({
+  sessionId,
+  autoRegister,
+  onAutoRegisterDone,
+}: {
+  sessionId: string;
+  /** Opened from the registration link: show the form straight away (unless already registered). */
+  autoRegister?: boolean;
+  onAutoRegisterDone?: () => void;
+}) {
+  const { instruments, selectedInstrument, isManager, notify, sessions, instrumentChosen, selectInstrument } = useStage();
+  const { openShare } = useShell();
   const { t } = useT();
   const att = useAttendance(sessionId);
   const [registering, setRegistering] = useState(false);
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const sessionName = sessions.find((s) => s.id === sessionId)?.name ?? 'Sidang';
+
+  // Registration link: open the form once the data has loaded
+  const autoOpened = React.useRef(false);
+  React.useEffect(() => {
+    if (!autoRegister || autoOpened.current || att.available !== true) return;
+    autoOpened.current = true;
+    if (att.mine) {
+      notify(t('You’re already registered for {name}.', { name: sessionName }), 'info');
+      onAutoRegisterDone?.();
+    } else setRegistering(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRegister, att.available, att.mine]);
 
   const rows = useMemo(() => {
     const names = [...instruments];
@@ -118,6 +143,15 @@ export function Attendance({ sessionId }: { sessionId: string }) {
             </Button>
           </>
         )}
+      </Card>
+
+      {/* One link people can tap to register, without finding their way through the app */}
+      <Card className="px-4 sm:px-5 py-3 flex flex-wrap items-center gap-2">
+        <Link2 className="w-5 h-5 text-brass shrink-0" />
+        <span className="flex-1 min-w-[12rem] text-sm text-muted">{t('Send this link to the group. It opens the registration form for this Sidang.')}</span>
+        <Button size="sm" onClick={() => openShare({ url: registerUrl(sessionId), title: t('Registration link · {name}', { name: sessionName }) })}>
+          <Link2 className="w-4 h-4" /> {t('Share registration link')}
+        </Button>
       </Card>
 
       {/* Bar chart: registered players, with the minimum as a reference mark */}
@@ -254,13 +288,18 @@ export function Attendance({ sessionId }: { sessionId: string }) {
 
       <RegisterModal
         open={registering}
-        onClose={() => setRegistering(false)}
+        onClose={() => {
+          setRegistering(false);
+          if (autoRegister) onAutoRegisterDone?.();
+        }}
         initialName={att.mine?.name ?? readName()}
         initialInstrument={att.mine?.instrument ?? selectedInstrument ?? ''}
         instruments={instruments}
         onSave={async (name, instrument) => {
           await att.register(name, instrument);
           saveName(name);
+          // First time here (came from the link): remember the instrument for cue alerts too
+          if (!instrumentChosen || !selectedInstrument) selectInstrument(instrument);
           notify(t('Registered as {name} · {instrument}', { name, instrument }));
         }}
       />

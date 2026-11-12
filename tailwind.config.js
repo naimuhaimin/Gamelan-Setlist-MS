@@ -39,6 +39,8 @@ module.exports = {
           light: 'rgb(var(--stop-light) / <alpha-value>)',
           soft: 'var(--stop-soft)',
         },
+        'chart-song': 'rgb(var(--chart-song) / <alpha-value>)',
+        'chart-break': 'rgb(var(--chart-break) / <alpha-value>)',
         live: 'rgb(var(--songket) / <alpha-value>)',
         ok: 'rgb(var(--jade) / <alpha-value>)',
         danger: 'rgb(var(--danger) / <alpha-value>)',

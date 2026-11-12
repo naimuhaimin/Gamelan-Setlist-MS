@@ -9,6 +9,7 @@ import * as api from '@/lib/supabaseService';
 import { buildSummary, formatClock, formatDuration, type Summary } from '@/lib/summary';
 import type { PlayLogRow } from '@/types';
 import { ROLE_LABEL } from './SettingsView';
+import { PartLengthChart } from './PartLengthChart';
 import { Badge, BreakIcon, Button, Card, EmptyState, Input, LiveDot, cx } from './ui';
 
 /** After-event summary of one Sidang: what was played, when, for how long, the ratings, and people's comments. */
@@ -132,6 +133,8 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
               )}
             </Card>
           )}
+
+          <PartLengthChart parts={summary.parts} />
 
           {/* Bahagian by Bahagian */}
           {summary.parts.map((p) => (

@@ -29,6 +29,9 @@
   --stop: 226 54 72;
   --stop-light: 255 140 150;
   --stop-soft: rgba(226, 54, 72, 0.17);
+  /* Chart marks (validated for colour-blind separation against the chart surface) */
+  --chart-song: 189 138 44;
+  --chart-break: 226 54 72;
 }
 
 /* Light: ivory paper like the logo's background; accents deepened for contrast on white. */
@@ -57,6 +60,8 @@
   --stop: 196 22 48;
   --stop-light: 170 16 40;
   --stop-soft: rgba(196, 22, 48, 0.1);
+  --chart-song: 168 116 24;
+  --chart-break: 196 22 48;
 }
 
 @layer base {
@@ -110,4 +115,9 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+/* Diagonal stripes so break time never depends on colour alone */
+.chart-stripes {
+  background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.28) 0 2px, transparent 2px 6px);
 }

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, CalendarDays, Check, ChevronLeft, ClipboardList, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
+import { BarChart3, CalendarDays, Users, Check, ChevronLeft, ClipboardList, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
@@ -21,7 +21,7 @@ import { SidangSummary } from './SidangSummary';
 import { SongRequests } from './SongRequests';
 import { Attendance } from './Attendance';
 
-type View = 'live' | 'list' | 'summary' | 'edit';
+type View = 'attendance' | 'live' | 'list' | 'summary' | 'edit';
 
 export function SidangView({ sessionId }: { sessionId: string }) {
   const { sessions, events, liveSession, isManager, stageLive, canControl, role, isFinished } = useStage();
@@ -39,7 +39,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
 
   const requested = params.get('view') as View | null;
   const view: View =
-    requested === 'edit' && isManager ? 'edit' : requested === 'live' || requested === 'list' || requested === 'summary' ? requested : isLive ? 'live' : 'list';
+    requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : isLive ? 'live' : 'list';
   const setView = (v: View) => router.replace(`${pathname}?view=${v}`, { scroll: false });
 
   if (!session)
@@ -52,6 +52,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
     );
 
   const views: Array<{ id: View; label: string; icon: React.ReactNode }> = [
+    { id: 'attendance', label: t('Attendance'), icon: <Users className="w-4 h-4" /> },
     { id: 'live', label: t('Live'), icon: <MonitorPlay className="w-4 h-4" /> },
     { id: 'list', label: t('List'), icon: <List className="w-4 h-4" /> },
     { id: 'summary', label: t('Summary'), icon: <BarChart3 className="w-4 h-4" /> },
@@ -103,14 +104,16 @@ export function SidangView({ sessionId }: { sessionId: string }) {
               key={v.id}
               role="tab"
               aria-selected={view === v.id}
+              aria-label={v.label}
+              title={v.label}
               onClick={() => setView(v.id)}
               className={cx(
-                'h-9 px-2.5 min-[400px]:px-3.5 sm:px-4 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 sm:gap-2 transition-colors',
+                'h-9 px-3 sm:px-4 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 sm:gap-2 transition-colors',
                 view === v.id ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'
               )}
             >
               {v.icon}
-              {v.label}
+              <span className={view === v.id ? '' : 'hidden sm:inline'}>{v.label}</span>
               {v.id === 'live' && isLive && <LiveDot />}
             </button>
           ))}
@@ -122,6 +125,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         {view === 'live' && (isLive ? <StageView /> : <NotLive sessionId={sessionId} onList={() => setView('list')} />)}
         {view === 'list' && <SidangList sessionId={sessionId} />}
         {view === 'summary' && <SidangSummary sessionId={sessionId} />}
+        {view === 'attendance' && <Attendance sessionId={sessionId} />}
         {view === 'edit' && isManager && (
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
             <SetlistEditor sessionId={sessionId} onShowStage={() => setView('live')} />
@@ -212,7 +216,6 @@ function SidangList({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10 space-y-5">
-      <Attendance sessionId={sessionId} />
       {myParts.map((p) => {
         const interlude = interludeFor(p);
         return (

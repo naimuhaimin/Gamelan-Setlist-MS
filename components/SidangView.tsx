@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BarChart3, CalendarDays, Users, Check, ChevronLeft, ClipboardList, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
+import * as api from '@/lib/supabaseService';
 import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
 import { formatIntro } from '@/lib/format';
@@ -24,7 +25,7 @@ import { Attendance } from './Attendance';
 type View = 'attendance' | 'live' | 'list' | 'summary' | 'edit';
 
 export function SidangView({ sessionId }: { sessionId: string }) {
-  const { sessions, events, liveSession, isManager, stageLive, canControl, role, isFinished } = useStage();
+  const { sessions, events, liveSession, isManager, stageLive, canControl, role, isFinished, parts, resolveQueue, roomState, nextPart } = useStage();
   const { openShare } = useShell();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,9 +38,43 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   const event = events.find((e) => e.id === session?.event_id);
   const isLive = liveSession?.id === sessionId && stageLive;
 
+  // ---- Which tab to open when none is asked for, from the Sidang's date ----
+  // before the day: Attendance · on the day: List (Summary once it's finished) · after: Summary · live: Live
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const sameDay = !!session?.date && session.date === today;
+  // The last Bahagian that has songs; when it has been played to the end, the Sidang is done
+  const lastPart = parts
+    .filter((p) => p.session_id === sessionId && resolveQueue(p.id).length > 0)
+    .sort((a, b) => b.part_number - a.part_number)[0];
+  const finishedOnStage = roomState.session_id === sessionId && isFinished && (!nextPart || roomState.part_id === lastPart?.id);
+  const [finishedInLog, setFinishedInLog] = useState(false);
+  useEffect(() => {
+    if (!sameDay || !lastPart) return;
+    let alive = true;
+    api.partFinished(lastPart.id).then((done) => alive && setFinishedInLog(done)).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [sameDay, lastPart?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const defaultView: View = isLive
+    ? 'live'
+    : !session?.date
+      ? 'list'
+      : session.date > today
+        ? 'attendance'
+        : session.date < today
+          ? 'summary'
+          : finishedOnStage || finishedInLog
+            ? 'summary'
+            : 'list';
+
   const requested = params.get('view') as View | null;
   const view: View =
-    requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : isLive ? 'live' : 'list';
+    requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : defaultView;
   const setView = (v: View) => router.replace(`${pathname}?view=${v}`, { scroll: false });
 
   if (!session)

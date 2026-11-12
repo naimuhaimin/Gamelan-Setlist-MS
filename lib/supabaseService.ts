@@ -447,3 +447,8 @@ export async function fetchAttendanceCounts(sessionIds: string[]): Promise<Recor
   for (const r of res.data as Array<{ session_id: string }>) out[r.session_id] = (out[r.session_id] ?? 0) + 1;
   return out;
 }
+/** Has this Bahagian been played through to the end (a "finish" in the performance log)? */
+export async function partFinished(partId: string): Promise<boolean> {
+  const res = await db().from('play_log').select('id').eq('part_id', partId).eq('kind', 'finish').limit(1);
+  return !res.error && (res.data?.length ?? 0) > 0;
+}

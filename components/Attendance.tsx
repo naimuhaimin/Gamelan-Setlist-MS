@@ -10,6 +10,8 @@ import { useShell } from './AppShell';
 import { registerUrl } from './Cards';
 
 const NAME_KEY = 'anjung_chat_name';
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const readName = () => {
   try {
     return localStorage.getItem(NAME_KEY) || '';
@@ -46,7 +48,6 @@ export function Attendance({
   const att = useAttendance(sessionId);
   const [registering, setRegistering] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const sessionName = sessions.find((s) => s.id === sessionId)?.name ?? 'Sidang';
 
   // Registration link: open the form once the data has loaded
@@ -191,11 +192,10 @@ export function Attendance({
           <ul className="-mx-2">
             {shown.map((r) => (
               <li key={r.name}>
-                <div className={cx('flex items-center gap-2 rounded-lg px-2 py-2.5', expanded === r.name && 'bg-raised/60')}>
+                <div className="flex items-center gap-2 rounded-lg px-2 py-2.5 hover:bg-raised/40">
                   <button
                     type="button"
-                    onClick={() => setExpanded((x) => (x === r.name ? null : r.name))}
-                    aria-expanded={expanded === r.name}
+                    onClick={() => document.getElementById(`who-${r.name}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                     aria-label={
                       r.short
                         ? t('{instrument}: {have} registered, lacking {n}', { instrument: r.name, have: r.have, n: r.short })
@@ -256,34 +256,65 @@ export function Attendance({
                     </div>
                   )}
                 </div>
-                {expanded === r.name && (
-                  <div className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1">
-                    {r.people.length ? (
-                      r.people.map((p) => (
-                        <span key={p.id} className="h-8 pl-3 pr-1 rounded-full bg-raised border border-line inline-flex items-center gap-1 text-sm">
-                          {p.name}
-                          {(isManager || p.id === att.mine?.id) && (
-                            <button
-                              type="button"
-                              aria-label={t('Remove {name}', { name: p.name })}
-                              onClick={() => run(() => att.remove(p.id))}
-                              className="w-6 h-6 grid place-items-center rounded-full text-faint hover:text-danger"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted">{t('Nobody yet.')}</span>
-                    )}
-                  </div>
-                )}
               </li>
             ))}
           </ul>
         )}
-        <p className="mt-2 text-xs text-faint">{t('Tap an instrument to see who registered.')}</p>
+      </Card>
+
+      {/* Who registered, by instrument */}
+      <Card className="p-4 sm:p-5">
+        <h2 className="font-display text-xl font-bold">{t('Who’s registered')}</h2>
+        {att.entries.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">{t('Nobody has registered yet.')}</p>
+        ) : (
+          <div className="mt-3 space-y-4">
+            {rows
+              .filter((r) => r.have > 0 || r.short > 0)
+              .map((r) => (
+                <section key={r.name} id={`who-${r.name}`} className="scroll-mt-24">
+                  <div className="flex items-baseline gap-2 pb-1.5 border-b border-line">
+                    <h3 className="font-semibold flex-1 min-w-0">{r.name}</h3>
+                    {r.short > 0 && (
+                      <span className="text-xs font-semibold text-songket-light inline-flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> {t('Lacking {n}', { n: r.short })}
+                      </span>
+                    )}
+                    <span className="text-sm font-bold tabular">{r.have}</span>
+                  </div>
+                  {r.people.length ? (
+                    <ol className="mt-1">
+                      {r.people.map((p, i) => {
+                        const isMe = p.id === att.mine?.id;
+                        return (
+                          <li key={p.id} className="flex items-center gap-2 py-1.5 text-sm">
+                            <span className="w-5 text-faint tabular text-right shrink-0">{i + 1}.</span>
+                            <span className="flex-1 min-w-0 break-words">
+                              {p.name}
+                              {isMe && <span className="ml-1.5 text-xs text-brass">({t('you')})</span>}
+                            </span>
+                            <span className="text-xs text-faint tabular shrink-0">{when(p.created_at)}</span>
+                            {(isManager || isMe) && (
+                              <button
+                                type="button"
+                                aria-label={t('Remove {name}', { name: p.name })}
+                                onClick={() => run(() => att.remove(p.id))}
+                                className="w-7 h-7 grid place-items-center rounded-full text-faint hover:text-danger shrink-0"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  ) : (
+                    <p className="mt-1.5 text-sm text-muted">{t('Nobody yet.')}</p>
+                  )}
+                </section>
+              ))}
+          </div>
+        )}
       </Card>
 
       <RegisterModal

@@ -66,40 +66,31 @@ export function Attendance({ sessionId }: { sessionId: string }) {
       </Card>
     );
 
-  const anyNeeds = rows.some((r) => r.needed > 0);
+  const anyMin = rows.some((r) => r.needed > 0);
   const shown = editing ? rows : rows.filter((r) => r.needed > 0 || r.have > 0);
-  const totalNeeded = rows.reduce((n, r) => n + r.needed, 0);
   const totalHave = att.entries.length;
-  const shortRows = rows.filter((r) => r.short > 0);
+  const lacking = rows.filter((r) => r.short > 0);
   const scale = Math.max(1, ...shown.map((r) => Math.max(r.needed, r.have)));
   const pct = (n: number) => `${(n / scale) * 100}%`;
 
   return wrap(
     <>
-      {/* Headline */}
+      {/* Headline: who's registered; only a shortfall is highlighted */}
       <Card className="p-4 sm:p-5">
-        <div className="flex items-end gap-3 flex-wrap">
-          <div className="flex-1 min-w-[10rem]">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted">{t('Players registered')}</div>
-            <div className="font-display text-4xl font-bold tabular leading-tight">
-              {totalHave}
-              {anyNeeds && <span className="text-muted text-2xl"> / {totalNeeded}</span>}
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted">{t('Players registered')}</div>
+        <div className="font-display text-4xl font-bold tabular leading-tight">{totalHave}</div>
+        {lacking.length > 0 && (
+          <div className="mt-3 rounded-xl border border-songket/50 bg-songket-soft px-3.5 py-3">
+            <div className="text-sm font-semibold text-songket-light inline-flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4" /> {t('Lacking players')}
             </div>
-          </div>
-          {anyNeeds && (
-            <div className={cx('text-sm font-semibold inline-flex items-center gap-1.5', shortRows.length ? 'text-songket-light' : 'text-jade-light')}>
-              {shortRows.length ? <AlertTriangle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-              {shortRows.length ? t('{n} players still needed', { n: shortRows.reduce((n, r) => n + r.short, 0) }) : t('Every instrument is covered')}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {lacking.map((r) => (
+                <span key={r.name} className="h-7 px-2.5 rounded-full bg-songket text-white text-xs font-semibold inline-flex items-center gap-1">
+                  {r.name} <span className="opacity-80">· {t('{n} more', { n: r.short })}</span>
+                </span>
+              ))}
             </div>
-          )}
-        </div>
-        {shortRows.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {shortRows.map((r) => (
-              <span key={r.name} className="h-7 px-2.5 rounded-full bg-songket-soft text-songket-light text-xs font-semibold inline-flex items-center">
-                {r.name} −{r.short}
-              </span>
-            ))}
           </div>
         )}
       </Card>
@@ -129,134 +120,133 @@ export function Attendance({ sessionId }: { sessionId: string }) {
         )}
       </Card>
 
-      {/* Bar chart */}
+      {/* Bar chart: registered players, with the minimum as a reference mark */}
       <Card className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
           <h2 className="font-display text-xl font-bold flex-1 min-w-0">{t('By instrument')}</h2>
           {isManager && (
             <Button size="sm" variant={editing ? 'primary' : 'secondary'} onClick={() => setEditing((v) => !v)}>
               {editing ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
-              {editing ? t('Done') : t('Players needed')}
+              {editing ? t('Done') : t('Minimum players')}
             </Button>
           )}
         </div>
-        {/* Legend: two series, so always shown */}
-        <div className="flex items-center gap-4 text-xs text-muted mb-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted mb-2">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-4 h-3 rounded-[3px] bg-chart-song" /> {t('Registered')}
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-4 h-1.5 rounded-full bg-line-strong" /> {t('Needed')}
-          </span>
+          {anyMin && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-0.5 h-3.5 bg-ink/70" /> {t('Minimum')}
+            </span>
+          )}
+          {lacking.length > 0 && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-4 h-3 rounded-[3px] bg-chart-break chart-stripes" /> {t('Lacking')}
+            </span>
+          )}
         </div>
 
-        {!anyNeeds && !editing && isManager && (
-          <p className="text-xs text-muted mb-2">{t('Tap “Players needed” to set how many players each instrument needs.')}</p>
+        {!anyMin && !editing && isManager && (
+          <p className="text-xs text-muted mb-2">{t('Tap “Minimum players” to set the least number of players each instrument needs.')}</p>
         )}
 
         {shown.length === 0 ? (
           <p className="py-4 text-sm text-muted">{t('Nobody has registered yet.')}</p>
         ) : (
           <ul className="-mx-2">
-            {shown.map((r) => {
-              const status =
-                r.needed === 0 ? null : r.short > 0 ? (
-                  <span className="inline-flex items-center gap-1 text-songket-light">
-                    <AlertTriangle className="w-3.5 h-3.5" /> {t('Short {n}', { n: r.short })}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-jade-light">
-                    <Check className="w-3.5 h-3.5" /> {r.extra ? t('+{n} extra', { n: r.extra }) : t('Enough')}
-                  </span>
-                );
-              return (
-                <li key={r.name}>
-                  <div className={cx('flex items-center gap-2 rounded-lg px-2 py-2.5', expanded === r.name && 'bg-raised/60')}>
-                    <button
-                      type="button"
-                      onClick={() => setExpanded((x) => (x === r.name ? null : r.name))}
-                      aria-expanded={expanded === r.name}
-                      aria-label={
-                        r.needed
-                          ? t('{instrument}: {have} of {needed} registered', { instrument: r.name, have: r.have, needed: r.needed })
-                          : t('{instrument}: {have} registered', { instrument: r.name, have: r.have })
-                      }
-                      className="flex-1 min-w-0 grid grid-cols-[6rem_minmax(0,1fr)_3.25rem] items-center gap-3 text-left"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold leading-tight break-words">{r.name}</span>
-                        {!editing && status && <span className="block text-[11px] font-semibold">{status}</span>}
-                      </span>
-                      {/* Paired bars on one scale, with a gridline at every player */}
-                      <span className="relative h-7 flex flex-col justify-center gap-1">
-                        <span
-                          aria-hidden
-                          className="absolute inset-0 pointer-events-none"
-                          style={{
-                            backgroundImage: 'linear-gradient(to right, rgb(var(--line)) 1px, transparent 1px)',
-                            backgroundSize: `${100 / scale}% 100%`,
-                          }}
-                        />
-                        <span className="relative h-3">
-                          {r.have > 0 && <span className="absolute left-0 top-0 h-full rounded-r-[4px] bg-chart-song" style={{ width: pct(r.have) }} />}
-                        </span>
-                        <span className="relative h-1.5">
-                          {r.needed > 0 && <span className="absolute left-0 top-0 h-full rounded-r-full bg-line-strong" style={{ width: pct(r.needed) }} />}
-                        </span>
-                      </span>
-                      <span className="text-right text-sm tabular">
-                        <b className="text-ink">{r.have}</b>
-                        <span className="text-muted">{r.needed ? ` / ${r.needed}` : ''}</span>
-                      </span>
-                    </button>
-                    {editing && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <IconButton
-                          label={t('Fewer {instrument}', { instrument: r.name })}
-                          size="sm"
-                          variant="secondary"
-                          disabled={r.needed <= 0}
-                          onClick={() => run(() => att.setNeeded(r.name, r.needed - 1))}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </IconButton>
-                        <IconButton
-                          label={t('More {instrument}', { instrument: r.name })}
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => run(() => att.setNeeded(r.name, r.needed + 1))}
-                        >
-                          <Plus className="w-4 h-4" />
-                        </IconButton>
-                      </div>
-                    )}
-                  </div>
-                  {expanded === r.name && (
-                    <div className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1">
-                      {r.people.length ? (
-                        r.people.map((p) => (
-                          <span key={p.id} className="h-8 pl-3 pr-1 rounded-full bg-raised border border-line inline-flex items-center gap-1 text-sm">
-                            {p.name}
-                            {(isManager || p.id === att.mine?.id) && (
-                              <button
-                                type="button"
-                                aria-label={t('Remove {name}', { name: p.name })}
-                                onClick={() => run(() => att.remove(p.id))}
-                                className="w-6 h-6 grid place-items-center rounded-full text-faint hover:text-danger"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted">{t('Nobody yet.')}</span>
+            {shown.map((r) => (
+              <li key={r.name}>
+                <div className={cx('flex items-center gap-2 rounded-lg px-2 py-2.5', expanded === r.name && 'bg-raised/60')}>
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((x) => (x === r.name ? null : r.name))}
+                    aria-expanded={expanded === r.name}
+                    aria-label={
+                      r.short
+                        ? t('{instrument}: {have} registered, lacking {n}', { instrument: r.name, have: r.have, n: r.short })
+                        : t('{instrument}: {have} registered', { instrument: r.name, have: r.have })
+                    }
+                    className="flex-1 min-w-0 grid grid-cols-[6rem_minmax(0,1fr)_2rem] items-center gap-3 text-left"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-tight break-words">{r.name}</span>
+                      {r.short > 0 && !editing && (
+                        <span className="block text-[11px] font-semibold text-songket-light">{t('Lacking {n}', { n: r.short })}</span>
                       )}
+                      {editing && <span className="block text-[11px] text-muted tabular">{t('Minimum {n}', { n: r.needed })}</span>}
+                    </span>
+                    {/* One bar on a shared scale; a gridline at every player */}
+                    <span className="relative h-6 flex items-center">
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          backgroundImage: 'linear-gradient(to right, rgb(var(--line)) 1px, transparent 1px)',
+                          backgroundSize: `${100 / scale}% 100%`,
+                        }}
+                      />
+                      <span className="relative h-3.5 w-full flex gap-[2px]">
+                        {r.have > 0 && (
+                          <span className={cx('h-full bg-chart-song', r.short ? '' : 'rounded-r-[4px]')} style={{ width: pct(r.have) }} />
+                        )}
+                        {r.short > 0 && (
+                          <span className="h-full bg-chart-break chart-stripes rounded-r-[4px]" style={{ width: `calc(${pct(r.short)} - 2px)` }} />
+                        )}
+                      </span>
+                      {r.needed > 0 && (
+                        <span aria-hidden className="absolute top-0 bottom-0 w-0.5 bg-ink/70 rounded-full" style={{ left: `calc(${pct(r.needed)} - 1px)` }} />
+                      )}
+                    </span>
+                    <span className={cx('text-right text-base font-bold tabular', r.short ? 'text-songket-light' : 'text-ink')}>{r.have}</span>
+                  </button>
+                  {editing && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <IconButton
+                        label={t('Lower the minimum for {instrument}', { instrument: r.name })}
+                        size="sm"
+                        variant="secondary"
+                        disabled={r.needed <= 0}
+                        onClick={() => run(() => att.setNeeded(r.name, r.needed - 1))}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </IconButton>
+                      <IconButton
+                        label={t('Raise the minimum for {instrument}', { instrument: r.name })}
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => run(() => att.setNeeded(r.name, r.needed + 1))}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </IconButton>
                     </div>
                   )}
-                </li>
-              );
-            })}
+                </div>
+                {expanded === r.name && (
+                  <div className="flex flex-wrap gap-1.5 px-2 pb-2 pt-1">
+                    {r.people.length ? (
+                      r.people.map((p) => (
+                        <span key={p.id} className="h-8 pl-3 pr-1 rounded-full bg-raised border border-line inline-flex items-center gap-1 text-sm">
+                          {p.name}
+                          {(isManager || p.id === att.mine?.id) && (
+                            <button
+                              type="button"
+                              aria-label={t('Remove {name}', { name: p.name })}
+                              onClick={() => run(() => att.remove(p.id))}
+                              className="w-6 h-6 grid place-items-center rounded-full text-faint hover:text-danger"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted">{t('Nobody yet.')}</span>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
           </ul>
         )}
         <p className="mt-2 text-xs text-faint">{t('Tap an instrument to see who registered.')}</p>

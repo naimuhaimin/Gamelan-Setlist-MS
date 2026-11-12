@@ -247,6 +247,7 @@ export const MS: Record<string, string> = {
   "Minimum": "Minimum",
   "Minimum players": "Pemain minimum",
   "Minimum {n}": "Minimum {n}",
+  "Minimums are shared by every Sidang in {event}.": "Minimum dikongsi oleh setiap Sidang dalam {event}.",
   "Minimums met": "Minimum dicapai",
   "More {instrument}": "Tambah {instrument}",
   "Most at once": "Paling ramai serentak",

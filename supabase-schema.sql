@@ -445,3 +445,25 @@ DROP POLICY IF EXISTS "Public Read Viewers" ON public.sidang_viewers;
 CREATE POLICY "Public Read Viewers" ON public.sidang_viewers FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Public Write Viewers" ON public.sidang_viewers;
 CREATE POLICY "Public Write Viewers" ON public.sidang_viewers FOR ALL USING (true) WITH CHECK (true);
+
+-- 14. MINIMUM PLAYERS PER EVENT (migration; safe to re-run)
+-- One set of minimums per event (Konvokesyen etc.), used by every Sidang in it.
+CREATE TABLE IF NOT EXISTS public.event_needs (
+    event_id TEXT NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+    instrument TEXT NOT NULL,
+    needed INTEGER NOT NULL DEFAULT 0 CHECK (needed BETWEEN 0 AND 50),
+    PRIMARY KEY (event_id, instrument)
+);
+ALTER TABLE public.event_needs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Event Needs" ON public.event_needs;
+CREATE POLICY "Public Read Event Needs" ON public.event_needs FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Event Needs" ON public.event_needs;
+CREATE POLICY "Public Write Event Needs" ON public.event_needs FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.event_needs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+-- Carry over minimums already set on a Sidang into its event's template (highest value wins)
+INSERT INTO public.event_needs (event_id, instrument, needed)
+SELECT s.event_id, n.instrument, MAX(n.needed)
+FROM public.sidang_needs n JOIN public.sessions s ON s.id = n.session_id
+WHERE s.event_id IS NOT NULL
+GROUP BY s.event_id, n.instrument
+ON CONFLICT (event_id, instrument) DO NOTHING;

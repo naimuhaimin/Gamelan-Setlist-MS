@@ -42,10 +42,12 @@ export function Attendance({
   autoRegister?: boolean;
   onAutoRegisterDone?: () => void;
 }) {
-  const { instruments, selectedInstrument, isManager, notify, sessions, instrumentChosen, selectInstrument } = useStage();
+  const { instruments, selectedInstrument, isManager, notify, sessions, events, instrumentChosen, selectInstrument } = useStage();
   const { openShare } = useShell();
   const { t } = useT();
-  const att = useAttendance(sessionId);
+  const eventId = sessions.find((s) => s.id === sessionId)?.event_id ?? null;
+  const eventName = events.find((e) => e.id === eventId)?.name ?? null;
+  const att = useAttendance(sessionId, eventId);
   const [registering, setRegistering] = useState(false);
   const [editing, setEditing] = useState(false);
   const sessionName = sessions.find((s) => s.id === sessionId)?.name ?? 'Sidang';
@@ -184,6 +186,11 @@ export function Attendance({
 
         {!anyMin && !editing && isManager && (
           <p className="text-xs text-muted mb-2">{t('Tap “Minimum players” to set the least number of players each instrument needs.')}</p>
+        )}
+        {(editing || anyMin) && eventName && att.needsScope === 'event' && (
+          <p className={cx('text-xs mb-2', editing ? 'text-brass font-semibold' : 'text-faint')}>
+            {t('Minimums are shared by every Sidang in {event}.', { event: eventName })}
+          </p>
         )}
 
         {shown.length === 0 ? (

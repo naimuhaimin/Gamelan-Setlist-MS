@@ -38,7 +38,7 @@ function peakAtOnce(rows: api.ViewerRow[]): { peak: number; at: string | null } 
 export function SummaryPeople({ sessionId, startedAt }: { sessionId: string; startedAt: string | null }) {
   const { roomState, instruments, sessions } = useStage();
   const { t } = useT();
-  const att = useAttendance(sessionId);
+  const att = useAttendance(sessionId, sessions.find((s) => s.id === sessionId)?.event_id ?? null);
   const [viewers, setViewers] = useState<api.ViewerRow[] | null | undefined>(undefined);
   const [eventCounts, setEventCounts] = useState<Record<string, number> | null>(null);
 

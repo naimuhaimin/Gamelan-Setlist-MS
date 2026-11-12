@@ -384,17 +384,26 @@ export async function setRequestVote(requestId: string, deviceId: string, on: bo
 }
 
 // ---- Attendance (tables may not exist until the migration has run) ---------------
+/**
+ * Registrations for a Sidang, plus the minimum players per instrument.
+ * Minimums come from the Sidang's event (one template for the whole event); a Sidang without
+ * an event, or before the event_needs migration, uses its own sidang_needs.
+ */
 export async function fetchAttendance(
-  sessionId: string
-): Promise<{ entries: AttendanceEntry[]; needs: Record<string, number> } | null> {
-  const [a, n] = await Promise.all([
+  sessionId: string,
+  eventId: string | null
+): Promise<{ entries: AttendanceEntry[]; needs: Record<string, number>; needsScope: 'event' | 'sidang' } | null> {
+  const [a, ev, sd] = await Promise.all([
     db().from('sidang_attendance').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }),
+    eventId ? db().from('event_needs').select('instrument, needed').eq('event_id', eventId) : Promise.resolve({ data: null, error: { message: 'no event' } }),
     db().from('sidang_needs').select('instrument, needed').eq('session_id', sessionId),
   ]);
-  if (a.error || n.error) return null;
+  if (a.error) return null;
+  const useEvent = !!eventId && !ev.error;
+  const rows = (useEvent ? ev.data : sd.error ? [] : sd.data) as Array<{ instrument: string; needed: number }> | null;
   const needs: Record<string, number> = {};
-  for (const r of n.data as Array<{ instrument: string; needed: number }>) needs[r.instrument] = r.needed;
-  return { entries: a.data as AttendanceEntry[], needs };
+  for (const r of rows ?? []) needs[r.instrument] = r.needed;
+  return { entries: a.data as AttendanceEntry[], needs, needsScope: useEvent ? 'event' : 'sidang' };
 }
 export async function upsertAttendance(e: Omit<AttendanceEntry, 'created_at'>) {
   check(await db().from('sidang_attendance').upsert(e, { onConflict: 'session_id,device_id' }), 'Register');
@@ -402,8 +411,11 @@ export async function upsertAttendance(e: Omit<AttendanceEntry, 'created_at'>) {
 export async function deleteAttendance(id: string) {
   check(await db().from('sidang_attendance').delete().eq('id', id), 'Remove registration');
 }
-export async function setNeeded(sessionId: string, instrument: string, needed: number) {
-  check(await db().from('sidang_needs').upsert({ session_id: sessionId, instrument, needed }, { onConflict: 'session_id,instrument' }), 'Save players needed');
+export async function setNeeded(scope: { eventId: string } | { sessionId: string }, instrument: string, needed: number) {
+  if ('eventId' in scope)
+    check(await db().from('event_needs').upsert({ event_id: scope.eventId, instrument, needed }, { onConflict: 'event_id,instrument' }), 'Save minimum players');
+  else
+    check(await db().from('sidang_needs').upsert({ session_id: scope.sessionId, instrument, needed }, { onConflict: 'session_id,instrument' }), 'Save minimum players');
 }
 
 // ---- App usage during a live Sidang (table may not exist until the migration has run) ----

@@ -114,7 +114,10 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
     doc.rect(M, y + 2, 12, 0.8, 'F');
     y += 8;
   };
-  const wrap = (text: string, width: number) => doc.splitTextToSize(clean(text), width) as string[];
+  const wrap = (text: string, width: number, style: 'normal' | 'bold' | 'italic', size: number) => {
+    font(style, size);
+    return doc.splitTextToSize(clean(text), width) as string[];
+  };
 
   // ---------------------------------------------------------------- header band
   fill(C.paper);
@@ -193,7 +196,7 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
   if (highlights.length) {
     font('normal', 9.5);
     color(C.ink);
-    for (const line of wrap(highlights.join('   ·   '), CW)) {
+    for (const line of wrap(highlights.join('   ·   '), CW, 'normal', 9.5)) {
       doc.text(line, M, y);
       y += 5;
     }
@@ -318,7 +321,7 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
     }
 
     const callout = (title: string, body: string, warn: boolean) => {
-      const lines = wrap(body, CW - 8);
+      const lines = wrap(body, CW - 8, 'normal', 8.5);
       const h = 8 + lines.length * 4.4;
       ensure(h + 2);
       fill(warn ? C.crimsonSoft : C.goldSoft);
@@ -373,7 +376,7 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
     };
     head();
     for (const r of ins.rows) {
-      const names = wrap(r.people.map((p) => p.name).join(', ') || '–', cols[4].w - 2);
+      const names = wrap(r.people.map((p) => p.name).join(', ') || '–', cols[4].w - 2, 'normal', 8.5);
       const h = Math.max(r.lacking ? 9.5 : 6, names.length * 4.2 + 2);
       if (y + h > BOTTOM) {
         newPage();
@@ -447,7 +450,7 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
       }
       y += 5;
       p.items.forEach((it, i) => {
-        const title = wrap(it.kind === 'break' && !/^stop\b/i.test(it.title.trim()) ? `STOP: ${it.title}` : it.title, cols[1].w - 2);
+        const title = wrap(it.kind === 'break' && !/^stop\b/i.test(it.title.trim()) ? `STOP: ${it.title}` : it.title, cols[1].w - 2, it.kind === 'break' ? 'bold' : 'normal', 9);
         const h = Math.max(5.4, title.length * 4.2 + 1.2);
         ensure(h + 1);
         let x = M + 2;
@@ -493,7 +496,7 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
   if (input.comments.length) {
     section(t('Comments'), 26);
     for (const m of input.comments) {
-      const body = wrap(m.body, CW - 6);
+      const body = wrap(m.body, CW - 6, 'normal', 9);
       const h = 6 + body.length * 4.4 + 3;
       ensure(h);
       const who = [m.author, m.instrument, m.role && m.role !== 'player' ? input.roleLabel(m.role) : null].filter(Boolean).join(' · ');

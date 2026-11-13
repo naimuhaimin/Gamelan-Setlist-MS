@@ -263,6 +263,12 @@ export function SettingsView() {
             {connection === 'live' ? t('Live sync on') : connection === 'connecting' ? t('Connecting…') : t('Offline')}
           </span>
         </p>
+        <p className="text-xs text-faint tabular" title={process.env.NEXT_PUBLIC_APP_COMMIT || undefined}>
+          v{process.env.NEXT_PUBLIC_APP_VERSION}
+          {process.env.NEXT_PUBLIC_APP_CHANNEL
+            ? ` · ${process.env.NEXT_PUBLIC_APP_CHANNEL}${process.env.NEXT_PUBLIC_APP_COMMIT ? ` · ${process.env.NEXT_PUBLIC_APP_COMMIT}` : ''}`
+            : ''}
+        </p>
       </section>
     </div>
   );

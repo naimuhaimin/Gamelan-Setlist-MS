@@ -14,11 +14,13 @@ import type { PlayLogRow } from '@/types';
 import { ROLE_LABEL } from './SettingsView';
 import { PartLengthChart } from './PartLengthChart';
 import { SummaryPeople } from './SummaryPeople';
+import { SummaryRequests } from './SummaryRequests';
+import { computeRequestInsights } from '@/lib/requestInsights';
 import { Badge, BreakIcon, Button, Card, EmptyState, Input, LiveDot, cx } from './ui';
 
 /** After-event summary of one Sidang: what was played, when, for how long, the ratings, and people's comments. */
 export function SidangSummary({ sessionId }: { sessionId: string }) {
-  const { sessions, events, instruments, roomState, queueItems, tally, playLogEnabled, isFinished, notify } = useStage();
+  const { sessions, events, instruments, songs, roomState, queueItems, tally, playLogEnabled, isFinished, notify } = useStage();
   const { t, lang } = useT();
   const session = sessions.find((s) => s.id === sessionId);
   const [rows, setRows] = useState<PlayLogRow[] | null>(null);
@@ -82,11 +84,12 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
     try {
       const event = events.find((e) => e.id === session.event_id) ?? null;
       const siblings = session.event_id ? sessions.filter((s) => s.event_id === session.event_id).map((s) => s.id) : [];
-      const [viewers, att, counts, comments] = await Promise.all([
+      const [viewers, att, counts, comments, reqs] = await Promise.all([
         api.fetchViewers(session.id).catch(() => null),
         api.fetchAttendance(session.id, session.event_id).catch(() => null),
         siblings.length > 1 ? api.fetchAttendanceCounts(siblings).catch(() => null) : Promise.resolve(null),
         api.fetchChat(session.id, 'sidang_comments').catch(() => null),
+        api.fetchSongRequests(session.id).catch(() => null),
       ]);
       const insights = att
         ? computeInsights({
@@ -113,6 +116,14 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
         insights,
         registeredCount: att?.entries.length ?? 0,
         comments: comments ?? [],
+        requests: reqs
+          ? computeRequestInsights({
+              requests: reqs.requests,
+              votes: reqs.votes,
+              summary,
+              songTitle: (id) => songs.find((s) => s.id === id)?.title,
+            })
+          : null,
         roleLabel: (r) => t(ROLE_LABEL[r as keyof typeof ROLE_LABEL] ?? r),
         logoUrl: typeof logoMark === 'string' ? logoMark : logoMark.src,
       });
@@ -195,6 +206,7 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
           <PartLengthChart parts={summary.parts} />
 
           <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} only="attendance" />
+          <SummaryRequests sessionId={sessionId} summary={summary} />
 
     
           {/* Bahagian by Bahagian */}

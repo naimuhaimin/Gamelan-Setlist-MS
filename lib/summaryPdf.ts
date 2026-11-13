@@ -3,6 +3,7 @@ import type { ChatMessage } from '@/types';
 import type { Summary } from '@/lib/summary';
 import { formatClock, formatDuration } from '@/lib/summary';
 import type { AppUsage, AttendanceInsights } from '@/lib/attendanceInsights';
+import type { RequestInsights, RequestOutcome } from '@/lib/requestInsights';
 
 /**
  * The Sidang summary as a printable A4 PDF report, drawn with jsPDF (loaded only when needed).
@@ -23,6 +24,7 @@ export interface SummaryReportInput {
   insights: AttendanceInsights | null;
   registeredCount: number;
   comments: ChatMessage[];
+  requests?: RequestInsights | null;
   roleLabel: (role: string) => string;
   logoUrl: string;
 }
@@ -409,6 +411,93 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
       doc.setLineWidth(0.2);
       doc.line(M, y - 3.6, M + CW, y - 3.6);
     }
+    y += 2;
+  }
+
+  // ---------------------------------------------------------------- song requests
+  const rq = input.requests;
+  if (rq && rq.total > 0) {
+    section(t('Song request insights'), 50);
+    const avg = (n: number | null) => (n === null ? '–' : String(Math.round(n * 10) / 10));
+    const facts = [
+      `${t('Requests')}: ${rq.total} (${t('from {n} people', { n: rq.people })})`,
+      `${t('Played')}: ${rq.played.length}/${rq.total}`,
+      `${t('+1 given')}: ${rq.totalVotes}`,
+    ];
+    font('normal', 9.5);
+    color(C.ink);
+    doc.text(clean(facts.join('   ·   ')), M, y);
+    y += 5.5;
+    const extra = [
+      rq.requestedAvgUp !== null
+        ? `${t('Average thumbs up per song')}: ${avg(rq.requestedAvgUp)} ${t('requested')}${rq.otherAvgUp !== null ? ` · ${avg(rq.otherAvgUp)} ${t('for the rest')}` : ''}`
+        : null,
+      rq.lateRequests > 0 ? t('{n} requested after the Sidang started', { n: rq.lateRequests }) : null,
+    ].filter(Boolean) as string[];
+    if (extra.length) {
+      font('normal', 9);
+      color(C.muted);
+      doc.text(clean(extra.join('   ·   ')), M, y);
+      y += 6;
+    }
+
+    const table = (title: string, rows: RequestOutcome[], last: (o: RequestOutcome) => string, played: boolean) => {
+      ensure(18);
+      y += 2;
+      font('bold', 10);
+      color(played ? C.jade : C.ink);
+      doc.text(clean(title), M, y);
+      y += 5;
+      if (!rows.length) {
+        font('normal', 9);
+        color(C.muted);
+        doc.text(clean(played ? t('None of the requests were played.') : t('Every request was played.')), M, y);
+        y += 6;
+        return;
+      }
+      fill(C.goldSoft);
+      doc.rect(M, y - 4.2, CW, 6.5, 'F');
+      font('bold', 7.5);
+      color(C.muted);
+      doc.text(clean(t('Song').toUpperCase()), M + 2, y);
+      doc.text(clean(t('Requested by').toUpperCase()), M + 72, y);
+      doc.text('+1', M + 128, y, { align: 'right' });
+      doc.text(clean((played ? t('Played') : t('Status')).toUpperCase()), M + CW - 2, y, { align: 'right' });
+      y += 6;
+      for (const o of rows) {
+        const title = wrap(o.title, 66, 'bold', 9);
+        const h = Math.max(5.6, title.length * 4.2 + 1.4);
+        ensure(h + 1);
+        color(C.ink);
+        title.forEach((l, k) => doc.text(l, M + 2, y + k * 4.2));
+        font('normal', 8.5);
+        color(C.muted);
+        doc.text(clean([o.author, o.instrument].filter(Boolean).join(' · ')), M + 72, y, { maxWidth: 48 });
+        font('bold', 9);
+        color(o.votes ? C.jade : C.faint);
+        doc.text(String(o.votes), M + 128, y, { align: 'right' });
+        font('normal', 8.5);
+        color(C.ink);
+        doc.text(clean(last(o)), M + CW - 2, y, { align: 'right' });
+        y += h;
+        stroke(C.line);
+        doc.setLineWidth(0.15);
+        doc.line(M, y - 3.8, M + CW, y - 3.8);
+      }
+      y += 1;
+    };
+    table(
+      t('Requested and played ({n})', { n: rq.played.length }),
+      rq.played,
+      (o) => `${o.partName ?? ''} ${formatClock(o.playedAt)}  +${o.up} / -${o.down}`,
+      true
+    );
+    table(
+      t('Requested but not played ({n})', { n: rq.notPlayed.length }),
+      rq.notPlayed,
+      (o) => (o.status === 'dismissed' ? t('Not taken') : o.status === 'added' ? t('Added but not played') : t('Still open')),
+      false
+    );
     y += 2;
   }
 

@@ -219,7 +219,7 @@ export function SummaryPeople({
   );
 }
 
-function Tile({ label, value, note, warn }: { label: string; value: React.ReactNode; note?: string; warn?: boolean }) {
+export function Tile({ label, value, note, warn }: { label: string; value: React.ReactNode; note?: string; warn?: boolean }) {
   return (
     <div className="rounded-xl bg-raised/50 border border-line px-3 py-2.5 min-w-0">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted truncate">{label}</div>
@@ -229,7 +229,7 @@ function Tile({ label, value, note, warn }: { label: string; value: React.ReactN
   );
 }
 
-function Callout({ title, children, tone }: { title: string; children: React.ReactNode; tone?: 'warn' }) {
+export function Callout({ title, children, tone }: { title: string; children: React.ReactNode; tone?: 'warn' }) {
   return (
     <div className={cx('rounded-xl border px-3.5 py-2.5 text-sm', tone === 'warn' ? 'border-songket/50 bg-songket-soft' : 'border-line bg-raised/40')}>
       <div className={cx('font-semibold inline-flex items-center gap-1.5', tone === 'warn' && 'text-songket-light')}>

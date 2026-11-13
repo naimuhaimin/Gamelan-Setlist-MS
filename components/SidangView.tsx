@@ -13,7 +13,7 @@ import { useShell } from './AppShell';
 import { StageView } from './StageView';
 import { SetlistEditor } from './SetlistEditor';
 import { SidangModal } from './SidangModal';
-import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, SongNote, cx } from './ui';
+import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, SongNote, VoteButtons, cx } from './ui';
 import { formatDate, sidangUrl } from './Cards';
 import { IntermissionRow } from './Intermission';
 import { ChatLauncher } from './SidangChat';
@@ -295,7 +295,7 @@ function PartSection({
   liveItemId: string | null;
   liveRef: React.MutableRefObject<HTMLLIElement | null>;
 }) {
-  const { isCued, roomState } = useStage();
+  const { isCued, roomState, votesEnabled, tally, vote } = useStage();
   const { t } = useT();
   return (
     <Card className={cx('overflow-hidden', isLivePart && !finished && 'border-songket/50')}>
@@ -321,14 +321,13 @@ function PartSection({
                 className={cx(
                   'flex items-start gap-3 px-4 sm:px-5 py-3 transition-colors',
                   now && 'bg-songket-soft ring-1 ring-inset ring-songket/60',
-                  done && 'opacity-45',
                   r.isBreak && !now && 'bg-stop/[0.06]'
                 )}
               >
-                <span className="w-7 pt-0.5 text-center text-sm font-semibold text-muted tabular shrink-0">
+                <span className={cx('w-7 pt-0.5 text-center text-sm font-semibold text-muted tabular shrink-0', done && 'opacity-45')}>
                   {done ? <Check className="w-4 h-4 inline text-jade-light" /> : i + 1}
                 </span>
-                <div className="min-w-0 flex-1">
+                <div className={cx('min-w-0 flex-1', done && 'opacity-45')}>
                   {r.isBreak ? (
                     <div className="flex items-center gap-2 text-stop-light font-semibold">
                       <BreakIcon className="w-4 h-4" /> {r.song.title}
@@ -355,6 +354,11 @@ function PartSection({
                     </>
                   )}
                 </div>
+                {votesEnabled && !r.isBreak && (
+                  <span className="pt-0.5">
+                    <VoteButtons {...tally(r.queueItem.id)} onVote={(v) => vote(r.queueItem.id, v)} label={r.song.title} />
+                  </span>
+                )}
               </li>
             );
           })}

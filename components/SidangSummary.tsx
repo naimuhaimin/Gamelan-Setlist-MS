@@ -139,6 +139,9 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
 
           <PartLengthChart parts={summary.parts} />
 
+          <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} only="attendance" />
+
+    
           {/* Bahagian by Bahagian */}
           {summary.parts.map((p) => (
             <React.Fragment key={p.partId}>
@@ -205,7 +208,9 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
         </>
       )}
 
-      <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} only="attendance" />
+      {!(playLogEnabled && rows !== null && summary.parts.length > 0) && (
+        <SummaryPeople sessionId={sessionId} startedAt={summary.startedAt} only="attendance" />
+      )}
 
       <SidangComments sessionId={sessionId} />
     </div>

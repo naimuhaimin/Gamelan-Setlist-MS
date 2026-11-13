@@ -435,7 +435,7 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
       [
         t('+1 given'),
         rq.totalDowns ? `${rq.totalVotes} / -${rq.totalDowns}` : String(rq.totalVotes),
-        rq.totalDowns ? t('{n} dislikes', { n: rq.totalDowns }) : rq.mostWanted && rq.mostWanted.votes ? t('most for {title}', { title: rq.mostWanted.title }) : undefined,
+        rq.totalDowns ? t(rq.totalDowns === 1 ? '{n} dislike' : '{n} dislikes', { n: rq.totalDowns }) : rq.mostWanted && rq.mostWanted.votes ? t('most for {title}', { title: rq.mostWanted.title }) : undefined,
         C.goldSoft,
       ],
       [t('Likes per song'), avg(rq.requestedAvgUp), rq.requestedAvgUp === null ? t('none played yet') : t('requested songs'), C.goldSoft],
@@ -457,7 +457,64 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
         doc.text(clean(note), x + 3, y + 16.6, { maxWidth: tw4 - 5 });
       }
     });
-    y += 19 + 8;
+    y += 19 + 6;
+
+    // -- the top requested song (most likes) and what happened to it
+    const top = rq.topRequest;
+    if (top) {
+      ensure(28);
+      const h = top.played ? 24 : 20;
+      fill(C.goldSoft);
+      doc.roundedRect(M, y, CW, h, 2, 2, 'F');
+      fill(C.gold);
+      doc.rect(M, y, 1.4, h, 'F');
+      font('bold', 7);
+      color(C.gold);
+      doc.text(clean(t('Top requested song').toUpperCase()), M + 5, y + 5.5, { charSpace: 0.3 });
+      font('bold', 14);
+      color(C.ink);
+      doc.text(clean(top.title), M + 5, y + 12.2, { maxWidth: CW - 70 });
+      font('normal', 8);
+      color(C.muted);
+      doc.text(
+        clean([t('by {name}', { name: top.author }), top.instrument, top.note ? `"${top.note}"` : null].filter(Boolean).join(' · ')),
+        M + 5,
+        y + 17,
+        { maxWidth: CW - 70 }
+      );
+      // likes / dislikes on the right
+      font('bold', 16);
+      color(C.jade);
+      doc.text(`+${top.votes}`, M + CW - (top.downs ? 26 : 5), y + 12.2, { align: 'right' });
+      if (top.downs) {
+        color(C.crimson);
+        doc.text(`-${top.downs}`, M + CW - 5, y + 12.2, { align: 'right' });
+      }
+      font('normal', 7.5);
+      color(C.muted);
+      doc.text(clean(top.downs ? `${t(top.votes === 1 ? 'like' : 'likes')} / ${t(top.downs === 1 ? 'dislike' : 'dislikes')}` : t(top.votes === 1 ? 'like' : 'likes')), M + CW - 5, y + 17, { align: 'right' });
+      if (top.played) {
+        font('bold', 8);
+        color(C.jade);
+        doc.text(
+          clean(`${t('Played in {part} at {time}', { part: top.partName ?? '', time: formatClock(top.playedAt) })}  ·  ${t('On stage')} +${top.up} / -${top.down}`),
+          M + 5,
+          y + 21.6
+        );
+      } else {
+        font('bold', 8);
+        color(C.muted);
+        doc.text(
+          clean(top.status === 'dismissed' ? t('Not taken') : top.status === 'added' ? t('Added but not played') : t('Still open')),
+          M + CW - 5,
+          y + 5.5,
+          { align: 'right' }
+        );
+      }
+      y += h + 7;
+    } else {
+      y += 2;
+    }
 
     // -- what happened to the requests: one stacked bar
     const groups = [

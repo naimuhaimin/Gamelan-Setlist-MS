@@ -35,6 +35,8 @@ export interface RequestInsights {
   requestedAvgUp: number | null;
   otherAvgUp: number | null;
   mostWanted: RequestOutcome | null;
+  /** The request with the most likes (ties: fewer dislikes, then the earlier one); null if nobody liked any. */
+  topRequest: RequestOutcome | null;
   lateRequests: number; // made after the Sidang started
 }
 
@@ -103,6 +105,8 @@ export function computeRequestInsights(input: {
     requestedAvgUp: avg(playedRequested),
     otherAvgUp: avg(others),
     mostWanted: [...outcomes].sort(byVotes)[0] ?? null,
+    topRequest:
+      [...outcomes].filter((o) => o.votes > 0).sort((a, b) => b.votes - a.votes || a.downs - b.downs || a.createdAt.localeCompare(b.createdAt))[0] ?? null,
     lateRequests: start === null ? 0 : outcomes.filter((o) => Date.parse(o.createdAt) > start).length,
   };
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, HandHeart, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Check, HandHeart, ThumbsDown, ThumbsUp, Trophy } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 import * as api from '@/lib/supabaseService';
 import { formatClock, type Summary } from '@/lib/summary';
 import { computeRequestInsights, type RequestOutcome } from '@/lib/requestInsights';
@@ -75,7 +75,7 @@ export function SummaryRequests({ sessionId, summary }: { sessionId: string; sum
               value={ins.totalDowns ? `${ins.totalVotes} / −${ins.totalDowns}` : ins.totalVotes}
               note={
                 ins.totalDowns
-                  ? t('{n} dislikes', { n: ins.totalDowns })
+                  ? plural(ins.totalDowns, '{n} dislike', '{n} dislikes')
                   : ins.mostWanted && ins.mostWanted.votes > 0
                     ? t('most for {title}', { title: ins.mostWanted.title })
                     : undefined
@@ -87,6 +87,8 @@ export function SummaryRequests({ sessionId, summary }: { sessionId: string; sum
               note={ins.otherAvgUp === null ? t('requested songs') : t('requested · {n} for the rest', { n: fmtAvg(ins.otherAvgUp) })}
             />
           </div>
+          {ins.topRequest && <TopRequest o={ins.topRequest} />}
+
           {(compare || ins.lateRequests > 0) && (
             <p className="mt-3 text-sm text-muted">
               {[compare, ins.lateRequests > 0 ? t('{n} requested after the Sidang started', { n: ins.lateRequests }) : null].filter(Boolean).join(' · ')}
@@ -129,6 +131,51 @@ export function SummaryRequests({ sessionId, summary }: { sessionId: string; sum
         </>
       )}
     </Card>
+  );
+}
+
+/** The request with the most likes, and what happened to it. */
+function TopRequest({ o }: { o: RequestOutcome }) {
+  const { t } = useT();
+  return (
+    <div className="mt-4 rounded-xl border border-brass/50 bg-brass-soft/40 p-3.5 sm:p-4 flex gap-3">
+      <span className="w-10 h-10 rounded-xl bg-brass text-brass-ink grid place-items-center shrink-0">
+        <Trophy className="w-5 h-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-brass">{t('Top requested song')}</div>
+        <div className="font-display text-xl font-bold leading-tight truncate">{o.title}</div>
+        <div className="text-sm text-muted mt-0.5">
+          {t('by {name}', { name: o.author })}
+          {o.instrument ? ` · ${o.instrument}` : ''}
+          {o.note ? ` · “${o.note}”` : ''}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <span className="inline-flex items-center gap-1 font-semibold text-jade-light tabular">
+            <ThumbsUp className="w-4 h-4" /> {plural(o.votes, '{n} like', '{n} likes')}
+          </span>
+          {o.downs > 0 && (
+            <span className="inline-flex items-center gap-1 font-semibold text-songket-light tabular">
+              <ThumbsDown className="w-4 h-4" /> {plural(o.downs, '{n} dislike', '{n} dislikes')}
+            </span>
+          )}
+          {o.played ? (
+            <Badge tone="ok">
+              <Check className="w-3.5 h-3.5" /> {t('Played in {part} at {time}', { part: o.partName ?? '', time: formatClock(o.playedAt) })}
+            </Badge>
+          ) : (
+            <Badge tone={o.status === 'dismissed' ? 'neutral' : o.status === 'added' ? 'override' : 'brass'}>
+              {o.status === 'dismissed' ? t('Not taken') : o.status === 'added' ? t('Added but not played') : t('Still open')}
+            </Badge>
+          )}
+        </div>
+        {o.played && (
+          <p className="text-xs text-muted mt-1.5 tabular">
+            {t('On stage: {up} 👍 · {down} 👎', { up: o.up, down: o.down })}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 

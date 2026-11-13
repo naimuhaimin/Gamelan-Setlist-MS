@@ -22,7 +22,7 @@ import { SidangSummary } from './SidangSummary';
 import { SongRequests } from './SongRequests';
 import { Attendance } from './Attendance';
 import { registeredHint, useAttendance } from '@/lib/useAttendance';
-import { useSwipeNav } from '@/lib/useSwipeNav';
+import { TabCarousel, usePhone } from './TabCarousel';
 import { rememberEventsSpot } from '@/lib/eventsMemory';
 
 type View = 'attendance' | 'requests' | 'live' | 'list' | 'summary' | 'edit';
@@ -95,43 +95,25 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   const requested = params.get('view') as View | null;
   const view: View =
     requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'requests' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : defaultView;
-  const setView = (v: View) => router.replace(`${pathname}?view=${v}`, { scroll: false });
-
-  // ---- Swipe between the tabs on phones; past the ends, on to the next main tab (Home / Live) ----
-  const order: View[] = ['attendance', 'requests', 'live', 'list', 'summary', ...(isManager ? (['edit'] as View[]) : [])];
-  const tabLabel: Record<View, string> = {
-    attendance: t('Attendance'),
-    requests: t('Requests'),
-    live: t('Live'),
-    list: t('List'),
-    summary: t('Summary'),
-    edit: t('Edit'),
+  const urlView = view;
+  const [pendingView, setPendingView] = useState<View | null>(null);
+  useEffect(() => {
+    if (pendingView && urlView === pendingView) setPendingView(null);
+  }, [urlView, pendingView]);
+  const shown: View = pendingView ?? urlView;
+  const setView = (v: View) => {
+    setPendingView(v);
+    router.replace(`${pathname}?view=${v}`, { scroll: false });
   };
-  const at = Math.max(0, order.indexOf(view));
-  const [slideFrom, setSlideFrom] = useState<'left' | 'right' | null>(null);
-  const swipe = useSwipeNav<HTMLDivElement>({
-    enabled: !!session,
-    nextLabel: at < order.length - 1 ? tabLabel[order[at + 1]] : t('Live'),
-    prevLabel: at > 0 ? tabLabel[order[at - 1]] : t('Home'),
-    onNext: () => {
-      if (at < order.length - 1) {
-        setSlideFrom('right');
-        setView(order[at + 1]);
-      } else {
-        rememberEventsSpot();
-        router.push('/live');
-      }
-    },
-    onPrev: () => {
-      if (at > 0) {
-        setSlideFrom('left');
-        setView(order[at - 1]);
-      } else {
-        rememberEventsSpot();
-        router.push('/');
-      }
-    },
-  });
+  const phone = usePhone();
+
+  // ---- Phones: a carousel of the tabs; past the ends, on to the next main tab (Home / Live) ----
+  const order: View[] = ['attendance', 'requests', 'live', 'list', 'summary', ...(isManager ? (['edit'] as View[]) : [])];
+  const at = Math.max(0, order.indexOf(shown));
+  const leaveTo = (dir: -1 | 1) => {
+    rememberEventsSpot();
+    router.push(dir === 1 ? '/live' : '/');
+  };
 
   if (!session)
     return (
@@ -152,24 +134,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   ];
 
   return (
-    <div ref={swipe.ref} className="relative overflow-x-clip min-h-[70vh]">
-      {swipe.preview && (
-        <div
-          aria-hidden
-          className={cx(
-            'md:hidden fixed top-1/2 -translate-y-1/2 z-30 h-9 px-3 rounded-full bg-brass text-bg text-sm font-semibold shadow-lg inline-flex items-center gap-1 pointer-events-none',
-            swipe.preview.side === 'left' ? 'left-3' : 'right-3'
-          )}
-        >
-          {swipe.preview.side === 'left' ? '‹ ' : ''}
-          {swipe.preview.label}
-          {swipe.preview.side === 'right' ? ' ›' : ''}
-        </div>
-      )}
-      <div
-        style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
-        className={cx(!swipe.offset && 'transition-transform duration-200')}
-      >
+    <div>
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6">
         <Link
           href={event ? `/konvo/${encodeURIComponent(event.id)}` : '/'}
@@ -212,17 +177,17 @@ export function SidangView({ sessionId }: { sessionId: string }) {
             <button
               key={v.id}
               role="tab"
-              aria-selected={view === v.id}
+              aria-selected={shown === v.id}
               aria-label={v.label}
               title={v.label}
               onClick={() => setView(v.id)}
               className={cx(
                 'h-9 px-3 sm:px-4 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 sm:gap-2 transition-colors',
-                view === v.id ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'
+                shown === v.id ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'
               )}
             >
               {v.icon}
-              <span className={view === v.id ? '' : 'hidden sm:inline'}>{v.label}</span>
+              <span className={shown === v.id ? '' : 'hidden sm:inline'}>{v.label}</span>
               {v.id === 'live' && isLive && <LiveDot />}
             </button>
           ))}
@@ -230,35 +195,50 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         </div>
       </div>
 
-      <div key={view} className={cx('mt-2', slideFrom === 'right' && 'animate-slide-from-right', slideFrom === 'left' && 'animate-slide-from-left')}>
-        {view === 'live' && (isLive ? <StageView /> : <NotLive sessionId={sessionId} onList={() => setView('list')} />)}
-        {view === 'list' && <SidangList sessionId={sessionId} />}
-        {view === 'requests' && (
-          <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
-            <SongRequests sessionId={sessionId} />
-          </div>
-        )}
-        {view === 'summary' && <SidangSummary sessionId={sessionId} />}
-        {view === 'attendance' && (
-          <Attendance
-            sessionId={sessionId}
-            autoRegister={params.get('register') === '1'}
-            onAutoRegisterDone={() => router.replace(`${pathname}?view=attendance`, { scroll: false })}
-          />
-        )}
-        {view === 'edit' && isManager && (
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
-            <SetlistEditor sessionId={sessionId} onShowStage={() => setView('live')} />
-          </div>
-        )}
-      </div>
+      <div className="mt-2">
+        <TabCarousel
+          enabled={phone}
+          index={at}
+          count={order.length}
+          onChange={(i) => setView(order[i])}
+          onBeyond={leaveTo}
+          beyondPrevLabel={t('Home')}
+          beyondNextLabel={t('Live')}
+          render={(i, active) => {
+            const v = order[i];
+            if (v === 'live') return isLive ? <StageView inactive={!active} /> : <NotLive sessionId={sessionId} onList={() => setView('list')} />;
+            if (v === 'list') return <SidangList sessionId={sessionId} active={active} />;
+            if (v === 'requests')
+              return (
+                <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
+                  <SongRequests sessionId={sessionId} />
+                </div>
+              );
+            if (v === 'summary') return <SidangSummary sessionId={sessionId} />;
+            if (v === 'attendance')
+              return (
+                <Attendance
+                  sessionId={sessionId}
+                  autoRegister={active && params.get('register') === '1'}
+                  onAutoRegisterDone={() => router.replace(`${pathname}?view=attendance`, { scroll: false })}
+                />
+              );
+            if (v === 'edit' && isManager)
+              return (
+                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
+                  <SetlistEditor sessionId={sessionId} onShowStage={() => setView('live')} />
+                </div>
+              );
+            return null;
+          }}
+        />
       </div>
 
       <CopySetlistModal open={textOpen} onClose={() => setTextOpen(false)} sessionId={session.id} />
       <ChatLauncher
         sessionId={session.id}
         sessionName={session.name}
-        raised={view === 'live' && isLive && !isFinished && (canControl || role === 'controller')}
+        raised={shown === 'live' && isLive && !isFinished && (canControl || role === 'controller')}
       />
 
       <SidangModal
@@ -320,16 +300,16 @@ function NotLive({ sessionId, onList }: { sessionId: string; onList: () => void 
 }
 
 /** Every Bahagian and its items in order, with the live item highlighted. */
-function SidangList({ sessionId }: { sessionId: string }) {
+function SidangList({ sessionId, active = true }: { sessionId: string; active?: boolean }) {
   const { parts, resolveQueue, livePart, activeIndex, isFinished, roomState, interludeFor } = useStage();
   const myParts = parts.filter((p) => p.session_id === sessionId).sort((a, b) => a.part_number - b.part_number);
   const liveRef = useRef<HTMLLIElement | null>(null);
   const liveItemId = roomState.current_queue_item_id;
 
-  // Bring the live item into view once
+  // Bring the live item into view once (only when this is the tab on screen, not a neighbour kept ready)
   const scrolled = useRef(false);
   useEffect(() => {
-    if (!scrolled.current && liveRef.current) {
+    if (active && !scrolled.current && liveRef.current) {
       liveRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
       scrolled.current = true;
     }

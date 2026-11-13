@@ -28,7 +28,8 @@ import { LiveAddSong } from './LiveAddSong';
 import { LiveReorder } from './LiveReorder';
 import { formatIntro, introUnitWord } from '@/lib/format';
 
-export function StageView() {
+/** `inactive`: kept ready beside the current tab (phone carousel): no key shortcuts, no keeping the screen awake. */
+export function StageView({ inactive = false }: { inactive?: boolean } = {}) {
   const {
     liveSession,
     livePart,
@@ -70,11 +71,11 @@ export function StageView() {
   );
   const openPicker = () => setPickerOpen(true);
 
-  useWakeLock(true);
+  useWakeLock(!inactive);
 
   // Keyboard & presenter-clicker shortcuts for whoever is controlling
   useEffect(() => {
-    if (!canControl) return;
+    if (!canControl || inactive) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest('input, textarea, select, [role="dialog"]')) return;

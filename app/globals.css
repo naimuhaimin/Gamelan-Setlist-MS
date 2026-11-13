@@ -121,18 +121,3 @@
 .chart-stripes {
   background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.28) 0 2px, transparent 2px 6px);
 }
-
-/* Sidang tabs: the new tab slides in from the side you swiped towards */
-@keyframes slide-from-right {
-  from { transform: translateX(28px); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-@keyframes slide-from-left {
-  from { transform: translateX(-28px); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-.animate-slide-from-right { animation: slide-from-right 0.22s ease-out; }
-.animate-slide-from-left { animation: slide-from-left 0.22s ease-out; }
-@media (prefers-reduced-motion: reduce) {
-  .animate-slide-from-right, .animate-slide-from-left { animation: none; }
-}

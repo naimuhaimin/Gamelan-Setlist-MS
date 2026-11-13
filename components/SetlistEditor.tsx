@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ClipboardList, ClipboardPaste, Coffee, Pencil, Plus, Radio, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ClipboardList, ClipboardPaste, Coffee, HandHeart, Pencil, Plus, Radio, Search, SlidersHorizontal, ThumbsUp, Trash2 } from 'lucide-react';
 import { DEFAULT_INTERLUDE_LABEL, useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
@@ -9,6 +9,7 @@ import { Badge, BreakIcon, Button, Card, ConfirmDialog, EmptyState, Field, IconB
 import { OverrideModal } from './OverrideModal';
 import { CopySetlistModal, PasteSetlistModal } from './SetlistText';
 import { formatIntro } from '@/lib/format';
+import { useSongRequests } from '@/lib/useSongRequests';
 import type { IntroUnit } from '@/types';
 
 /** The Maestro's editor for one Sidang: Bahagian tabs, ordered songs & breaks, controller access. */
@@ -28,6 +29,7 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
     editPart,
     tally,
     isFinished,
+    notify,
   } = useStage();
 
   const sessionParts = useMemo(
@@ -194,6 +196,13 @@ export function SetlistEditor({ sessionId, onShowStage }: { sessionId: string; o
 
           {/* Side */}
           <div className="min-w-0 lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
+            <RequestedSongs
+              sessionId={sessionId}
+              part={part}
+              sessionParts={sessionParts}
+              onAdd={(songId) => addToQueue(part.id, songId)}
+              notify={notify}
+            />
             <AddSongs
               key={part.id}
               songs={songs}
@@ -321,6 +330,102 @@ function BreakModal({
 }
 
 // ---------------------------------------------------------------------------
+
+/** "36 Gempita", "gempita" and "Gempita" all match the same library song. */
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+const bare = (s: string) => norm(s).replace(/^\d+\s*/, '');
+
+/** Open song requests for this Sidang, one tap to add each to the Bahagian being edited. */
+function RequestedSongs({
+  sessionId,
+  part,
+  sessionParts,
+  onAdd,
+  notify,
+}: {
+  sessionId: string;
+  part: Part;
+  sessionParts: Part[];
+  onAdd: (songId: string) => Promise<unknown> | void;
+  notify: (msg: string, tone?: 'error') => void;
+}) {
+  const { songs, resolveQueue } = useStage();
+  const { t } = useT();
+  const req = useSongRequests(sessionId);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const open = req.rows.filter((r) => r.status === 'open');
+  if (req.available === false || !open.length) return null;
+
+  // Library song for a request: picked from the library, or matched by its typed title
+  const songFor = (r: (typeof open)[number]) =>
+    (r.song_id ? songs.find((x) => x.id === r.song_id) : undefined) ??
+    songs.find((x) => norm(x.title) === norm(r.title)) ??
+    songs.find((x) => bare(r.title) && bare(x.title) === bare(r.title)) ??
+    null;
+  // Which Bahagian already has it
+  const whereIs = (songId: string) => sessionParts.filter((p) => resolveQueue(p.id).some((q) => !q.isBreak && q.song.id === songId));
+
+  const add = async (r: (typeof open)[number], songId: string) => {
+    setBusy(r.id);
+    try {
+      await onAdd(songId);
+      await req.setStatus(r.id, 'added', t('Added to {part}', { part: part.name }));
+      notify(t('{title} added to {part}', { title: songs.find((x) => x.id === songId)?.title ?? r.title, part: part.name }));
+    } catch (err) {
+      notify(t('Not saved: {error}', { error: (err as Error).message }), 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Card className="border-brass/40">
+      <div className="px-4 pt-4 pb-3 border-b border-line">
+        <h3 className="font-semibold inline-flex items-center gap-2">
+          <HandHeart className="w-4 h-4 text-brass" /> {t('Requested songs')}
+          <span className="text-xs text-muted font-normal tabular">{open.length}</span>
+        </h3>
+        <p className="text-xs text-muted mt-0.5">{t('Tap + to add a request to {part}.', { part: part.name })}</p>
+      </div>
+      <ul className="max-h-[260px] overflow-y-auto scrollbar-thin p-1.5">
+        {open.map((r) => {
+          const song = songFor(r);
+          const inParts = song ? whereIs(song.id) : [];
+          return (
+            <li key={r.id} className="flex items-center gap-3 px-2.5 py-2 rounded-lg">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{song?.title ?? r.title}</span>
+                <span className="block text-xs text-muted truncate">
+                  {t('by {name}', { name: r.author })}
+                  {r.note ? ` · “${r.note}”` : ''}
+                </span>
+                {inParts.length > 0 && (
+                  <span className="text-xs text-ok inline-flex items-center gap-0.5">
+                    <Check className="w-3.5 h-3.5" /> {t('Already in {parts}', { parts: inParts.map((p) => `B${p.part_number}`).join(', ') })}
+                  </span>
+                )}
+                {!song && <span className="block text-xs text-songket-light">{t('Not in the library')}</span>}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-jade-light tabular shrink-0">
+                <ThumbsUp className="w-3.5 h-3.5" /> +{r.votes}
+              </span>
+              <button
+                onClick={() => song && add(r, song.id)}
+                disabled={!song || busy === r.id}
+                aria-label={t('Add {title} to {part}', { title: song?.title ?? r.title, part: part.name })}
+                title={song ? t('Add to {part}', { part: part.name }) : t('Not in the library')}
+                className="w-8 h-8 rounded-lg grid place-items-center bg-brass text-brass-ink shrink-0 disabled:bg-raised disabled:text-faint"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
 
 function AddSongs({
   songs,

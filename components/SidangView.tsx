@@ -21,6 +21,7 @@ import { CopySetlistModal } from './SetlistText';
 import { SidangSummary } from './SidangSummary';
 import { SongRequests } from './SongRequests';
 import { Attendance } from './Attendance';
+import { registeredHint, useAttendance } from '@/lib/useAttendance';
 
 type View = 'attendance' | 'requests' | 'live' | 'list' | 'summary' | 'edit';
 
@@ -38,8 +39,9 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   const event = events.find((e) => e.id === session?.event_id);
   const isLive = liveSession?.id === sessionId && stageLive;
 
-  // ---- Which tab to open when none is asked for, from the Sidang's date ----
-  // before the day: Attendance · on the day: List (Summary once it's finished) · after: Summary · live: Live
+  // ---- Which tab to open when none is asked for ----
+  // live: Live · finished or after the day: Summary · before the day: Attendance
+  // on the day: List if this phone has registered, otherwise Attendance (so people register first)
   const today = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -60,6 +62,20 @@ export function SidangView({ sessionId }: { sessionId: string }) {
     };
   }, [sameDay, lastPart?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const att = useAttendance(sessionId, session?.event_id ?? null);
+  const [hint, setHint] = useState<boolean | null>(null);
+  useEffect(() => setHint(registeredHint(sessionId)), [sessionId]);
+  // No attendance tables yet: behave as before (List on the day)
+  const registeredNow = att.available === false ? true : att.available ? !!att.mine : hint ?? false;
+  // Decided once per visit: registering on the Attendance tab doesn't throw you onto List;
+  // the next time you open this Sidang it opens on List.
+  const [registeredAtOpen, setRegisteredAtOpen] = useState<boolean | null>(null);
+  useEffect(() => setRegisteredAtOpen(null), [sessionId]);
+  useEffect(() => {
+    if (registeredAtOpen === null && att.available !== null) setRegisteredAtOpen(registeredNow);
+  }, [att.available, registeredNow, registeredAtOpen]);
+  const registered = registeredAtOpen ?? registeredNow;
+
   const defaultView: View = isLive
     ? 'live'
     : !session?.date
@@ -70,7 +86,9 @@ export function SidangView({ sessionId }: { sessionId: string }) {
           ? 'summary'
           : finishedOnStage || finishedInLog
             ? 'summary'
-            : 'list';
+            : registered
+              ? 'list'
+              : 'attendance';
 
   const requested = params.get('view') as View | null;
   const view: View =

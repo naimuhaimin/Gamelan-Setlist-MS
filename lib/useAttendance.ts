@@ -6,6 +6,17 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import * as api from '@/lib/supabaseService';
 
 const DEVICE_KEY = 'gamelan_device_id';
+const regKey = (sessionId: string) => `anjung_registered_${sessionId}`;
+
+/** What this phone last knew about its registration for a Sidang: true / false, or null if never checked. */
+export function registeredHint(sessionId: string): boolean | null {
+  try {
+    const v = localStorage.getItem(regKey(sessionId));
+    return v === null ? null : v === '1';
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Who registered for one Sidang, and how many players each instrument needs.
@@ -69,6 +80,15 @@ export function useAttendance(sessionId: string, eventId: string | null = null) 
   }, [sessionId, eventId, available, load]);
 
   const mine = entries.find((e) => e.device_id === deviceId.current) ?? null;
+
+  useEffect(() => {
+    if (!available || !deviceId.current) return;
+    try {
+      localStorage.setItem(regKey(sessionId), mine ? '1' : '0');
+    } catch {
+      // private mode: the tab choice just waits for the database
+    }
+  }, [available, mine, sessionId]);
 
   /** Register (or update) this phone's entry. */
   const register = async (name: string, instrument: string) => {

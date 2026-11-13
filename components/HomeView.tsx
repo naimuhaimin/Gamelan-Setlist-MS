@@ -13,14 +13,15 @@ import { splitEvents } from './EventsView';
 import { Announcements, LastSidangRecap, ManagerShortcuts, NextSidangCard, OpenRequests, SeasonStats, useHomeSidang } from './HomeSections';
 
 export function HomeView() {
-  const { events, sessions, isManager, eventsEnabled, liveSession, stageLive } = useStage();
+  const { events, sessions, isManager, eventsEnabled, liveSession, livePart, isFinished, liveInterlude, nextPart } = useStage();
   const [creating, setCreating] = useState(false);
   const [announcing, setAnnouncing] = useState(false);
   const { t } = useT();
   const soon = useMemo(() => splitEvents(events, sessions).upcoming.slice(0, 3), [events, sessions]);
   const { next, upcoming, recent } = useHomeSidang();
-  // Don't repeat the Sidang that is on stage right now as "next"
-  const nextCard = next && !(stageLive && liveSession?.id === next.id) ? next : upcoming.find((s) => s.id !== liveSession?.id) ?? null;
+  // Home shows one of the two: what's on stage now, or else the next Sidang
+  const onStage = !!liveSession && !!livePart && (!isFinished || (!!liveInterlude && !!nextPart));
+  const nextCard = onStage ? null : next ?? upcoming[0] ?? null;
   const seasonEvent = next?.event_id ?? recent[0]?.event_id ?? null;
 
   return (
@@ -41,7 +42,7 @@ export function HomeView() {
       <div className="space-y-5">
         {isManager && <ManagerShortcuts onAnnounce={() => setAnnouncing(true)} />}
         <Announcements composing={announcing} setComposing={setAnnouncing} />
-        <LiveNowCard />
+        {onStage && <LiveNowCard />}
         {nextCard && <NextSidangCard session={nextCard} />}
       </div>
 

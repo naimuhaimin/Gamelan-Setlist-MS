@@ -467,3 +467,7 @@ FROM public.sidang_needs n JOIN public.sessions s ON s.id = n.session_id
 WHERE s.event_id IS NOT NULL
 GROUP BY s.event_id, n.instrument
 ON CONFLICT (event_id, instrument) DO NOTHING;
+
+-- 15. EVENT END DATE (migration; safe to re-run)
+-- Last day of a multi-day event. Empty = a one-day event.
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS end_date DATE;

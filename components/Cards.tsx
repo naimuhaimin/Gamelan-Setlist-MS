@@ -21,6 +21,39 @@ export const sidangUrl = (id: string, view?: 'live' | 'list' | 'attendance') =>
 /** Opens a Sidang's Attendance tab with the registration form already open. */
 export const registerUrl = (id: string) => `${sidangUrl(id, 'attendance')}&register=1`;
 
+const dateFmt = () =>
+  new Intl.DateTimeFormat(getLang() === 'ms' ? 'ms-MY' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/** "12 November 2026", or "12–15 November 2026" / "30 November – 2 December 2026" for a multi-day event. */
+export const formatDateRange = (start: string | null | undefined, end: string | null | undefined) => {
+  if (!start) return '';
+  if (!end || end <= start) return formatDate(start);
+  const fmt = dateFmt() as Intl.DateTimeFormat & { formatRange?: (a: Date, b: Date) => string };
+  const a = new Date(start + 'T00:00');
+  const b = new Date(end + 'T00:00');
+  return fmt.formatRange ? fmt.formatRange(a, b) : `${formatDate(start)} – ${formatDate(end)}`;
+};
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * Where an event stands today. It runs from its start date to its end date, or to its last Sidang
+ * if that is later (so an event without an end date isn't "past" while Sidang are still to come).
+ * Undated events count as upcoming.
+ */
+export const eventStatus = (e: ConvoEvent, sessions: Session[] = []): 'upcoming' | 'now' | 'past' => {
+  if (!e.start_date) return 'upcoming';
+  const today = todayKey();
+  let last = e.end_date && e.end_date > e.start_date ? e.end_date : e.start_date;
+  for (const s of sessions) if (s.event_id === e.id && s.date > last) last = s.date;
+  if (today < e.start_date) return 'upcoming';
+  if (today > last) return 'past';
+  return 'now';
+};
+
 /** Konvo thumbnail, or a logo pattern when there is no photo. */
 export function ConvoThumb({ event, className }: { event: ConvoEvent; className?: string }) {
   return (
@@ -51,14 +84,16 @@ export function ConvoCard({ event }: { event: ConvoEvent }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="font-display text-lg font-bold truncate min-w-0">{event.name}</h3>
-              {live && (
+              {live ? (
                 <Badge tone="live">
                   <LiveDot /> {t('Live')}
                 </Badge>
-              )}
+              ) : eventStatus(event, sessions) === 'now' ? (
+                <Badge tone="brass">{t('On now')}</Badge>
+              ) : null}
             </div>
             <p className="text-sm text-muted truncate">
-              {[formatDate(event.start_date), event.venue].filter(Boolean).join(' · ') || ' '}
+              {[formatDateRange(event.start_date, event.end_date), event.venue].filter(Boolean).join(' · ') || ' '}
             </p>
             <p className="text-xs text-faint mt-1 tabular">
               {t('{n} Sidang', { n: count })}

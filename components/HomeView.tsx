@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { ChevronRight, Plus } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import logoMark from '@/assets/logo-mark.png';
 import { Button, EmptyState } from './ui';
 import { ConvoCard, LiveNowCard, SidangCard } from './Cards';
 import { ConvoModal } from './ConvoModal';
+import { splitEvents } from './EventsView';
 
 export function HomeView() {
   const { events, sessions, isManager, eventsEnabled } = useStage();
   const [creating, setCreating] = useState(false);
   const { t } = useT();
+  const soon = useMemo(() => splitEvents(events, sessions).upcoming.slice(0, 3), [events, sessions]);
 
   return (
     <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pb-10">
@@ -35,8 +38,10 @@ export function HomeView() {
       <section className="mt-10">
         <div className="flex items-end gap-3 mb-4">
           <div className="flex-1">
-            <h2 className="font-display text-2xl font-bold">{t('Events')}</h2>
-            <p className="text-sm text-muted">{t('Choose an event to see its Sidang and setlists.')}</p>
+            <h2 className="font-display text-2xl font-bold">{t('On now & coming up')}</h2>
+            <Link href="/events" className="text-sm text-brass hover:underline inline-flex items-center gap-0.5">
+              {t('See all events')} <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
           {isManager && eventsEnabled && (
             <Button variant="primary" onClick={() => setCreating(true)}>
@@ -46,14 +51,24 @@ export function HomeView() {
         </div>
 
         {eventsEnabled ? (
-          events.length ? (
+          soon.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((e) => (
+              {soon.map((e) => (
                 <ConvoCard key={e.id} event={e} />
               ))}
             </div>
           ) : (
-            <EmptyState title={t('No events yet')}>{isManager ? t('Create the first one with “New event”.') : t('Check back soon.')}</EmptyState>
+            <EmptyState title={events.length ? t('Nothing coming up') : t('No events yet')}>
+              {events.length ? (
+                <Link href="/events" className="text-brass underline">
+                  {t('See past events')}
+                </Link>
+              ) : isManager ? (
+                t('Create the first one with “New event”.')
+              ) : (
+                t('Check back soon.')
+              )}
+            </EmptyState>
           )
         ) : (
           // Database not migrated yet: show Sidang directly

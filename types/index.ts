@@ -32,6 +32,7 @@ export interface ConvoEvent {
   name: string;
   venue: string | null;
   start_date: string | null;
+  end_date?: string | null; // last day (migration 15); null/missing = one-day event
   thumbnail_url: string | null;
   sort_order: number;
   created_at?: string;

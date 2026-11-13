@@ -40,6 +40,7 @@ export function ConvoModal({
   const [name, setName] = useState('');
   const [venue, setVenue] = useState('');
   const [date, setDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [removeThumb, setRemoveThumb] = useState(false);
@@ -53,6 +54,7 @@ export function ConvoModal({
     setName(event?.name ?? '');
     setVenue(event?.venue ?? '');
     setDate(event?.start_date ?? '');
+    setEndDate(event?.end_date ?? '');
     setFile(null);
     setPreview(event?.thumbnail_url ?? null);
     setRemoveThumb(false);
@@ -71,8 +73,8 @@ export function ConvoModal({
     e.preventDefault();
     setSaving(true);
     try {
-      if (isEdit && event) await editEvent(event.id, { name, venue, startDate: date, thumbnail: file, removeThumbnail: removeThumb });
-      else await createEvent({ name, venue, startDate: date, thumbnail: file });
+      if (isEdit && event) await editEvent(event.id, { name, venue, startDate: date, endDate, thumbnail: file, removeThumbnail: removeThumb });
+      else await createEvent({ name, venue, startDate: date, endDate, thumbnail: file });
       onClose();
     } catch {
       // toast shown
@@ -81,6 +83,7 @@ export function ConvoModal({
     }
   };
 
+  const endBeforeStart = !!date && !!endDate && endDate < date;
   const sidangCount = event ? sessions.filter((s) => s.event_id === event.id).length : 0;
 
   return (
@@ -99,7 +102,7 @@ export function ConvoModal({
             <Button variant="ghost" onClick={onClose}>
               {t('Cancel')}
             </Button>
-            <Button variant="primary" type="submit" form="convo-form" disabled={saving || !name.trim()}>
+            <Button variant="primary" type="submit" form="convo-form" disabled={saving || !name.trim() || endBeforeStart}>
               {saving ? t('Saving…') : isEdit ? t('Save') : t('Create event')}
             </Button>
           </>
@@ -147,14 +150,25 @@ export function ConvoModal({
           <Field label={t('Name')} htmlFor="convo-name">
             <Input id="convo-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('e.g. Konvokesyen UiTM ke-102')} required />
           </Field>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label={t('Start date')} htmlFor="convo-date">
               <Input id="convo-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <Field label={t('Venue')} htmlFor="convo-venue">
-              <Input id="convo-venue" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder={t('e.g. Dewan Agong Tuanku Canselor')} />
+            <Field label={t('End date')} htmlFor="convo-end" hint={endBeforeStart ? undefined : t('Leave empty for a one-day event.')}>
+              <Input
+                id="convo-end"
+                type="date"
+                value={endDate}
+                min={date || undefined}
+                disabled={!date}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </Field>
           </div>
+          {endBeforeStart && <p className="text-sm text-stop-light -mt-2">{t('The end date can’t be before the start date.')}</p>}
+          <Field label={t('Venue')} htmlFor="convo-venue">
+            <Input id="convo-venue" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder={t('e.g. Dewan Agong Tuanku Canselor')} />
+          </Field>
         </form>
       </Modal>
 

@@ -238,11 +238,21 @@ export async function deleteSession(sessionId: string) {
 // Konvo (events) & thumbnails
 // ---------------------------------------------------------------------------
 
+/** Before migration 15 the events table has no end_date column: retry without it. */
+const noEndDate = (res: { error: { message?: string } | null }) => !!res.error && /end_date/.test(res.error.message ?? '');
+const withoutEnd = <T extends Partial<ConvoEvent>>(row: T) => {
+  const { end_date: _drop, ...rest } = row;
+  return rest;
+};
 export async function insertEvent(ev: ConvoEvent) {
-  check(await db().from('events').insert(ev), 'Create Konvo');
+  let res = await db().from('events').insert(ev);
+  if (noEndDate(res)) res = await db().from('events').insert(withoutEnd(ev));
+  check(res, 'Create Konvo');
 }
 export async function updateEvent(id: string, updates: Partial<ConvoEvent>) {
-  check(await db().from('events').update(updates).eq('id', id), 'Update Konvo');
+  let res = await db().from('events').update(updates).eq('id', id);
+  if (noEndDate(res)) res = await db().from('events').update(withoutEnd(updates)).eq('id', id);
+  check(res, 'Update Konvo');
 }
 export async function deleteEvent(id: string) {
   // sessions → parts → queue_items cascade on delete

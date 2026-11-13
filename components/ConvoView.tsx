@@ -7,7 +7,7 @@ import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronLeft, MapPin, Pencil, Pl
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import { Button, EmptyState } from './ui';
-import { ConvoThumb, SidangCard, formatDate } from './Cards';
+import { ConvoThumb, SidangCard, formatDateRange } from './Cards';
 import { ConvoModal } from './ConvoModal';
 import { SidangModal } from './SidangModal';
 
@@ -47,7 +47,7 @@ export function ConvoView({ eventId }: { eventId: string }) {
   if (!event)
     return (
       <div className="max-w-3xl mx-auto px-4 pt-10">
-        <EmptyState title={t('Event not found')} action={<Link href="/" className="text-brass underline">{t('Back to home')}</Link>}>
+        <EmptyState title={t('Event not found')} action={<Link href="/events" className="text-brass underline">{t('Back to events')}</Link>}>
           {t('It may have been deleted.')}
         </EmptyState>
       </div>
@@ -55,8 +55,8 @@ export function ConvoView({ eventId }: { eventId: string }) {
 
   return (
     <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pb-10">
-      <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink pt-4">
-        <ChevronLeft className="w-4 h-4" /> {t('Home')}
+      <Link href="/events" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink pt-4">
+        <ChevronLeft className="w-4 h-4" /> {t('Events')}
       </Link>
 
       {/* Banner */}
@@ -67,7 +67,7 @@ export function ConvoView({ eventId }: { eventId: string }) {
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-3xl sm:text-5xl font-bold leading-tight">{event.name}</h1>
             <p className="text-sm sm:text-base text-muted mt-1 flex flex-wrap items-center gap-x-3">
-              {event.start_date && <span>{formatDate(event.start_date)}</span>}
+              {event.start_date && <span>{formatDateRange(event.start_date, event.end_date)}</span>}
               {event.venue && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" /> {event.venue}

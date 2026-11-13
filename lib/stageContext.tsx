@@ -117,8 +117,11 @@ interface StageContextType {
   createSession: (input: { eventId: string | null; sidangNumber: number; name: string; date: string }) => Promise<Session>;
 
   // Konvo
-  createEvent: (input: { name: string; venue: string; startDate: string; thumbnail: File | null }) => Promise<ConvoEvent>;
-  editEvent: (id: string, input: { name: string; venue: string; startDate: string; thumbnail: File | null; removeThumbnail?: boolean }) => Promise<void>;
+  createEvent: (input: { name: string; venue: string; startDate: string; endDate: string; thumbnail: File | null }) => Promise<ConvoEvent>;
+  editEvent: (
+    id: string,
+    input: { name: string; venue: string; startDate: string; endDate: string; thumbnail: File | null; removeThumbnail?: boolean }
+  ) => Promise<void>;
   removeEvent: (id: string) => Promise<void>;
 
   // Breaks
@@ -995,12 +998,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ---- Konvo -----------------------------------------------------------------------
-  const createEvent: StageContextType['createEvent'] = async ({ name, venue, startDate, thumbnail }) => {
+  const createEvent: StageContextType['createEvent'] = async ({ name, venue, startDate, endDate, thumbnail }) => {
     const ev: ConvoEvent = {
       id: api.newId('event'),
       name: name.trim() || 'Event',
       venue: venue.trim() || null,
       start_date: startDate || null,
+      end_date: startDate && endDate && endDate > startDate ? endDate : null,
       thumbnail_url: null,
       sort_order: events.reduce((m, e) => Math.max(m, e.sort_order), 0) + 1,
     };
@@ -1015,8 +1019,13 @@ export function StageProvider({ children }: { children: React.ReactNode }) {
     return ev;
   };
 
-  const editEvent: StageContextType['editEvent'] = async (id, { name, venue, startDate, thumbnail, removeThumbnail }) => {
-    const updates: Partial<ConvoEvent> = { name: name.trim() || 'Event', venue: venue.trim() || null, start_date: startDate || null };
+  const editEvent: StageContextType['editEvent'] = async (id, { name, venue, startDate, endDate, thumbnail, removeThumbnail }) => {
+    const updates: Partial<ConvoEvent> = {
+      name: name.trim() || 'Event',
+      venue: venue.trim() || null,
+      start_date: startDate || null,
+      end_date: startDate && endDate && endDate > startDate ? endDate : null,
+    };
     if (removeThumbnail) updates.thumbnail_url = null;
     await commit(
       async () => {

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, Home, KeyRound, ListMusic, MonitorPlay, Settings, ShieldCheck, UserRound } from 'lucide-react';
+import { CalendarDays, ChevronDown, Home, KeyRound, ListMusic, MonitorPlay, Settings, ShieldCheck, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import logoMark from '@/assets/logo-mark.png';
@@ -14,6 +14,7 @@ const ROLE_LABEL = { player: 'Musician', controller: 'Controller', maestro: 'Mae
 
 const NAV = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/events', label: 'Events', icon: CalendarDays },
   { href: '/live', label: 'Live', icon: MonitorPlay },
   { href: '/library', label: 'Library', icon: ListMusic },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -22,7 +23,11 @@ const NAV = [
 function useActive() {
   const path = usePathname() || '/';
   return (href: string) =>
-    href === '/' ? path === '/' || path.startsWith('/konvo') || path.startsWith('/sidang') : path.startsWith(href);
+    href === '/'
+      ? path === '/'
+      : href === '/events'
+        ? path.startsWith('/events') || path.startsWith('/konvo') || path.startsWith('/sidang')
+        : path.startsWith(href);
 }
 
 function LiveDotSmall() {
@@ -125,7 +130,7 @@ export function BottomNav() {
   const isLive = stageLive;
   return (
     <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 backdrop-blur-md safe-bottom" aria-label="Main">
-      <div className="grid grid-cols-4 pt-1.5">
+      <div className="grid grid-cols-5 pt-1.5">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (

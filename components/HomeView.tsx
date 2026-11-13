@@ -10,12 +10,18 @@ import { Button, EmptyState } from './ui';
 import { ConvoCard, LiveNowCard, SidangCard } from './Cards';
 import { ConvoModal } from './ConvoModal';
 import { splitEvents } from './EventsView';
+import { Announcements, LastSidangRecap, ManagerShortcuts, NextSidangCard, OpenRequests, SeasonStats, useHomeSidang } from './HomeSections';
 
 export function HomeView() {
-  const { events, sessions, isManager, eventsEnabled } = useStage();
+  const { events, sessions, isManager, eventsEnabled, liveSession, stageLive } = useStage();
   const [creating, setCreating] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
   const { t } = useT();
   const soon = useMemo(() => splitEvents(events, sessions).upcoming.slice(0, 3), [events, sessions]);
+  const { next, upcoming, recent } = useHomeSidang();
+  // Don't repeat the Sidang that is on stage right now as "next"
+  const nextCard = next && !(stageLive && liveSession?.id === next.id) ? next : upcoming.find((s) => s.id !== liveSession?.id) ?? null;
+  const seasonEvent = next?.event_id ?? recent[0]?.event_id ?? null;
 
   return (
     <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pb-10">
@@ -32,7 +38,12 @@ export function HomeView() {
         </div>
       </section>
 
-      <LiveNowCard />
+      <div className="space-y-5">
+        {isManager && <ManagerShortcuts next={nextCard} onAnnounce={() => setAnnouncing(true)} />}
+        <Announcements composing={announcing} setComposing={setAnnouncing} />
+        <LiveNowCard />
+        {nextCard && <NextSidangCard session={nextCard} />}
+      </div>
 
       {/* Events (Konvokesyen and any other performance) */}
       <section className="mt-10">
@@ -78,6 +89,15 @@ export function HomeView() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Looking back & ahead */}
+      <section className="mt-10 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <LastSidangRecap recent={recent} />
+          <OpenRequests upcoming={upcoming} />
+        </div>
+        <SeasonStats eventId={seasonEvent} />
       </section>
 
       <ConvoModal open={creating} onClose={() => setCreating(false)} />

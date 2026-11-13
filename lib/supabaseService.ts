@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   SongRequest,
   PlayLogRow,
+  Announcement,
   ConvoEvent,
   DatabaseSnapshot,
   QueueVote,
@@ -345,6 +346,32 @@ export async function playLogAvailable(): Promise<boolean> {
   const res = await db().from('play_log').select('id').limit(1);
   return !res.error;
 }
+/** Performance log for several Sidang at once (season stats on Home). */
+export async function fetchPlayLogFor(sessionIds: string[]): Promise<PlayLogRow[] | null> {
+  if (!sessionIds.length) return [];
+  const res = await db().from('play_log').select('*').in('session_id', sessionIds).order('started_at', { ascending: true }).limit(5000);
+  if (res.error) return null;
+  return res.data as PlayLogRow[];
+}
+/** How many summary comments a Sidang has. */
+export async function countComments(sessionId: string): Promise<number | null> {
+  const res = await db().from('sidang_comments').select('id', { count: 'exact', head: true }).eq('session_id', sessionId);
+  return res.error ? null : res.count ?? 0;
+}
+
+// ---- Announcements on Home (table may not exist until migration 16) ----
+export async function fetchAnnouncements(): Promise<Announcement[] | null> {
+  const res = await db().from('announcements').select('*').order('created_at', { ascending: false }).limit(50);
+  if (res.error) return null;
+  return res.data as Announcement[];
+}
+export async function insertAnnouncement(a: Omit<Announcement, 'created_at'>) {
+  check(await db().from('announcements').insert(a), 'Post announcement');
+}
+export async function deleteAnnouncement(id: string) {
+  check(await db().from('announcements').delete().eq('id', id), 'Remove announcement');
+}
+
 export async function fetchPlayLog(sessionId: string): Promise<PlayLogRow[] | null> {
   const res = await db().from('play_log').select('*').eq('session_id', sessionId).order('started_at', { ascending: true }).limit(2000);
   if (res.error) return null;
@@ -378,6 +405,19 @@ export async function fetchSongRequests(sessionId: string): Promise<{ requests: 
   if (!requests.length) return { requests, votes: [] };
   const v = await db().from('song_request_votes').select('request_id, device_id').in('request_id', requests.map((r) => r.id));
   return { requests, votes: v.error ? [] : (v.data as Array<{ request_id: string; device_id: string }>) };
+}
+/** Open requests (with their +1s) across several Sidang, for Home. Null until the requests tables exist. */
+export async function fetchOpenRequests(
+  sessionIds: string[]
+): Promise<Array<SongRequest & { votes: number }> | null> {
+  if (!sessionIds.length) return [];
+  const res = await db().from('song_requests').select('*').in('session_id', sessionIds).eq('status', 'open').limit(500);
+  if (res.error) return null;
+  const requests = res.data as SongRequest[];
+  if (!requests.length) return [];
+  const v = await db().from('song_request_votes').select('request_id, device_id').in('request_id', requests.map((r) => r.id));
+  const votes = v.error ? [] : (v.data as Array<{ request_id: string; device_id: string }>);
+  return requests.map((r) => ({ ...r, votes: votes.filter((x) => x.request_id === r.id && x.device_id !== r.device_id).length }));
 }
 export async function insertSongRequest(r: Omit<SongRequest, 'created_at' | 'handled_note'>) {
   check(await db().from('song_requests').insert(r), 'Send request');

@@ -471,3 +471,20 @@ ON CONFLICT (event_id, instrument) DO NOTHING;
 -- 15. EVENT END DATE (migration; safe to re-run)
 -- Last day of a multi-day event. Empty = a one-day event.
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS end_date DATE;
+
+-- 16. ANNOUNCEMENTS ON HOME (migration; safe to re-run)
+-- Short notices the Maestro/Admin pins on Home. show_until = last day it shows (empty = until removed).
+CREATE TABLE IF NOT EXISTS public.announcements (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
+    author TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL DEFAULT 'maestro',
+    show_until DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Announcements" ON public.announcements;
+CREATE POLICY "Public Read Announcements" ON public.announcements FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public Write Announcements" ON public.announcements;
+CREATE POLICY "Public Write Announcements" ON public.announcements FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

@@ -189,6 +189,16 @@ export interface SongRequest {
   created_at: string;
 }
 
+/** A notice the Maestro/Admin pins on Home (practice times, dress code...). */
+export interface Announcement {
+  id: string;
+  body: string;
+  author: string;
+  role: string;
+  show_until: string | null; // last day it shows; null = until removed
+  created_at: string;
+}
+
 /** A player registered for a Sidang (one per phone). */
 export interface AttendanceEntry {
   id: string;

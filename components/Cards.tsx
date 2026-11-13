@@ -34,7 +34,7 @@ export const formatDateRange = (start: string | null | undefined, end: string | 
   return fmt.formatRange ? fmt.formatRange(a, b) : `${formatDate(start)} – ${formatDate(end)}`;
 };
 
-const todayKey = () => {
+export const todayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { CalendarDays, ChevronDown, Home, KeyRound, ListMusic, MonitorPlay, Settings, ShieldCheck, UserRound } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
+import { inEventsSection, rememberEventsSpot, useEventsHref, useRestoreEventsScroll } from '@/lib/eventsMemory';
 import logoMark from '@/assets/logo-mark.png';
 import { useShell } from './AppShell';
 import { cx } from './ui';
@@ -22,12 +23,15 @@ const NAV = [
 
 function useActive() {
   const path = usePathname() || '/';
+  return (href: string) => (href === '/' ? path === '/' : href === '/events' ? inEventsSection(path) : path.startsWith(href));
+}
+
+/** Where each tab goes. Leaving the Events section remembers the spot; Events takes you back to it. */
+function useNavTarget() {
+  const path = usePathname() || '/';
+  const events = useEventsHref(path);
   return (href: string) =>
-    href === '/'
-      ? path === '/'
-      : href === '/events'
-        ? path.startsWith('/events') || path.startsWith('/konvo') || path.startsWith('/sidang')
-        : path.startsWith(href);
+    href === '/events' ? events : { href, onClick: rememberEventsSpot };
 }
 
 function LiveDotSmall() {
@@ -44,13 +48,15 @@ export function TopBar() {
   const { openInstrumentPicker } = useShell();
   const { t } = useT();
   const isActive = useActive();
+  const navTarget = useNavTarget();
   const isLive = stageLive;
+  useRestoreEventsScroll(usePathname() || '/');
 
   return (
     <header className="sticky top-0 z-40 bg-bg/90 backdrop-blur-md border-b border-line">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 min-w-0" aria-label={t('Anjung Live home')}>
+        <Link href="/" onClick={rememberEventsSpot} className="flex items-center gap-2.5 min-w-0" aria-label={t('Anjung Live home')}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoMark.src} alt="" width={36} height={36} className="w-9 h-9 rounded-xl shrink-0 ring-1 ring-line object-cover" />
           <div className="min-w-0 hidden min-[380px]:block">
@@ -67,7 +73,7 @@ export function TopBar() {
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
-              href={href}
+              {...navTarget(href)}
               aria-current={isActive(href) ? 'page' : undefined}
               className={cx(
                 'h-9 px-3.5 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition-colors',
@@ -127,6 +133,7 @@ export function BottomNav() {
   const { stageLive } = useStage();
   const { t } = useT();
   const isActive = useActive();
+  const navTarget = useNavTarget();
   const isLive = stageLive;
   return (
     <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 backdrop-blur-md safe-bottom" aria-label="Main">
@@ -136,7 +143,7 @@ export function BottomNav() {
           return (
             <Link
               key={href}
-              href={href}
+              {...navTarget(href)}
               aria-current={active ? 'page' : undefined}
               className={cx('flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium', active ? 'text-brass' : 'text-muted')}
             >

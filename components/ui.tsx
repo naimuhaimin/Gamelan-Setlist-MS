@@ -1,11 +1,22 @@
 'use client';
 
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle2, Info, Minus, Plus, StickyNote, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { tr, useT } from '@/lib/i18n';
 
 export const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ');
+
+/**
+ * Renders on <body>. Fixed bars and overlays need this when they can sit inside the phone
+ * tab carousel, whose transformed track would otherwise become their containing block.
+ */
+export function BodyPortal({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return ready ? createPortal(children, document.body) : null;
+}
 
 // ---------------------------------------------------------------------------
 // Buttons
@@ -447,7 +458,8 @@ export const Modal = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <BodyPortal>
+    <div data-no-swipe className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in" onClick={onClose} />
       <div
         ref={panelRef}
@@ -480,6 +492,7 @@ export const Modal = ({
         )}
       </div>
     </div>
+    </BodyPortal>
   );
 };
 

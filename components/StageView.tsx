@@ -21,7 +21,7 @@ import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import { useWakeLock } from '@/lib/useWakeLock';
 import type { ResolvedQueueItem } from '@/types';
-import { Badge, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, SongNote, VoteButtons, cx } from './ui';
+import { Badge, BodyPortal, BreakIcon, Button, Card, EmptyState, IconButton, LiveDot, Rhythms, SongNote, VoteButtons, cx } from './ui';
 import { LivePicker } from './LivePicker';
 import { IntermissionStage } from './Intermission';
 import { LiveAddSong } from './LiveAddSong';
@@ -488,8 +488,8 @@ export function StageView({ inactive = false }: { inactive?: boolean } = {}) {
         </div>
       )}
 
-      {/* Controls */}
-      {canControl && activeItem && !isFinished && (
+      {/* Controls (fixed bars go on <body>, so only the tab you're on shows them) */}
+      {!inactive && canControl && activeItem && !isFinished && (
         <ControlBar
           canPrev={activeIndex > 0}
           isLast={isLast}
@@ -500,7 +500,8 @@ export function StageView({ inactive = false }: { inactive?: boolean } = {}) {
           onLoop={changeLoop}
         />
       )}
-      {role === 'controller' && !canControl && controlBlockedReason && (
+      {!inactive && role === 'controller' && !canControl && controlBlockedReason && (
+        <BodyPortal>
         <div className="fixed inset-x-0 z-30 border-t border-line bg-surface/95 backdrop-blur pb-3 bottom-[calc(4.1rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="max-w-7xl mx-auto px-4 pt-3 flex items-center gap-3 text-sm text-muted">
             <Lock className="w-4 h-4 shrink-0" />
@@ -510,6 +511,7 @@ export function StageView({ inactive = false }: { inactive?: boolean } = {}) {
             </Button>
           </div>
         </div>
+        </BodyPortal>
       )}
       {picker}
     </Shell>
@@ -617,6 +619,7 @@ function ControlBar({
 }) {
   const { t } = useT();
   return (
+    <BodyPortal>
     <div className="fixed inset-x-0 z-30 border-t border-line bg-bg/95 backdrop-blur-md pb-3 bottom-[calc(4.1rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 pt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.5fr)] gap-2 sm:gap-3 items-stretch">
         <Button size="xl" variant="secondary" onClick={onPrev} disabled={!canPrev} className="px-2" aria-label={t('Previous song')}>
@@ -655,6 +658,7 @@ function ControlBar({
         </Button>
       </div>
     </div>
+    </BodyPortal>
   );
 }
 

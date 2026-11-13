@@ -15,7 +15,7 @@ export const formatDate = (d: string | null | undefined) =>
     ? new Date(d + 'T00:00').toLocaleDateString(getLang() === 'ms' ? 'ms-MY' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
-export const sidangUrl = (id: string, view?: 'live' | 'list' | 'attendance') =>
+export const sidangUrl = (id: string, view?: 'live' | 'list' | 'attendance' | 'requests') =>
   `${typeof window !== 'undefined' ? window.location.origin : ''}/sidang/${encodeURIComponent(id)}${view ? `?view=${view}` : ''}`;
 
 /** Opens a Sidang's Attendance tab with the registration form already open. */

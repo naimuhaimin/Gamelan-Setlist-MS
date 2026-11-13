@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, CalendarDays, Users, Check, ChevronLeft, ClipboardList, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
+import { BarChart3, CalendarDays, HandHeart, Users, Check, ChevronLeft, ClipboardList, List, MonitorPlay, Radio, Settings2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import * as api from '@/lib/supabaseService';
 import { plural, useT } from '@/lib/i18n';
@@ -22,7 +22,7 @@ import { SidangSummary } from './SidangSummary';
 import { SongRequests } from './SongRequests';
 import { Attendance } from './Attendance';
 
-type View = 'attendance' | 'live' | 'list' | 'summary' | 'edit';
+type View = 'attendance' | 'requests' | 'live' | 'list' | 'summary' | 'edit';
 
 export function SidangView({ sessionId }: { sessionId: string }) {
   const { sessions, events, liveSession, isManager, stageLive, canControl, role, isFinished, parts, resolveQueue, roomState, nextPart } = useStage();
@@ -74,7 +74,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
 
   const requested = params.get('view') as View | null;
   const view: View =
-    requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : defaultView;
+    requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'requests' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : defaultView;
   const setView = (v: View) => router.replace(`${pathname}?view=${v}`, { scroll: false });
 
   if (!session)
@@ -88,6 +88,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
 
   const views: Array<{ id: View; label: string; icon: React.ReactNode }> = [
     { id: 'attendance', label: t('Attendance'), icon: <Users className="w-4 h-4" /> },
+    { id: 'requests', label: t('Requests'), icon: <HandHeart className="w-4 h-4" /> },
     { id: 'live', label: t('Live'), icon: <MonitorPlay className="w-4 h-4" /> },
     { id: 'list', label: t('List'), icon: <List className="w-4 h-4" /> },
     { id: 'summary', label: t('Summary'), icon: <BarChart3 className="w-4 h-4" /> },
@@ -159,6 +160,11 @@ export function SidangView({ sessionId }: { sessionId: string }) {
       <div className="mt-2">
         {view === 'live' && (isLive ? <StageView /> : <NotLive sessionId={sessionId} onList={() => setView('list')} />)}
         {view === 'list' && <SidangList sessionId={sessionId} />}
+        {view === 'requests' && (
+          <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 pb-10">
+            <SongRequests sessionId={sessionId} />
+          </div>
+        )}
         {view === 'summary' && <SidangSummary sessionId={sessionId} />}
         {view === 'attendance' && (
           <Attendance
@@ -274,7 +280,6 @@ function SidangList({ sessionId }: { sessionId: string }) {
         </React.Fragment>
         );
       })}
-      <SongRequests sessionId={sessionId} />
     </div>
   );
 }

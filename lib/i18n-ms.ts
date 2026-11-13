@@ -443,6 +443,7 @@ export const MS: Record<string, string> = {
   "Request sent": "Permintaan dihantar",
   "Request “{q}” (not in the library)": "Minta “{q}” (tiada dalam koleksi)",
   "Requested by {name}": "Diminta oleh {name}",
+  "Requests": "Permintaan",
   "Reset to default": "Set semula kepada asal",
   "Rest until the signal": "Berehat sehingga isyarat diberi",
   "Resume": "Sambung",

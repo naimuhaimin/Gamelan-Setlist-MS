@@ -22,6 +22,8 @@ import { SidangSummary } from './SidangSummary';
 import { SongRequests } from './SongRequests';
 import { Attendance } from './Attendance';
 import { registeredHint, useAttendance } from '@/lib/useAttendance';
+import { useSwipeNav } from '@/lib/useSwipeNav';
+import { rememberEventsSpot } from '@/lib/eventsMemory';
 
 type View = 'attendance' | 'requests' | 'live' | 'list' | 'summary' | 'edit';
 
@@ -95,6 +97,42 @@ export function SidangView({ sessionId }: { sessionId: string }) {
     requested === 'edit' && isManager ? 'edit' : requested === 'attendance' || requested === 'requests' || requested === 'live' || requested === 'list' || requested === 'summary' ? requested : defaultView;
   const setView = (v: View) => router.replace(`${pathname}?view=${v}`, { scroll: false });
 
+  // ---- Swipe between the tabs on phones; past the ends, on to the next main tab (Home / Live) ----
+  const order: View[] = ['attendance', 'requests', 'live', 'list', 'summary', ...(isManager ? (['edit'] as View[]) : [])];
+  const tabLabel: Record<View, string> = {
+    attendance: t('Attendance'),
+    requests: t('Requests'),
+    live: t('Live'),
+    list: t('List'),
+    summary: t('Summary'),
+    edit: t('Edit'),
+  };
+  const at = Math.max(0, order.indexOf(view));
+  const [slideFrom, setSlideFrom] = useState<'left' | 'right' | null>(null);
+  const swipe = useSwipeNav<HTMLDivElement>({
+    enabled: !!session,
+    nextLabel: at < order.length - 1 ? tabLabel[order[at + 1]] : t('Live'),
+    prevLabel: at > 0 ? tabLabel[order[at - 1]] : t('Home'),
+    onNext: () => {
+      if (at < order.length - 1) {
+        setSlideFrom('right');
+        setView(order[at + 1]);
+      } else {
+        rememberEventsSpot();
+        router.push('/live');
+      }
+    },
+    onPrev: () => {
+      if (at > 0) {
+        setSlideFrom('left');
+        setView(order[at - 1]);
+      } else {
+        rememberEventsSpot();
+        router.push('/');
+      }
+    },
+  });
+
   if (!session)
     return (
       <div className="max-w-3xl mx-auto px-4 pt-10">
@@ -114,7 +152,24 @@ export function SidangView({ sessionId }: { sessionId: string }) {
   ];
 
   return (
-    <div>
+    <div ref={swipe.ref} className="relative overflow-x-clip min-h-[70vh]">
+      {swipe.preview && (
+        <div
+          aria-hidden
+          className={cx(
+            'md:hidden fixed top-1/2 -translate-y-1/2 z-30 h-9 px-3 rounded-full bg-brass text-bg text-sm font-semibold shadow-lg inline-flex items-center gap-1 pointer-events-none',
+            swipe.preview.side === 'left' ? 'left-3' : 'right-3'
+          )}
+        >
+          {swipe.preview.side === 'left' ? '‹ ' : ''}
+          {swipe.preview.label}
+          {swipe.preview.side === 'right' ? ' ›' : ''}
+        </div>
+      )}
+      <div
+        style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
+        className={cx(!swipe.offset && 'transition-transform duration-200')}
+      >
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6">
         <Link
           href={event ? `/konvo/${encodeURIComponent(event.id)}` : '/'}
@@ -175,7 +230,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
         </div>
       </div>
 
-      <div className="mt-2">
+      <div key={view} className={cx('mt-2', slideFrom === 'right' && 'animate-slide-from-right', slideFrom === 'left' && 'animate-slide-from-left')}>
         {view === 'live' && (isLive ? <StageView /> : <NotLive sessionId={sessionId} onList={() => setView('list')} />)}
         {view === 'list' && <SidangList sessionId={sessionId} />}
         {view === 'requests' && (
@@ -196,6 +251,7 @@ export function SidangView({ sessionId }: { sessionId: string }) {
             <SetlistEditor sessionId={sessionId} onShowStage={() => setView('live')} />
           </div>
         )}
+      </div>
       </div>
 
       <CopySetlistModal open={textOpen} onClose={() => setTextOpen(false)} sessionId={session.id} />

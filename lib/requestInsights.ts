@@ -13,6 +13,7 @@ export interface RequestOutcome {
   instrument: string | null;
   note: string | null;
   votes: number; // +1s from others (not the requester)
+  downs: number; // dislikes from others
   status: SongRequest['status'];
   played: boolean;
   playedAt: string | null;
@@ -26,6 +27,7 @@ export interface RequestInsights {
   total: number;
   people: number; // different phones that requested or gave +1
   totalVotes: number;
+  totalDowns: number;
   played: RequestOutcome[];
   notPlayed: RequestOutcome[];
   playedRate: number | null; // 0..1
@@ -42,7 +44,7 @@ const bare = (s: string) => norm(s).replace(/^\d+\s*/, '');
 
 export function computeRequestInsights(input: {
   requests: SongRequest[];
-  votes: Array<{ request_id: string; device_id: string }>;
+  votes: Array<{ request_id: string; device_id: string; vote?: number }>;
   summary: Summary;
   songTitle: (songId: string) => string | undefined;
 }): RequestInsights {
@@ -68,7 +70,8 @@ export function computeRequestInsights(input: {
       author: r.author,
       instrument: r.instrument,
       note: r.note,
-      votes: votes.filter((v) => v.request_id === r.id && v.device_id !== r.device_id).length,
+      votes: votes.filter((v) => v.request_id === r.id && v.device_id !== r.device_id && v.vote !== -1).length,
+      downs: votes.filter((v) => v.request_id === r.id && v.device_id !== r.device_id && v.vote === -1).length,
       status: r.status,
       played: !!hit,
       playedAt: hit?.startedAt ?? null,
@@ -78,7 +81,7 @@ export function computeRequestInsights(input: {
       createdAt: r.created_at,
     };
   });
-  const byVotes = (a: RequestOutcome, b: RequestOutcome) => b.votes - a.votes || a.createdAt.localeCompare(b.createdAt);
+  const byVotes = (a: RequestOutcome, b: RequestOutcome) => b.votes - b.downs - (a.votes - a.downs) || b.votes - a.votes || a.createdAt.localeCompare(b.createdAt);
   const played = outcomes.filter((o) => o.played).sort((a, b) => (a.playedAt ?? '').localeCompare(b.playedAt ?? ''));
   const notPlayed = outcomes.filter((o) => !o.played).sort(byVotes);
 
@@ -93,6 +96,7 @@ export function computeRequestInsights(input: {
     total: outcomes.length,
     people: new Set([...requests.map((r) => r.device_id), ...votes.map((v) => v.device_id)]).size,
     totalVotes: outcomes.reduce((n, o) => n + o.votes, 0),
+    totalDowns: outcomes.reduce((n, o) => n + o.downs, 0),
     played,
     notPlayed,
     playedRate: outcomes.length ? played.length / outcomes.length : null,

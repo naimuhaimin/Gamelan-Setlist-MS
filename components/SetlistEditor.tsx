@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ClipboardList, ClipboardPaste, Coffee, HandHeart, Pencil, Plus, Radio, Search, SlidersHorizontal, ThumbsUp, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ClipboardList, ClipboardPaste, Coffee, HandHeart, Pencil, Plus, Radio, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { DEFAULT_INTERLUDE_LABEL, useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
 import type { Part, ResolvedQueueItem } from '@/types';
@@ -407,8 +407,15 @@ function RequestedSongs({
                 )}
                 {!song && <span className="block text-xs text-songket-light">{t('Not in the library')}</span>}
               </span>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-jade-light tabular shrink-0">
-                <ThumbsUp className="w-3.5 h-3.5" /> +{r.votes}
+              <span className="inline-flex flex-col items-end gap-0.5 text-xs font-semibold tabular shrink-0">
+                <span className="inline-flex items-center gap-1 text-jade-light">
+                  <ThumbsUp className="w-3.5 h-3.5" /> +{r.votes}
+                </span>
+                {r.downs > 0 && (
+                  <span className="inline-flex items-center gap-1 text-songket-light">
+                    <ThumbsDown className="w-3.5 h-3.5" /> {r.downs}
+                  </span>
+                )}
               </span>
               <button
                 onClick={() => song && add(r, song.id)}

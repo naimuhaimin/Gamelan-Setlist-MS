@@ -432,7 +432,12 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
         rq.playedRate === null ? undefined : t('{pct}% of requests', { pct: Math.round(rq.playedRate * 100) }),
         C.jadeSoft,
       ],
-      [t('+1 given'), String(rq.totalVotes), rq.mostWanted && rq.mostWanted.votes ? t('most for {title}', { title: rq.mostWanted.title }) : undefined, C.goldSoft],
+      [
+        t('+1 given'),
+        rq.totalDowns ? `${rq.totalVotes} / -${rq.totalDowns}` : String(rq.totalVotes),
+        rq.totalDowns ? t('{n} dislikes', { n: rq.totalDowns }) : rq.mostWanted && rq.mostWanted.votes ? t('most for {title}', { title: rq.mostWanted.title }) : undefined,
+        C.goldSoft,
+      ],
       [t('Likes per song'), avg(rq.requestedAvgUp), rq.requestedAvgUp === null ? t('none played yet') : t('requested songs'), C.goldSoft],
     ];
     const tw4 = (CW - 3 * 3) / 4;
@@ -592,6 +597,11 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
         font('bold', 8.5);
         color(o.votes ? C.gold : C.faint);
         doc.text(`+${o.votes}`, bx0 + bw + 2.5, top + 6.8);
+        if (o.downs > 0) {
+          const w = doc.getTextWidth(`+${o.votes}`);
+          color(C.crimson);
+          doc.text(`-${o.downs}`, bx0 + bw + 2.5 + w + 2, top + 6.8);
+        }
         // status / when it was played
         if (played) {
           pill(`${o.partName ?? ''} ${formatClock(o.playedAt)}`.trim(), M + CW - 3, top + 4.6, C.jade, [255, 255, 255]);

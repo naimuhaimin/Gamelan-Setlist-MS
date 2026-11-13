@@ -488,3 +488,10 @@ CREATE POLICY "Public Read Announcements" ON public.announcements FOR SELECT USI
 DROP POLICY IF EXISTS "Public Write Announcements" ON public.announcements;
 CREATE POLICY "Public Write Announcements" ON public.announcements FOR ALL USING (true) WITH CHECK (true);
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- 17. DISLIKES ON SONG REQUESTS (migration; safe to re-run)
+-- Each phone's vote on a request: 1 = +1 (like), -1 = dislike. Existing votes stay likes.
+ALTER TABLE public.song_request_votes ADD COLUMN IF NOT EXISTS vote SMALLINT NOT NULL DEFAULT 1;
+DO $$ BEGIN
+  ALTER TABLE public.song_request_votes ADD CONSTRAINT song_request_votes_vote_check CHECK (vote IN (1, -1));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

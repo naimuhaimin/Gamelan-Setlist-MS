@@ -70,7 +70,17 @@ export function SummaryRequests({ sessionId, summary }: { sessionId: string; sum
               value={`${ins.played.length}/${ins.total}`}
               note={ins.playedRate === null ? undefined : t('{pct}% of requests', { pct: Math.round(ins.playedRate * 100) })}
             />
-            <Tile label={t('+1 given')} value={ins.totalVotes} note={ins.mostWanted && ins.mostWanted.votes > 0 ? t('most for {title}', { title: ins.mostWanted.title }) : undefined} />
+            <Tile
+              label={t('+1 given')}
+              value={ins.totalDowns ? `${ins.totalVotes} / −${ins.totalDowns}` : ins.totalVotes}
+              note={
+                ins.totalDowns
+                  ? t('{n} dislikes', { n: ins.totalDowns })
+                  : ins.mostWanted && ins.mostWanted.votes > 0
+                    ? t('most for {title}', { title: ins.mostWanted.title })
+                    : undefined
+              }
+            />
             <Tile
               label={t('Avg. 👍 per song')}
               value={fmtAvg(ins.requestedAvgUp)}
@@ -147,6 +157,7 @@ function RequestList({
                 {played && <Check className="w-4 h-4 text-jade-light shrink-0" />}
                 <span className="font-semibold flex-1 min-w-0 truncate">{o.title}</span>
                 <span className="text-xs font-semibold text-jade-light tabular shrink-0">+{o.votes}</span>
+                {o.downs > 0 && <span className="text-xs font-semibold text-songket-light tabular shrink-0">−{o.downs}</span>}
               </div>
               <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <span className="text-xs text-muted truncate">

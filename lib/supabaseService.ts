@@ -398,26 +398,33 @@ export async function deletePushSubscription(endpoint: string) {
 }
 
 // ---- Song requests (tables may not exist until the migration has run) ------------
-export async function fetchSongRequests(sessionId: string): Promise<{ requests: SongRequest[]; votes: Array<{ request_id: string; device_id: string }> } | null> {
+/** One phone's vote on a request: 1 = +1, -1 = dislike (missing before migration 17 = +1). */
+export type RequestVote = { request_id: string; device_id: string; vote?: number };
+export const voteValue = (v: RequestVote) => (v.vote === -1 ? -1 : 1);
+
+export async function fetchSongRequests(sessionId: string): Promise<{ requests: SongRequest[]; votes: RequestVote[] } | null> {
   const res = await db().from('song_requests').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }).limit(500);
   if (res.error) return null;
   const requests = res.data as SongRequest[];
   if (!requests.length) return { requests, votes: [] };
-  const v = await db().from('song_request_votes').select('request_id, device_id').in('request_id', requests.map((r) => r.id));
-  return { requests, votes: v.error ? [] : (v.data as Array<{ request_id: string; device_id: string }>) };
+  const v = await db().from('song_request_votes').select('*').in('request_id', requests.map((r) => r.id));
+  return { requests, votes: v.error ? [] : (v.data as RequestVote[]) };
 }
 /** Open requests (with their +1s) across several Sidang, for Home. Null until the requests tables exist. */
 export async function fetchOpenRequests(
   sessionIds: string[]
-): Promise<Array<SongRequest & { votes: number }> | null> {
+): Promise<Array<SongRequest & { votes: number; downs: number }> | null> {
   if (!sessionIds.length) return [];
   const res = await db().from('song_requests').select('*').in('session_id', sessionIds).eq('status', 'open').limit(500);
   if (res.error) return null;
   const requests = res.data as SongRequest[];
   if (!requests.length) return [];
-  const v = await db().from('song_request_votes').select('request_id, device_id').in('request_id', requests.map((r) => r.id));
-  const votes = v.error ? [] : (v.data as Array<{ request_id: string; device_id: string }>);
-  return requests.map((r) => ({ ...r, votes: votes.filter((x) => x.request_id === r.id && x.device_id !== r.device_id).length }));
+  const v = await db().from('song_request_votes').select('*').in('request_id', requests.map((r) => r.id));
+  const votes = v.error ? [] : (v.data as RequestVote[]);
+  return requests.map((r) => {
+    const mine = votes.filter((x) => x.request_id === r.id && x.device_id !== r.device_id);
+    return { ...r, votes: mine.filter((x) => voteValue(x) === 1).length, downs: mine.filter((x) => voteValue(x) === -1).length };
+  });
 }
 export async function insertSongRequest(r: Omit<SongRequest, 'created_at' | 'handled_note'>) {
   check(await db().from('song_requests').insert(r), 'Send request');
@@ -428,9 +435,19 @@ export async function updateSongRequest(id: string, updates: Partial<Pick<SongRe
 export async function deleteSongRequest(id: string) {
   check(await db().from('song_requests').delete().eq('id', id), 'Delete request');
 }
-export async function setRequestVote(requestId: string, deviceId: string, on: boolean) {
-  if (on) check(await db().from('song_request_votes').upsert({ request_id: requestId, device_id: deviceId }, { onConflict: 'request_id,device_id' }), 'Back request');
-  else check(await db().from('song_request_votes').delete().eq('request_id', requestId).eq('device_id', deviceId), 'Remove +1');
+/** 1 = +1, -1 = dislike, 0 = take the vote back. */
+export async function setRequestVote(requestId: string, deviceId: string, value: 1 | -1 | 0) {
+  if (value === 0) {
+    check(await db().from('song_request_votes').delete().eq('request_id', requestId).eq('device_id', deviceId), 'Remove vote');
+    return;
+  }
+  let res = await db().from('song_request_votes').upsert({ request_id: requestId, device_id: deviceId, vote: value }, { onConflict: 'request_id,device_id' });
+  // Before migration 17 there is no vote column: a +1 still works, a dislike can't be saved yet
+  if (res.error && /vote/.test(res.error.message ?? '')) {
+    if (value === -1) throw new Error('Dislikes need the latest supabase-schema.sql (section 17) to be run in Supabase.');
+    res = await db().from('song_request_votes').upsert({ request_id: requestId, device_id: deviceId }, { onConflict: 'request_id,device_id' });
+  }
+  check(res, 'Vote on request');
 }
 
 // ---- Attendance (tables may not exist until the migration has run) ---------------

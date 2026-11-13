@@ -14,6 +14,7 @@ import {
   Music2,
   Repeat,
   Timer,
+  ThumbsDown,
   ThumbsUp,
   Trophy,
   UserPlus,
@@ -437,7 +438,7 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: string; la
 
 export function OpenRequests({ upcoming }: { upcoming: Session[] }) {
   const { t } = useT();
-  const [rows, setRows] = useState<Array<SongRequest & { votes: number }> | null | undefined>(undefined);
+  const [rows, setRows] = useState<Array<SongRequest & { votes: number; downs: number }> | null | undefined>(undefined);
   const ids = upcoming.map((s) => s.id).join(',');
 
   useEffect(() => {
@@ -453,7 +454,7 @@ export function OpenRequests({ upcoming }: { upcoming: Session[] }) {
   }, [ids]);
 
   if (!rows) return null;
-  const top = [...rows].sort((a, b) => b.votes - a.votes || a.created_at.localeCompare(b.created_at)).slice(0, 3);
+  const top = [...rows].sort((a, b) => b.votes - b.downs - (a.votes - a.downs) || b.votes - a.votes || a.created_at.localeCompare(b.created_at)).slice(0, 3);
   const name = (id: string) => upcoming.find((s) => s.id === id)?.name ?? '';
   return (
     <Card className="p-5 flex flex-col">
@@ -469,8 +470,15 @@ export function OpenRequests({ upcoming }: { upcoming: Session[] }) {
                     {name(r.session_id)} · {r.author}
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-jade-light tabular">
-                  <ThumbsUp className="w-3.5 h-3.5" /> +{r.votes}
+                <span className="inline-flex items-center gap-2 text-sm font-semibold tabular">
+                  <span className="inline-flex items-center gap-1 text-jade-light">
+                    <ThumbsUp className="w-3.5 h-3.5" /> +{r.votes}
+                  </span>
+                  {r.downs > 0 && (
+                    <span className="inline-flex items-center gap-1 text-songket-light">
+                      <ThumbsDown className="w-3.5 h-3.5" /> {r.downs}
+                    </span>
+                  )}
                 </span>
               </Link>
             </li>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronDown, HandHeart, ListPlus, Plus, Search, SkipForward, ThumbsUp, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, HandHeart, ListPlus, Plus, Search, SkipForward, ThumbsDown, ThumbsUp, Trash2, X } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { useT } from '@/lib/i18n';
 import { useSongRequests, type RequestRow } from '@/lib/useSongRequests';
@@ -63,7 +63,7 @@ export function SongRequests({ sessionId }: { sessionId: string }) {
             <HandHeart className="w-5 h-5 text-brass" /> {t('Song requests')}
             {open.length > 0 && <span className="text-sm font-sans font-normal text-muted tabular">{open.length}</span>}
           </h2>
-          <p className="text-sm text-muted">{t('Suggest a song for this Sidang. Tap +1 on requests you agree with.')}</p>
+          <p className="text-sm text-muted">{t('Suggest a song for this Sidang. Tap 👍 on requests you agree with, 👎 on ones you don’t.')}</p>
         </div>
         <Button variant="primary" onClick={() => setAsking(true)}>
           <Plus className="w-4 h-4" /> {t('Request a song')}
@@ -76,11 +76,12 @@ export function SongRequests({ sessionId }: { sessionId: string }) {
         <ul className="divide-y divide-line">
           {open.map((r) => (
             <RequestItem key={r.id} r={r}>
-              {/* +1 */}
+              {/* +1 / dislike */}
+              <span className="inline-flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 disabled={r.mine}
-                onClick={() => run(() => req.toggleVote(r.id))}
+                onClick={() => run(() => req.vote(r.id, 1))}
                 aria-pressed={r.backed}
                 aria-label={t('+1 for {title} ({n})', { title: r.title, n: r.votes })}
                 className={cx(
@@ -91,6 +92,21 @@ export function SongRequests({ sessionId }: { sessionId: string }) {
               >
                 <ThumbsUp className="w-4 h-4" fill={r.backed ? 'currentColor' : 'none'} /> +{r.votes}
               </button>
+              <button
+                type="button"
+                disabled={r.mine}
+                onClick={() => run(() => req.vote(r.id, -1))}
+                aria-pressed={r.disliked}
+                aria-label={t('Dislike {title} ({n})', { title: r.title, n: r.downs })}
+                className={cx(
+                  'h-9 px-3 rounded-full border text-sm font-semibold inline-flex items-center gap-1.5 tabular transition-colors',
+                  r.disliked ? 'bg-songket-soft border-songket/60 text-songket-light' : 'bg-raised border-line text-muted hover:text-ink hover:border-line-strong',
+                  r.mine && 'opacity-60 cursor-default'
+                )}
+              >
+                <ThumbsDown className="w-4 h-4" fill={r.disliked ? 'currentColor' : 'none'} /> {r.downs}
+              </button>
+              </span>
               {/* Actions */}
               <div className="basis-full flex flex-wrap items-center gap-2 pl-0 sm:pl-0 pt-1">
                 {inSetlist(r.song_id) && <Badge tone="ok">{t('Already in this Sidang')}</Badge>}

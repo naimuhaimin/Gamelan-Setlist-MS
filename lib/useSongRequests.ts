@@ -16,8 +16,10 @@ const read = (k: string) => {
 
 export interface RequestRow extends SongRequest {
   votes: number; // +1s, not counting the requester
+  downs: number; // dislikes
   mine: boolean; // this phone made the request
   backed: boolean; // this phone gave it +1
+  disliked: boolean; // this phone disliked it
 }
 
 /**
@@ -26,7 +28,7 @@ export interface RequestRow extends SongRequest {
  */
 export function useSongRequests(sessionId: string) {
   const [requests, setRequests] = useState<SongRequest[]>([]);
-  const [votes, setVotes] = useState<Array<{ request_id: string; device_id: string }>>([]);
+  const [votes, setVotes] = useState<api.RequestVote[]>([]);
   const [available, setAvailable] = useState<boolean | null>(null);
   const deviceId = useRef('');
 
@@ -79,9 +81,19 @@ export function useSongRequests(sessionId: string) {
     return requests
       .map((r) => {
         const v = votes.filter((x) => x.request_id === r.id && x.device_id !== r.device_id);
-        return { ...r, votes: v.length, mine: r.device_id === me, backed: v.some((x) => x.device_id === me) };
+        const ups = v.filter((x) => api.voteValue(x) === 1);
+        const downs = v.filter((x) => api.voteValue(x) === -1);
+        return {
+          ...r,
+          votes: ups.length,
+          downs: downs.length,
+          mine: r.device_id === me,
+          backed: ups.some((x) => x.device_id === me),
+          disliked: downs.some((x) => x.device_id === me),
+        };
       })
-      .sort((a, b) => b.votes - a.votes || a.created_at.localeCompare(b.created_at));
+      // most wanted first: likes minus dislikes
+      .sort((a, b) => b.votes - b.downs - (a.votes - a.downs) || b.votes - a.votes || a.created_at.localeCompare(b.created_at));
   }, [requests, votes]);
 
   /** Request a song. If it's already requested and open, back that one instead. */
@@ -92,7 +104,7 @@ export function useSongRequests(sessionId: string) {
       (r) => r.status === 'open' && (input.songId ? r.song_id === input.songId : r.title.toLowerCase() === title.toLowerCase())
     );
     if (existing) {
-      if (!existing.mine && !existing.backed) await toggleVote(existing.id);
+      if (!existing.mine && !existing.backed) await vote(existing.id, 1);
       return 'backed' as const;
     }
     const row: Omit<SongRequest, 'created_at' | 'handled_note'> = {
@@ -116,17 +128,23 @@ export function useSongRequests(sessionId: string) {
     return 'added' as const;
   };
 
-  const toggleVote = async (id: string) => {
+  /** Tap 👍 (1) or 👎 (-1); tapping the same one again takes the vote back. */
+  const vote = async (id: string, value: 1 | -1) => {
     const me = deviceId.current;
-    const on = !votes.some((v) => v.request_id === id && v.device_id === me);
-    setVotes((prev) => (on ? [...prev, { request_id: id, device_id: me }] : prev.filter((v) => !(v.request_id === id && v.device_id === me))));
+    const current = votes.find((v) => v.request_id === id && v.device_id === me);
+    const next: 1 | -1 | 0 = current && api.voteValue(current) === value ? 0 : value;
+    setVotes((prev) => {
+      const rest = prev.filter((v) => !(v.request_id === id && v.device_id === me));
+      return next === 0 ? rest : [...rest, { request_id: id, device_id: me, vote: next }];
+    });
     try {
-      await api.setRequestVote(id, me, on);
+      await api.setRequestVote(id, me, next);
     } catch (err) {
       load();
       throw err;
     }
   };
+  const toggleVote = (id: string) => vote(id, 1);
 
   const setStatus = async (id: string, status: SongRequest['status'], handledNote: string | null = null) => {
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status, handled_note: handledNote } : r)));
@@ -148,5 +166,5 @@ export function useSongRequests(sessionId: string) {
     }
   };
 
-  return { available, rows, request, toggleVote, setStatus, remove };
+  return { available, rows, request, toggleVote, vote, setStatus, remove };
 }

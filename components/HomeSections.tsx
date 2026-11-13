@@ -23,7 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
-import { useT } from '@/lib/i18n';
+import { getLang, useT } from '@/lib/i18n';
 import { useAttendance } from '@/lib/useAttendance';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import * as api from '@/lib/supabaseService';
@@ -270,7 +270,7 @@ export function Announcements({ composing, setComposing }: { composing: boolean;
                 <div className="flex-1 min-w-0">
                   <p className="whitespace-pre-wrap break-words">{a.body}</p>
                   <p className="text-xs text-faint mt-1">
-                    {[a.author, new Date(a.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
+                    {[a.author, new Date(a.created_at).toLocaleDateString(getLang() === 'ms' ? 'ms-MY' : 'en-GB', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
                     {a.show_until && ` · ${t('until {date}', { date: formatDate(a.show_until) })}`}
                   </p>
                 </div>

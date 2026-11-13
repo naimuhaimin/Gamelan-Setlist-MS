@@ -43,6 +43,9 @@ const C = {
   crimsonSoft: [248, 227, 224],
   breakBar: [196, 22, 48],
   jade: [26, 135, 103],
+  jadeSoft: [221, 241, 233],
+  stone: [196, 186, 172],
+  stoneSoft: [238, 233, 225],
   paper: [255, 253, 248],
 } as const;
 
@@ -417,88 +420,195 @@ export async function buildSummaryPdf(input: SummaryReportInput): Promise<JsPDF>
   // ---------------------------------------------------------------- song requests
   const rq = input.requests;
   if (rq && rq.total > 0) {
-    section(t('Song request insights'), 50);
+    section(t('Song request insights'), 70);
     const avg = (n: number | null) => (n === null ? '–' : String(Math.round(n * 10) / 10));
-    const facts = [
-      `${t('Requests')}: ${rq.total} (${t('from {n} people', { n: rq.people })})`,
-      `${t('Played')}: ${rq.played.length}/${rq.total}`,
-      `${t('+1 given')}: ${rq.totalVotes}`,
+
+    // -- four key figures
+    const tiles: Array<[string, string, string | undefined, readonly number[]]> = [
+      [t('Requests'), String(rq.total), t('from {n} people', { n: rq.people }), C.goldSoft],
+      [
+        t('Played'),
+        `${rq.played.length}/${rq.total}`,
+        rq.playedRate === null ? undefined : t('{pct}% of requests', { pct: Math.round(rq.playedRate * 100) }),
+        C.jadeSoft,
+      ],
+      [t('+1 given'), String(rq.totalVotes), rq.mostWanted && rq.mostWanted.votes ? t('most for {title}', { title: rq.mostWanted.title }) : undefined, C.goldSoft],
+      [t('Likes per song'), avg(rq.requestedAvgUp), rq.requestedAvgUp === null ? t('none played yet') : t('requested songs'), C.goldSoft],
     ];
-    font('normal', 9.5);
-    color(C.ink);
-    doc.text(clean(facts.join('   ·   ')), M, y);
-    y += 5.5;
-    const extra = [
-      rq.requestedAvgUp !== null
-        ? `${t('Average thumbs up per song')}: ${avg(rq.requestedAvgUp)} ${t('requested')}${rq.otherAvgUp !== null ? ` · ${avg(rq.otherAvgUp)} ${t('for the rest')}` : ''}`
-        : null,
-      rq.lateRequests > 0 ? t('{n} requested after the Sidang started', { n: rq.lateRequests }) : null,
-    ].filter(Boolean) as string[];
-    if (extra.length) {
-      font('normal', 9);
+    const tw4 = (CW - 3 * 3) / 4;
+    tiles.forEach(([label, value, note, bg], i) => {
+      const x = M + i * (tw4 + 3);
+      fill(bg);
+      doc.roundedRect(x, y, tw4, 19, 2, 2, 'F');
+      font('bold', 6.8);
       color(C.muted);
-      doc.text(clean(extra.join('   ·   ')), M, y);
+      doc.text(clean(label.toUpperCase()), x + 3, y + 5.2, { charSpace: 0.25 });
+      font('bold', 14);
+      color(i === 1 ? C.jade : C.ink);
+      doc.text(clean(value), x + 3, y + 12.4);
+      if (note) {
+        font('normal', 6.8);
+        color(C.muted);
+        doc.text(clean(note), x + 3, y + 16.6, { maxWidth: tw4 - 5 });
+      }
+    });
+    y += 19 + 8;
+
+    // -- what happened to the requests: one stacked bar
+    const groups = [
+      { label: t('Played'), n: rq.played.length, bar: C.jade, text: [255, 255, 255] },
+      { label: t('Added but not played'), n: rq.notPlayed.filter((o) => o.status === 'added').length, bar: C.goldLight, text: C.night },
+      { label: t('Still open'), n: rq.notPlayed.filter((o) => o.status === 'open').length, bar: C.stone, text: C.night },
+      { label: t('Not taken'), n: rq.notPlayed.filter((o) => o.status === 'dismissed').length, bar: C.stoneSoft, text: C.muted },
+    ].filter((g) => g.n > 0);
+    ensure(24);
+    font('bold', 9.5);
+    color(C.ink);
+    doc.text(clean(t('What happened to the requests')), M, y);
+    y += 3.5;
+    let bx = M;
+    groups.forEach((g, i) => {
+      const w = (g.n / rq.total) * CW;
+      fill(g.bar);
+      if (groups.length === 1) doc.roundedRect(bx, y, w, 8, 2, 2, 'F');
+      else {
+        doc.rect(bx + (i === 0 ? 2 : 0), y, w - (i === 0 ? 2 : 0) - (i === groups.length - 1 ? 2 : 0), 8, 'F');
+        if (i === 0) doc.roundedRect(bx, y, Math.min(w, 6), 8, 2, 2, 'F');
+        if (i === groups.length - 1) doc.roundedRect(bx + w - Math.min(w, 6), y, Math.min(w, 6), 8, 2, 2, 'F');
+      }
+      if (w > 9) {
+        font('bold', 9);
+        color(g.text);
+        doc.text(String(g.n), bx + w / 2, y + 5.6, { align: 'center' });
+      }
+      bx += w;
+    });
+    y += 13;
+    // legend
+    let lx = M;
+    font('normal', 8);
+    groups.forEach((g) => {
+      fill(g.bar);
+      doc.roundedRect(lx, y - 2.7, 3.2, 3.2, 0.8, 0.8, 'F');
+      color(C.ink);
+      const label = clean(`${g.label} ${g.n}`);
+      doc.text(label, lx + 4.6, y);
+      lx += 4.6 + doc.getTextWidth(label) + 7;
+    });
+    y += 8;
+
+    // -- do requested songs get more likes?
+    if (rq.requestedAvgUp !== null && rq.otherAvgUp !== null) {
+      ensure(26);
+      font('bold', 9.5);
+      color(C.ink);
+      doc.text(clean(t('Likes per song: requested vs the rest')), M, y);
+      y += 5;
+      const max = Math.max(rq.requestedAvgUp, rq.otherAvgUp, 0.1);
+      const labelW = 40;
+      const barMax = CW - labelW - 16;
+      const bars: Array<[string, number, readonly number[]]> = [
+        [t('Requested songs'), rq.requestedAvgUp, C.jade],
+        [t('Rest of the setlist'), rq.otherAvgUp, C.stone],
+      ];
+      for (const [label, v, c] of bars) {
+        font('normal', 8.5);
+        color(C.ink);
+        doc.text(clean(label), M, y + 3.3);
+        fill(C.stoneSoft);
+        doc.roundedRect(M + labelW, y, barMax, 4.6, 1.2, 1.2, 'F');
+        fill(c);
+        if (v > 0) doc.roundedRect(M + labelW, y, Math.max(2.4, (v / max) * barMax), 4.6, 1.2, 1.2, 'F');
+        font('bold', 9.5);
+        color(C.ink);
+        doc.text(avg(v), M + CW, y + 3.5, { align: 'right' });
+        y += 7;
+      }
+      const diff = rq.requestedAvgUp - rq.otherAvgUp;
+      font('italic', 8.5);
+      color(diff > 0.05 ? C.jade : diff < -0.05 ? C.crimson : C.muted);
+      doc.text(
+        clean(
+          diff > 0.05
+            ? t('Requested songs were liked more than the rest')
+            : diff < -0.05
+              ? t('Requested songs were liked less than the rest')
+              : t('Requested songs were liked about the same as the rest')
+        ),
+        M,
+        y + 1
+      );
+      y += 7;
+    }
+    if (rq.lateRequests > 0) {
+      font('normal', 8.5);
+      color(C.muted);
+      doc.text(clean(t('{n} requested after the Sidang started', { n: rq.lateRequests })), M, y);
       y += 6;
     }
 
-    const table = (title: string, rows: RequestOutcome[], last: (o: RequestOutcome) => string, played: boolean) => {
-      ensure(18);
-      y += 2;
-      font('bold', 10);
+    // -- the requests themselves: one row each, with a +1 bar and a status pill
+    const maxVotes = Math.max(1, ...rq.played.map((o) => o.votes), ...rq.notPlayed.map((o) => o.votes));
+    const pill = (text: string, right: number, py: number, bg: readonly number[], fg: readonly number[]) => {
+      font('bold', 7.2);
+      const w = doc.getTextWidth(clean(text)) + 5;
+      fill(bg);
+      doc.roundedRect(right - w, py - 3.6, w, 5.2, 2.6, 2.6, 'F');
+      color(fg);
+      doc.text(clean(text), right - w / 2, py + 0.2, { align: 'center' });
+    };
+    const rows = (title: string, list: RequestOutcome[], played: boolean) => {
+      if (!list.length) return;
+      ensure(12 + 13.2 * Math.min(list.length, 2)); // keep the heading with at least two rows
+      y += 5;
+      font('bold', 9.5);
       color(played ? C.jade : C.ink);
       doc.text(clean(title), M, y);
-      y += 5;
-      if (!rows.length) {
-        font('normal', 9);
-        color(C.muted);
-        doc.text(clean(played ? t('None of the requests were played.') : t('Every request was played.')), M, y);
-        y += 6;
-        return;
-      }
-      fill(C.goldSoft);
-      doc.rect(M, y - 4.2, CW, 6.5, 'F');
-      font('bold', 7.5);
-      color(C.muted);
-      doc.text(clean(t('Song').toUpperCase()), M + 2, y);
-      doc.text(clean(t('Requested by').toUpperCase()), M + 72, y);
-      doc.text('+1', M + 128, y, { align: 'right' });
-      doc.text(clean((played ? t('Played') : t('Status')).toUpperCase()), M + CW - 2, y, { align: 'right' });
-      y += 6;
-      for (const o of rows) {
-        const title = wrap(o.title, 66, 'bold', 9);
-        const h = Math.max(5.6, title.length * 4.2 + 1.4);
-        ensure(h + 1);
+      y += 3;
+      for (const o of list) {
+        ensure(13);
+        const top = y;
+        fill(played ? C.jadeSoft : [252, 249, 243]);
+        doc.roundedRect(M, top, CW, 11.5, 1.6, 1.6, 'F');
+        // status dot
+        fill(played ? C.jade : o.status === 'added' ? C.goldLight : C.stone);
+        doc.circle(M + 4.5, top + 5.75, 1.6, 'F');
+        // title + who
+        font('bold', 9.5);
         color(C.ink);
-        title.forEach((l, k) => doc.text(l, M + 2, y + k * 4.2));
-        font('normal', 8.5);
+        doc.text(clean(o.title), M + 9, top + 5, { maxWidth: 70 });
+        font('normal', 7.6);
         color(C.muted);
-        doc.text(clean([o.author, o.instrument].filter(Boolean).join(' · ')), M + 72, y, { maxWidth: 48 });
-        font('bold', 9);
-        color(o.votes ? C.jade : C.faint);
-        doc.text(String(o.votes), M + 128, y, { align: 'right' });
-        font('normal', 8.5);
-        color(C.ink);
-        doc.text(clean(last(o)), M + CW - 2, y, { align: 'right' });
-        y += h;
-        stroke(C.line);
-        doc.setLineWidth(0.15);
-        doc.line(M, y - 3.8, M + CW, y - 3.8);
+        doc.text(clean([t('by {name}', { name: o.author }), o.instrument].filter(Boolean).join(' · ')), M + 9, top + 9.3, { maxWidth: 70 });
+        // +1 bar
+        const bx0 = M + 84;
+        const bw = 34;
+        fill(C.stoneSoft);
+        doc.roundedRect(bx0, top + 4.2, bw, 3, 1, 1, 'F');
+        if (o.votes > 0) {
+          fill(C.gold);
+          doc.roundedRect(bx0, top + 4.2, Math.max(2, (o.votes / maxVotes) * bw), 3, 1, 1, 'F');
+        }
+        font('bold', 8.5);
+        color(o.votes ? C.gold : C.faint);
+        doc.text(`+${o.votes}`, bx0 + bw + 2.5, top + 6.8);
+        // status / when it was played
+        if (played) {
+          pill(`${o.partName ?? ''} ${formatClock(o.playedAt)}`.trim(), M + CW - 3, top + 4.6, C.jade, [255, 255, 255]);
+          font('normal', 7.4);
+          color(C.muted);
+          doc.text(clean(`${t('Likes')} +${o.up}  /  -${o.down}`), M + CW - 3, top + 9.6, { align: 'right' });
+        } else {
+          const [bg, fg] =
+            o.status === 'added' ? [C.goldSoft, C.gold] : o.status === 'dismissed' ? [C.stoneSoft, C.muted] : [[255, 255, 255], C.ink];
+          pill(o.status === 'dismissed' ? t('Not taken') : o.status === 'added' ? t('Added but not played') : t('Still open'), M + CW - 3, top + 6.2, bg, fg);
+        }
+        y += 13.2;
       }
-      y += 1;
     };
-    table(
-      t('Requested and played ({n})', { n: rq.played.length }),
-      rq.played,
-      (o) => `${o.partName ?? ''} ${formatClock(o.playedAt)}  +${o.up} / -${o.down}`,
-      true
-    );
-    table(
-      t('Requested but not played ({n})', { n: rq.notPlayed.length }),
-      rq.notPlayed,
-      (o) => (o.status === 'dismissed' ? t('Not taken') : o.status === 'added' ? t('Added but not played') : t('Still open')),
-      false
-    );
-    y += 2;
+    rows(t('Requested and played ({n})', { n: rq.played.length }), rq.played, true);
+    rows(t('Requested but not played ({n})', { n: rq.notPlayed.length }), rq.notPlayed, false);
+    y += 3;
   }
 
   // ---------------------------------------------------------------- Bahagian details

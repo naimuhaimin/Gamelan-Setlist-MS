@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Clock, Coffee, Copy, MessageSquareText, Music2, Send, ThumbsDown, ThumbsUp, Timer, Trash2, Trophy } from 'lucide-react';
+import { Check, Clock, Coffee, Copy, FileDown, Loader2, MessageSquareText, Music2, Send, ThumbsDown, ThumbsUp, Timer, Trash2, Trophy } from 'lucide-react';
 import { useStage } from '@/lib/stageContext';
 import { plural, useT } from '@/lib/i18n';
+import { computeInsights, computeUsage } from '@/lib/attendanceInsights';
+import { formatDate } from './Cards';
+import logoMark from '@/assets/logo-mark.png';
 import { useChat } from '@/lib/useChat';
 import * as api from '@/lib/supabaseService';
 import { buildSummary, formatClock, formatDuration, type Summary } from '@/lib/summary';
@@ -15,12 +18,13 @@ import { Badge, BreakIcon, Button, Card, EmptyState, Input, LiveDot, cx } from '
 
 /** After-event summary of one Sidang: what was played, when, for how long, the ratings, and people's comments. */
 export function SidangSummary({ sessionId }: { sessionId: string }) {
-  const { sessions, roomState, queueItems, tally, playLogEnabled, isFinished, notify } = useStage();
-  const { t } = useT();
+  const { sessions, events, instruments, roomState, queueItems, tally, playLogEnabled, isFinished, notify } = useStage();
+  const { t, lang } = useT();
   const session = sessions.find((s) => s.id === sessionId);
   const [rows, setRows] = useState<PlayLogRow[] | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState(false);
+  const [making, setMaking] = useState(false);
 
   // Reload whenever the stage moves (a moment later, so the controller's log row has landed)
   useEffect(() => {
@@ -68,6 +72,57 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
       setTimeout(() => setCopied(false), 1800);
     } catch {
       notify(t('Copy blocked. Select the text and copy it.'), 'error');
+    }
+  };
+
+  /** Gather everything fresh, then draw and save the PDF report (jsPDF loads only now). */
+  const downloadPdf = async () => {
+    if (!session || making) return;
+    setMaking(true);
+    try {
+      const event = events.find((e) => e.id === session.event_id) ?? null;
+      const siblings = session.event_id ? sessions.filter((s) => s.event_id === session.event_id).map((s) => s.id) : [];
+      const [viewers, att, counts, comments] = await Promise.all([
+        api.fetchViewers(session.id).catch(() => null),
+        api.fetchAttendance(session.id, session.event_id).catch(() => null),
+        siblings.length > 1 ? api.fetchAttendanceCounts(siblings).catch(() => null) : Promise.resolve(null),
+        api.fetchChat(session.id, 'sidang_comments').catch(() => null),
+      ]);
+      const insights = att
+        ? computeInsights({
+            entries: att.entries,
+            needs: att.needs,
+            viewers,
+            instruments,
+            startedAt: summary.startedAt,
+            eventCounts: counts,
+            siblings,
+            sessionId: session.id,
+          })
+        : null;
+      const { buildSummaryPdf, summaryFileName } = await import('@/lib/summaryPdf');
+      const doc = await buildSummaryPdf({
+        t,
+        lang,
+        sessionName: session.name,
+        eventName: event?.name ?? null,
+        venue: event?.venue ?? null,
+        dateText: formatDate(session.date) || '',
+        summary,
+        usage: viewers && viewers.length ? computeUsage(viewers) : null,
+        insights,
+        registeredCount: att?.entries.length ?? 0,
+        comments: comments ?? [],
+        roleLabel: (r) => t(ROLE_LABEL[r as keyof typeof ROLE_LABEL] ?? r),
+        logoUrl: typeof logoMark === 'string' ? logoMark : logoMark.src,
+      });
+      doc.save(summaryFileName(session.name, session.date));
+      notify(t('PDF report downloaded'));
+    } catch (err) {
+      console.error(err);
+      notify(t('Couldn’t make the PDF. Try again.'), 'error');
+    } finally {
+      setMaking(false);
     }
   };
 
@@ -213,6 +268,20 @@ export function SidangSummary({ sessionId }: { sessionId: string }) {
       )}
 
       <SidangComments sessionId={sessionId} />
+
+      {session && (
+        <Card className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+          <FileDown className="w-8 h-8 text-brass shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">{t('Summary report (PDF)')}</p>
+            <p className="text-sm text-muted">{t('Everything on this page in one printable A4 file, to share or keep.')}</p>
+          </div>
+          <Button variant="primary" onClick={downloadPdf} disabled={making}>
+            {making ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}{' '}
+            {making ? t('Making PDF…') : t('Download PDF report')}
+          </Button>
+        </Card>
+      )}
     </div>
   );
 }

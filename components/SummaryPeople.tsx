@@ -7,32 +7,9 @@ import { useT } from '@/lib/i18n';
 import { useAttendance } from '@/lib/useAttendance';
 import * as api from '@/lib/supabaseService';
 import { formatClock } from '@/lib/summary';
+import { computeInsights, computeUsage } from '@/lib/attendanceInsights';
 import { ROLE_LABEL } from './SettingsView';
 import { Card, cx } from './ui';
-
-const PING_GAP_MS = 90_000; // a phone counts as "on" until 90 s after its last check-in (it checks in every 60 s)
-const LAST_MINUTE_MS = 30 * 60_000;
-
-/** Most phones that had the app open at the same moment, from their first/last check-in times. */
-function peakAtOnce(rows: api.ViewerRow[]): { peak: number; at: string | null } {
-  const events: Array<[number, number]> = [];
-  for (const r of rows) {
-    events.push([Date.parse(r.first_seen), 1]);
-    events.push([Date.parse(r.last_seen) + PING_GAP_MS, -1]);
-  }
-  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  let now = 0;
-  let peak = 0;
-  let at: number | null = null;
-  for (const [time, d] of events) {
-    now += d;
-    if (now > peak) {
-      peak = now;
-      at = time;
-    }
-  }
-  return { peak, at: at === null ? null : new Date(at).toISOString() };
-}
 
 /** Summary section: app users while live, and attendance insights. */
 export function SummaryPeople({
@@ -74,81 +51,12 @@ export function SummaryPeople({
     api.fetchAttendanceCounts(siblings).then(setEventCounts).catch(() => undefined);
   }, [siblings, att.entries.length]);
 
-  const usage = useMemo(() => {
-    if (!viewers) return null;
-    const byRole = new Map<string, number>();
-    const byInstrument = new Map<string, number>();
-    for (const v of viewers) {
-      byRole.set(v.role, (byRole.get(v.role) ?? 0) + 1);
-      const key = v.instrument || '';
-      byInstrument.set(key, (byInstrument.get(key) ?? 0) + 1);
-    }
-    return { total: viewers.length, ...peakAtOnce(viewers), byRole, byInstrument };
-  }, [viewers]);
+  const usage = useMemo(() => (viewers ? computeUsage(viewers) : null), [viewers]);
 
-  const insight = useMemo(() => {
-    const seen = new Set((viewers ?? []).map((v) => v.device_id));
-    const registeredDevices = new Set(att.entries.map((e) => e.device_id));
-    const wasLive = (viewers?.length ?? 0) > 0;
-
-    const names = [...instruments];
-    for (const e of att.entries) if (!names.includes(e.instrument)) names.push(e.instrument);
-    const rows = names
-      .map((name) => {
-        const people = att.entries.filter((e) => e.instrument === name);
-        const min = att.needs[name] ?? 0;
-        return {
-          name,
-          people,
-          min,
-          seen: people.filter((p) => seen.has(p.device_id)).length,
-          lacking: Math.max(0, min - people.length),
-        };
-      })
-      .filter((r) => r.people.length > 0 || r.min > 0);
-
-    const withMin = rows.filter((r) => r.min > 0);
-    const notSeen = wasLive ? att.entries.filter((e) => !seen.has(e.device_id)) : [];
-    const unregistered = (viewers ?? []).filter((v) => v.role === 'player' && v.instrument && !registeredDevices.has(v.device_id));
-    const unregByInstrument = new Map<string, number>();
-    for (const v of unregistered) unregByInstrument.set(v.instrument!, (unregByInstrument.get(v.instrument!) ?? 0) + 1);
-
-    // Timing, measured against when the Sidang actually started
-    let timing: { early: number; lastMinute: number; late: number } | null = null;
-    if (startedAt && att.entries.length) {
-      const start = Date.parse(startedAt);
-      timing = { early: 0, lastMinute: 0, late: 0 };
-      for (const e of att.entries) {
-        const at = Date.parse(e.created_at);
-        if (at > start) timing.late++;
-        else if (start - at <= LAST_MINUTE_MS) timing.lastMinute++;
-        else timing.early++;
-      }
-    }
-    const times = att.entries.map((e) => e.created_at).sort();
-
-    // Compared with the other Sidang of the event that have registrations
-    let avg: number | null = null;
-    if (eventCounts) {
-      const others = siblings.filter((id) => id !== sessionId).map((id) => eventCounts[id] ?? 0).filter((n) => n > 0);
-      if (others.length) avg = others.reduce((a, b) => a + b, 0) / others.length;
-    }
-
-    return {
-      rows,
-      wasLive,
-      seenCount: att.entries.filter((e) => seen.has(e.device_id)).length,
-      minsMet: withMin.filter((r) => r.lacking === 0).length,
-      minsSet: withMin.length,
-      notSeen,
-      unregistered: unregistered.length,
-      unregByInstrument,
-      timing,
-      first: times[0] ?? null,
-      last: times[times.length - 1] ?? null,
-      avg,
-    };
-  }, [viewers, att.entries, att.needs, instruments, startedAt, eventCounts, siblings, sessionId]);
+  const insight = useMemo(
+    () => computeInsights({ entries: att.entries, needs: att.needs, viewers, instruments, startedAt, eventCounts, siblings, sessionId }),
+    [viewers, att.entries, att.needs, instruments, startedAt, eventCounts, siblings, sessionId]
+  );
 
   const showUsage = only !== 'attendance' && viewers !== null && viewers !== undefined;
   const showAttendance = only !== 'usage' && att.available === true;

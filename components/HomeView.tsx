@@ -39,7 +39,7 @@ export function HomeView() {
       </section>
 
       <div className="space-y-5">
-        {isManager && <ManagerShortcuts next={nextCard} onAnnounce={() => setAnnouncing(true)} />}
+        {isManager && <ManagerShortcuts onAnnounce={() => setAnnouncing(true)} />}
         <Announcements composing={announcing} setComposing={setAnnouncing} />
         <LiveNowCard />
         {nextCard && <NextSidangCard session={nextCard} />}

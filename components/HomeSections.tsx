@@ -5,11 +5,8 @@ import Link from 'next/link';
 import {
   BarChart3,
   CalendarDays,
-  CalendarPlus,
   Check,
   ChevronRight,
-  ClipboardCopy,
-  ClipboardPaste,
   HandHeart,
   ListMusic,
   Megaphone,
@@ -31,8 +28,6 @@ import { buildSummary, formatDuration, type Summary } from '@/lib/summary';
 import type { Announcement, Session, SongRequest } from '@/types';
 import { useShell } from './AppShell';
 import { formatDate, todayKey } from './Cards';
-import { SidangModal } from './SidangModal';
-import { CopySetlistModal, PasteSetlistModal } from './SetlistText';
 import { Badge, Button, Card, Field, IconButton, Input, Modal, cx } from './ui';
 
 const sidangHref = (id: string, view?: string, extra = '') => `/sidang/${encodeURIComponent(id)}${view ? `?view=${view}${extra}` : ''}`;
@@ -188,34 +183,17 @@ export function NextSidangCard({ session }: { session: Session }) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Shortcuts for Maestro/Admin
+// New announcement button for Maestro/Admin
 // ------------------------------------------------------------------------------------------------
 
-export function ManagerShortcuts({ next, onAnnounce }: { next: Session | null; onAnnounce: () => void }) {
-  const { events } = useStage();
+export function ManagerShortcuts({ onAnnounce }: { onAnnounce: () => void }) {
   const { t } = useT();
-  const [modal, setModal] = useState<'sidang' | 'paste' | 'copy' | null>(null);
-  const eventId = next?.event_id ?? events[0]?.id ?? null;
   return (
-    <>
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none]">
-        <Button size="sm" onClick={() => setModal('sidang')}>
-          <CalendarPlus className="w-4 h-4" /> {t('New Sidang')}
-        </Button>
-        <Button size="sm" onClick={() => setModal('paste')} disabled={!next} title={next ? next.name : undefined}>
-          <ClipboardPaste className="w-4 h-4" /> {t('Paste setlist')}
-        </Button>
-        <Button size="sm" onClick={() => setModal('copy')} disabled={!next} title={next ? next.name : undefined}>
-          <ClipboardCopy className="w-4 h-4" /> {t('Copy setlist')}
-        </Button>
-        <Button size="sm" onClick={onAnnounce}>
-          <Megaphone className="w-4 h-4" /> {t('New announcement')}
-        </Button>
-      </div>
-      <SidangModal mode="create" open={modal === 'sidang'} eventId={eventId} onClose={() => setModal(null)} />
-      {next && <PasteSetlistModal open={modal === 'paste'} onClose={() => setModal(null)} sessionId={next.id} />}
-      {next && <CopySetlistModal open={modal === 'copy'} onClose={() => setModal(null)} sessionId={next.id} />}
-    </>
+    <div className="flex">
+      <Button size="sm" onClick={onAnnounce}>
+        <Megaphone className="w-4 h-4" /> {t('New announcement')}
+      </Button>
+    </div>
   );
 }
 
